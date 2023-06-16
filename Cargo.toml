@@ -5,6 +5,8 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "A parser for deb822 files"
+repository = "https://github.com/jelmer/deb822-rs"
+homepage = "https://github.com/jelmer/deb822-rs"
 
 [dependencies]
 regex = "1"
