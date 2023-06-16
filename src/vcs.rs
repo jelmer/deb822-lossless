@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
-struct VcsInfo {
+pub struct VcsInfo {
     repo_url: String,
     branch: Option<String>,
     subpath: Option<String>,
