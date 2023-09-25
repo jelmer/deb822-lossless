@@ -63,15 +63,20 @@ impl<'a> Lexer<'a> {
                         Some((SyntaxKind::WHITESPACE, whitespace))
                     }
                 }
-                '#' => {
+                '#' if self.start_of_line => {
                     self.input.next();
                     let comment = self.read_while(|c| c != '\n' && c != '\r');
+                    self.start_of_line = true;
                     Some((SyntaxKind::COMMENT, format!("#{}", comment)))
                 }
                 _ if Self::is_valid_key_char(c) && self.start_of_line => {
                     let key = self.read_while(Self::is_valid_key_char);
                     self.start_of_line = false;
                     Some((SyntaxKind::KEY, key))
+                }
+                _ if !self.start_of_line => {
+                    let value = self.read_while(|c| !Self::is_newline(c));
+                    Some((SyntaxKind::VALUE, value))
                 }
                 _ => {
                     self.input.next();
@@ -81,5 +86,127 @@ impl<'a> Lexer<'a> {
         } else {
             None
         }
+    }
+}
+
+impl Iterator for Lexer<'_> {
+    type Item = (crate::SyntaxKind, String);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_token()
+    }
+}
+
+fn lex(input: &str) -> Vec<(SyntaxKind, String)> {
+    let mut lexer = Lexer::new(input);
+    lexer.by_ref().collect::<Vec<_>>()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::SyntaxKind::*;
+    #[test]
+    fn test_empty() {
+        assert_eq!(super::lex(""), vec![]);
+    }
+
+    #[test]
+    fn test_simple() {
+        assert_eq!(
+            super::lex(
+                r#"Source: syncthing-gtk
+Maintainer: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Section:    net   
+
+# This is the first binary package:
+
+Package: syncthing-gtk
+Architecture: all
+Depends: 
+  foo,
+  bar,
+  blah (= 1.0)
+Description: a package
+ with a loooong
+ .
+ long
+ .
+ description
+"#
+            )
+            .iter()
+            .map(|(kind, text)| (*kind, text.as_str()))
+            .collect::<Vec<_>>(),
+            vec![
+                (KEY, "Source"),
+                (COLON, ":"),
+                (WHITESPACE, " "),
+                (VALUE, "syncthing-gtk"),
+                (NEWLINE, "\n"),
+                (KEY, "Maintainer"),
+                (COLON, ":"),
+                (WHITESPACE, " "),
+                (VALUE, "Jelmer Vernooĳ <jelmer@jelmer.uk>"),
+                (NEWLINE, "\n"),
+                (KEY, "Section"),
+                (COLON, ":"),
+                (WHITESPACE, "    "),
+                (VALUE, "net   "),
+                (NEWLINE, "\n"),
+                (NEWLINE, "\n"),
+                (COMMENT, "# This is the first binary package:"),
+                (NEWLINE, "\n"),
+                (NEWLINE, "\n"),
+                (KEY, "Package"),
+                (COLON, ":"),
+                (WHITESPACE, " "),
+                (VALUE, "syncthing-gtk"),
+                (NEWLINE, "\n"),
+                (KEY, "Architecture"),
+                (COLON, ":"),
+                (WHITESPACE, " "),
+                (VALUE, "all"),
+                (NEWLINE, "\n"),
+                (KEY, "Depends"),
+                (COLON, ":"),
+                (WHITESPACE, " "),
+                (NEWLINE, "\n"),
+                (INDENT, "  "),
+                (KEY, "foo"),
+                (VALUE, ","),
+                (NEWLINE, "\n"),
+                (INDENT, "  "),
+                (KEY, "bar"),
+                (VALUE, ","),
+                (NEWLINE, "\n"),
+                (INDENT, "  "),
+                (KEY, "blah"),
+                (WHITESPACE, " "),
+                (VALUE, "(= 1.0)"),
+                (NEWLINE, "\n"),
+                (KEY, "Description"),
+                (COLON, ":"),
+                (WHITESPACE, " "),
+                (VALUE, "a package"),
+                (NEWLINE, "\n"),
+                (INDENT, " "),
+                (KEY, "with"),
+                (WHITESPACE, " "),
+                (VALUE, "a loooong"),
+                (NEWLINE, "\n"),
+                (INDENT, " "),
+                (KEY, "."),
+                (NEWLINE, "\n"),
+                (INDENT, " "),
+                (KEY, "long"),
+                (NEWLINE, "\n"),
+                (INDENT, " "),
+                (KEY, "."),
+                (NEWLINE, "\n"),
+                (INDENT, " "),
+                (KEY, "description"),
+                (NEWLINE, "\n")
+            ]
+        );
     }
 }

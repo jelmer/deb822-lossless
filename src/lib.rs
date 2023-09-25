@@ -6,7 +6,7 @@ pub mod vcs;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
-pub(crate) enum SyntaxKind {
+pub enum SyntaxKind {
     KEY = 0,
     VALUE,
     COLON,
