@@ -5,6 +5,7 @@ use std::str::Chars;
 pub struct Lexer<'a> {
     input: Peekable<Chars<'a>>,
     start_of_line: bool,
+    indent: usize,
 }
 
 impl<'a> Lexer<'a> {
@@ -12,6 +13,7 @@ impl<'a> Lexer<'a> {
         Lexer {
             input: input.chars().peekable(),
             start_of_line: true,
+            indent: 0,
         }
     }
 
@@ -53,11 +55,13 @@ impl<'a> Lexer<'a> {
                 _ if Self::is_newline(c) => {
                     self.input.next();
                     self.start_of_line = true;
+                    self.indent = 0;
                     Some((SyntaxKind::NEWLINE, c.to_string()))
                 }
                 _ if Self::is_whitespace(c) => {
                     let whitespace = self.read_while(Self::is_whitespace);
                     if self.start_of_line {
+                        self.indent = whitespace.len();
                         Some((SyntaxKind::INDENT, whitespace))
                     } else {
                         Some((SyntaxKind::WHITESPACE, whitespace))
@@ -69,12 +73,12 @@ impl<'a> Lexer<'a> {
                     self.start_of_line = true;
                     Some((SyntaxKind::COMMENT, format!("#{}", comment)))
                 }
-                _ if Self::is_valid_key_char(c) && self.start_of_line => {
+                _ if Self::is_valid_key_char(c) && self.start_of_line && self.indent == 0 => {
                     let key = self.read_while(Self::is_valid_key_char);
                     self.start_of_line = false;
                     Some((SyntaxKind::KEY, key))
                 }
-                _ if !self.start_of_line => {
+                _ if !self.start_of_line || self.indent > 0 => {
                     let value = self.read_while(|c| !Self::is_newline(c));
                     Some((SyntaxKind::VALUE, value))
                 }
@@ -97,7 +101,7 @@ impl Iterator for Lexer<'_> {
     }
 }
 
-fn lex(input: &str) -> Vec<(SyntaxKind, String)> {
+pub(crate) fn lex(input: &str) -> Vec<(SyntaxKind, String)> {
     let mut lexer = Lexer::new(input);
     lexer.by_ref().collect::<Vec<_>>()
 }
@@ -172,17 +176,13 @@ Description: a package
                 (WHITESPACE, " "),
                 (NEWLINE, "\n"),
                 (INDENT, "  "),
-                (KEY, "foo"),
-                (VALUE, ","),
+                (VALUE, "foo,"),
                 (NEWLINE, "\n"),
                 (INDENT, "  "),
-                (KEY, "bar"),
-                (VALUE, ","),
+                (VALUE, "bar,"),
                 (NEWLINE, "\n"),
                 (INDENT, "  "),
-                (KEY, "blah"),
-                (WHITESPACE, " "),
-                (VALUE, "(= 1.0)"),
+                (VALUE, "blah (= 1.0)"),
                 (NEWLINE, "\n"),
                 (KEY, "Description"),
                 (COLON, ":"),
@@ -190,21 +190,19 @@ Description: a package
                 (VALUE, "a package"),
                 (NEWLINE, "\n"),
                 (INDENT, " "),
-                (KEY, "with"),
-                (WHITESPACE, " "),
-                (VALUE, "a loooong"),
+                (VALUE, "with a loooong"),
                 (NEWLINE, "\n"),
                 (INDENT, " "),
-                (KEY, "."),
+                (VALUE, "."),
                 (NEWLINE, "\n"),
                 (INDENT, " "),
-                (KEY, "long"),
+                (VALUE, "long"),
                 (NEWLINE, "\n"),
                 (INDENT, " "),
-                (KEY, "."),
+                (VALUE, "."),
                 (NEWLINE, "\n"),
                 (INDENT, " "),
-                (KEY, "description"),
+                (VALUE, "description"),
                 (NEWLINE, "\n")
             ]
         );

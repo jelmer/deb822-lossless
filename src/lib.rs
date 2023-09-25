@@ -1,3 +1,4 @@
+pub mod deb822;
 mod lex;
 pub mod vcs;
 
