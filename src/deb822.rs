@@ -221,8 +221,14 @@ ast_node!(Deb822, ROOT);
 ast_node!(Paragraph, PARAGRAPH);
 ast_node!(Entry, ENTRY);
 
+impl Default for Deb822 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deb822 {
-    pub fn new(version: Option<u32>) -> Deb822 {
+    pub fn new() -> Deb822 {
         let mut builder = GreenNodeBuilder::new();
 
         builder.start_node(ROOT.into());
