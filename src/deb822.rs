@@ -236,6 +236,38 @@ impl Deb822 {
     }
 }
 
+impl Paragraph {
+    pub fn get(&self, key: &str) -> Option<String> {
+        self.entries()
+            .find(|e| e.key().as_deref() == Some(key))
+            .map(|e| e.value())
+    }
+
+    fn entries(&self) -> impl Iterator<Item = Entry> + '_ {
+        self.0.children().filter_map(Entry::cast)
+    }
+}
+
+impl Entry {
+    pub fn key(&self) -> Option<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == KEY)
+            .map(|it| it.text().to_string())
+    }
+
+    pub fn value(&self) -> String {
+        self.0
+            .children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .filter(|it| it.kind() == VALUE)
+            .map(|it| it.text().to_string())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
 impl FromStr for Deb822 {
     type Err = ParseError;
 
@@ -343,5 +375,22 @@ Description: This is a description
 
     let root = parsed.root();
     assert_eq!(root.paragraphs().count(), 2);
+    let source = root.paragraphs().next().unwrap();
+    assert_eq!(source.get("Source").as_deref(), Some("foo"));
+    assert_eq!(
+        source.get("Maintainer").as_deref(),
+        Some("Foo Bar <foo@example.com>")
+    );
+    assert_eq!(source.get("Section").as_deref(), Some("net"));
+
+    let binary = root.paragraphs().nth(1).unwrap();
+    assert_eq!(binary.get("Package").as_deref(), Some("foo"));
+    assert_eq!(binary.get("Architecture").as_deref(), Some("all"));
+    assert_eq!(binary.get("Depends").as_deref(), Some("bar,\nblah"));
+    assert_eq!(
+        binary.get("Description").as_deref(),
+        Some("This is a description\nAnd it is\n.\nmultiple\nlines")
+    );
+
     assert_eq!(node.text(), CONTROLv1);
 }
