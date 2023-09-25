@@ -237,14 +237,25 @@ impl Deb822 {
 }
 
 impl Paragraph {
+    /// Returns the value of the given key in the paragraph.
     pub fn get(&self, key: &str) -> Option<String> {
         self.entries()
             .find(|e| e.key().as_deref() == Some(key))
             .map(|e| e.value())
     }
 
+    /// Returns an iterator over all entries in the paragraph.
     fn entries(&self) -> impl Iterator<Item = Entry> + '_ {
         self.0.children().filter_map(Entry::cast)
+    }
+
+    pub fn items(&self) -> impl Iterator<Item = (String, String)> + '_ {
+        self.entries()
+            .filter_map(|e| e.key().map(|k| (k, e.value())))
+    }
+
+    pub fn keys(&self) -> impl Iterator<Item = String> + '_ {
+        self.entries().filter_map(|e| e.key())
     }
 }
 
@@ -376,14 +387,30 @@ Description: This is a description
     let root = parsed.root();
     assert_eq!(root.paragraphs().count(), 2);
     let source = root.paragraphs().next().unwrap();
+    assert_eq!(
+        source.keys().collect::<Vec<_>>(),
+        vec!["Source", "Maintainer", "Section"]
+    );
     assert_eq!(source.get("Source").as_deref(), Some("foo"));
     assert_eq!(
         source.get("Maintainer").as_deref(),
         Some("Foo Bar <foo@example.com>")
     );
     assert_eq!(source.get("Section").as_deref(), Some("net"));
+    assert_eq!(
+        source.items().collect::<Vec<_>>(),
+        vec![
+            ("Source".into(), "foo".into()),
+            ("Maintainer".into(), "Foo Bar <foo@example.com>".into()),
+            ("Section".into(), "net".into()),
+        ]
+    );
 
     let binary = root.paragraphs().nth(1).unwrap();
+    assert_eq!(
+        binary.keys().collect::<Vec<_>>(),
+        vec!["Package", "Architecture", "Depends", "Description"]
+    );
     assert_eq!(binary.get("Package").as_deref(), Some("foo"));
     assert_eq!(binary.get("Architecture").as_deref(), Some("all"));
     assert_eq!(binary.get("Depends").as_deref(), Some("bar,\nblah"));
