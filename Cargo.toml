@@ -10,3 +10,4 @@ homepage = "https://github.com/jelmer/debian-control-rs"
 
 [dependencies]
 regex = "1"
+rowan = "0.15.11"
