@@ -9,6 +9,6 @@ on RFC822 style files:
 
  * `control` - ``debian/control``
  * `copyright` - ``debian/copyright``
- * `relations`` - relationship fields
+ * `relations` - relationship fields
     (``Build-Depends``, ``Depends``, ``Provides``, etc) as used in e.g.  debian
     control files
