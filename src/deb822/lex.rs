@@ -1,4 +1,4 @@
-use crate::SyntaxKind;
+use crate::deb822::SyntaxKind;
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -94,7 +94,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl Iterator for Lexer<'_> {
-    type Item = (crate::SyntaxKind, String);
+    type Item = (crate::deb822::SyntaxKind, String);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_token()
@@ -108,7 +108,7 @@ pub(crate) fn lex(input: &str) -> Vec<(SyntaxKind, String)> {
 
 #[cfg(test)]
 mod tests {
-    use crate::SyntaxKind::*;
+    use crate::deb822::SyntaxKind::*;
     #[test]
     fn test_empty() {
         assert_eq!(super::lex(""), vec![]);

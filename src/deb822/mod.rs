@@ -1,7 +1,36 @@
-use crate::lex::lex;
-use crate::SyntaxKind;
-use crate::SyntaxKind::*;
+mod lex;
+use crate::deb822::lex::lex;
 use std::str::FromStr;
+
+/// Let's start with defining all kinds of tokens and
+/// composite nodes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[allow(non_camel_case_types)]
+#[repr(u16)]
+pub enum SyntaxKind {
+    KEY = 0,
+    VALUE,
+    COLON,
+    INDENT,
+    NEWLINE,
+    WHITESPACE, // whitespaces is explicit
+    COMMENT,    // comments
+    ERROR,      // as well as errors
+
+    // composite nodes
+    ROOT,      // The entire file
+    PARAGRAPH, // A deb822 paragraph
+    ENTRY,     // A single key-value pair
+}
+
+use SyntaxKind::*;
+
+/// Convert our `SyntaxKind` into the rowan `SyntaxKind`.
+impl From<SyntaxKind> for rowan::SyntaxKind {
+    fn from(kind: SyntaxKind) -> Self {
+        Self(kind as u16)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParseError(Vec<String>);
@@ -300,7 +329,7 @@ impl FromStr for Deb822 {
 
 #[test]
 fn test_parse_simple() {
-    const CONTROLv1: &str = r#"Source: foo
+    const CONTROLV1: &str = r#"Source: foo
 Maintainer: Foo Bar <foo@example.com>
 Section: net
 
@@ -317,7 +346,7 @@ Description: This is a description
  multiple
  lines
 "#;
-    let parsed = parse(CONTROLv1);
+    let parsed = parse(CONTROLV1);
     let node = parsed.syntax();
     assert_eq!(
         format!("{:#?}", node),
@@ -425,5 +454,5 @@ Description: This is a description
         Some("This is a description\nAnd it is\n.\nmultiple\nlines")
     );
 
-    assert_eq!(node.text(), CONTROLv1);
+    assert_eq!(node.text(), CONTROLV1);
 }
