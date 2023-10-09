@@ -20,7 +20,10 @@ pub enum SyntaxKind {
     NOT,        // !
     WHITESPACE, // whitespace
     COMMENT,    // comments
-    ERROR,      // as well as errors
+    DOLLAR,     // $
+    L_CURLY,
+    R_CURLY,
+    ERROR, // as well as errors
 
     // composite nodes
     ROOT,     // The entire file
@@ -28,6 +31,7 @@ pub enum SyntaxKind {
     RELATION, // An alternative in a dependency
     VERSION,  // A version constraint
     ARCHITECTURES,
+    SUBSTVAR,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -148,6 +152,18 @@ impl<'a> Lexer<'a> {
                     self.input.next();
                     Some((SyntaxKind::NOT, "!".to_owned()))
                 }
+                '$' => {
+                    self.input.next();
+                    Some((SyntaxKind::DOLLAR, "$".to_owned()))
+                }
+                '{' => {
+                    self.input.next();
+                    Some((SyntaxKind::L_CURLY, "{".to_owned()))
+                }
+                '}' => {
+                    self.input.next();
+                    Some((SyntaxKind::R_CURLY, "}".to_owned()))
+                }
                 '<' | '>' | '=' => {
                     let constraint = self.read_while(|c| c == '<' || c == '>' || c == '=');
                     Some((SyntaxKind::CONSTRAINT, constraint))
@@ -248,7 +264,37 @@ fn parse(text: &str) -> Parse {
     }
 
     impl Parser {
+        fn parse_substvar(&mut self) {
+            self.builder.start_node(SyntaxKind::SUBSTVAR.into());
+            self.bump();
+            if self.current() != Some(L_CURLY) {
+                self.error("expected {");
+            } else {
+                self.bump();
+            }
+            loop {
+                match self.current() {
+                    Some(IDENT) | Some(COLON) => {
+                        self.bump();
+                    }
+                    Some(R_CURLY) => {
+                        break;
+                    }
+                    e => {
+                        self.error(format!("unexpected identifier: {:?}", e).as_str());
+                    }
+                }
+            }
+            if self.current() != Some(R_CURLY) {
+                self.error("expected }");
+            } else {
+                self.bump();
+            }
+            self.builder.finish_node();
+        }
+
         fn parse_entry(&mut self) {
+            self.skip_ws();
             self.builder.start_node(SyntaxKind::ENTRY.into());
             loop {
                 self.parse_relation();
@@ -264,12 +310,13 @@ fn parse(text: &str) -> Parse {
                     None => {
                         break;
                     }
-                    _ => {
+                    e => {
                         self.builder.start_node(SyntaxKind::ERROR.into());
                         if self.current().is_some() {
                             self.bump();
                         }
-                        self.errors.push("Expected comma or pipe".to_owned());
+                        self.errors
+                            .push(format!("Expected comma or pipe, not {:?}", e));
                         self.builder.finish_node();
                     }
                 }
@@ -377,7 +424,14 @@ fn parse(text: &str) -> Parse {
             self.skip_ws();
 
             while self.current().is_some() {
-                self.parse_entry();
+                match self.current() {
+                    Some(IDENT) => self.parse_entry(),
+                    Some(DOLLAR) => self.parse_substvar(),
+                    _ => {
+                        self.error("expected $ or identifier");
+                    }
+                }
+
                 self.skip_ws();
                 match self.current() {
                     Some(COMMA) => {
@@ -475,6 +529,7 @@ macro_rules! ast_node {
 ast_node!(Relations, ROOT);
 ast_node!(Entry, ENTRY);
 ast_node!(Relation, RELATION);
+ast_node!(Substvar, SUBSTVAR);
 
 impl std::fmt::Debug for Relations {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -497,6 +552,14 @@ impl std::fmt::Debug for Relation {
 impl Relations {
     pub fn entries(&self) -> impl Iterator<Item = Entry> + '_ {
         self.0.children().filter_map(Entry::cast)
+    }
+
+    pub fn substvars(&self) -> impl Iterator<Item = String> + '_ {
+        eprintln!("children: {:#?}", self.0.children().collect::<Vec<_>>());
+        self.0
+            .children()
+            .filter_map(Substvar::cast)
+            .map(|s| s.to_string())
     }
 }
 
@@ -640,5 +703,19 @@ fn test_arch_list() {
             .into_iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn test_substvar() {
+    let input = "${shlibs:Depends}";
+
+    let parsed: Relations = input.parse().unwrap();
+    assert_eq!(parsed.to_string(), input);
+    assert_eq!(parsed.entries().count(), 0);
+
+    assert_eq!(
+        parsed.substvars().collect::<Vec<_>>(),
+        vec!["${shlibs:Depends}"]
     );
 }
