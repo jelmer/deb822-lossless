@@ -15,6 +15,9 @@ pub enum SyntaxKind {
     COMMA,      // ,
     L_PARENS,   // (
     R_PARENS,   // )
+    L_BRACKET,  // [
+    R_BRACKET,  // ]
+    NOT,        // !
     WHITESPACE, // whitespace
     COMMENT,    // comments
     ERROR,      // as well as errors
@@ -24,6 +27,7 @@ pub enum SyntaxKind {
     ENTRY,    // A single entry
     RELATION, // An alternative in a dependency
     VERSION,  // A version constraint
+    ARCHITECTURES,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -90,7 +94,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_valid_key_char(c: char) -> bool {
-        c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.'
+        c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '+' || c == '*'
     }
 
     fn read_while<F>(&mut self, predicate: F) -> String
@@ -131,6 +135,18 @@ impl<'a> Lexer<'a> {
                 ')' => {
                     self.input.next();
                     Some((SyntaxKind::R_PARENS, ")".to_owned()))
+                }
+                '[' => {
+                    self.input.next();
+                    Some((SyntaxKind::L_BRACKET, "[".to_owned()))
+                }
+                ']' => {
+                    self.input.next();
+                    Some((SyntaxKind::R_BRACKET, "]".to_owned()))
+                }
+                '!' => {
+                    self.input.next();
+                    Some((SyntaxKind::NOT, "!".to_owned()))
                 }
                 '<' | '>' | '=' => {
                     let constraint = self.read_while(|c| c == '<' || c == '>' || c == '=');
@@ -289,10 +305,11 @@ fn parse(text: &str) -> Parse {
                     }
                     self.skip_ws();
                 }
-                None | Some(L_PARENS) => {}
-                Some(PIPE) | Some(COMMA) => {}
+                None | Some(L_PARENS) | Some(L_BRACKET) | Some(PIPE) | Some(COMMA) => {}
                 e => {
-                    self.error(format!("Expected ':' or '|' or ',' but got {:?}", e).as_str());
+                    self.error(
+                        format!("Expected ':' or '|' or '[' or ',' but got {:?}", e).as_str(),
+                    );
                 }
             }
 
@@ -324,6 +341,33 @@ fn parse(text: &str) -> Parse {
 
                 self.builder.finish_node();
             }
+
+            self.skip_ws();
+
+            if self.current() == Some(L_BRACKET) {
+                self.builder.start_node(ARCHITECTURES.into());
+                self.bump();
+                loop {
+                    self.skip_ws();
+                    match self.current() {
+                        Some(NOT) => {
+                            self.bump();
+                        }
+                        Some(IDENT) => {
+                            self.bump();
+                        }
+                        Some(R_BRACKET) => {
+                            self.bump();
+                            break;
+                        }
+                        _ => {
+                            self.error("Expected architecture name or '!' or ']'");
+                        }
+                    }
+                }
+                self.builder.finish_node();
+            }
+
             self.builder.finish_node();
         }
 
@@ -482,6 +526,21 @@ impl Relation {
             None
         }
     }
+
+    pub fn arch_list(&self) -> impl Iterator<Item = String> + '_ {
+        let architectures = self.0.children().find(|n| n.kind() == ARCHITECTURES);
+
+        let architectures = architectures.as_ref().unwrap();
+
+        architectures.children_with_tokens().filter_map(|node| {
+            let token = node.as_token()?;
+            if token.kind() == IDENT {
+                Some(token.text().to_string())
+            } else {
+                None
+            }
+        })
+    }
 }
 
 impl std::str::FromStr for Relations {
@@ -554,5 +613,32 @@ fn test_multiple() {
     assert_eq!(
         relation.version(),
         Some((VersionConstraint::LessThan, "0.21".parse().unwrap()))
+    );
+}
+
+#[test]
+fn test_arch_list() {
+    let input = "python3-dulwich [amd64 arm64 armhf i386 mips mips64el mipsel ppc64el s390x]";
+    let parsed: Relations = input.parse().unwrap();
+    assert_eq!(parsed.to_string(), input);
+    assert_eq!(parsed.entries().count(), 1);
+    let entry = parsed.entries().next().unwrap();
+    assert_eq!(
+        entry.to_string(),
+        "python3-dulwich [amd64 arm64 armhf i386 mips mips64el mipsel ppc64el s390x]"
+    );
+    assert_eq!(entry.relations().count(), 1);
+    let relation = entry.relations().next().unwrap();
+    assert_eq!(
+        relation.to_string(),
+        "python3-dulwich [amd64 arm64 armhf i386 mips mips64el mipsel ppc64el s390x]"
+    );
+    assert_eq!(relation.version(), None);
+    assert_eq!(
+        relation.arch_list().collect::<Vec<_>>(),
+        vec!["amd64", "arm64", "armhf", "i386", "mips", "mips64el", "mipsel", "ppc64el", "s390x"]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
     );
 }
