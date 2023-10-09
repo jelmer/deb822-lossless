@@ -9,4 +9,11 @@ repository = "https://github.com/jelmer/debian-control-rs"
 homepage = "https://github.com/jelmer/debian-control-rs"
 
 [dependencies]
+debversion = "0.2.2"
 regex = "1"
+rowan = "0.15.11"
+serde = { version = "1", features = ["derive"], optional = true }
+
+[features]
+default = ["serde"]
+serde = ["dep:serde"]
