@@ -266,7 +266,7 @@ impl Deb822 {
     }
 
     /// Returns an iterator over all paragraphs in the file.
-    pub fn paragraphs(&self) -> impl Iterator<Item = Paragraph> + '_ {
+    pub fn paragraphs(&self) -> impl Iterator<Item = Paragraph> {
         self.0.children().filter_map(Paragraph::cast)
     }
 }
@@ -277,6 +277,10 @@ impl Paragraph {
         self.entries()
             .find(|e| e.key().as_deref() == Some(key))
             .map(|e| e.value())
+    }
+
+    pub fn contains_key(&self, key: &str) -> bool {
+        self.get(key).is_some()
     }
 
     /// Returns an iterator over all entries in the paragraph.
@@ -291,6 +295,32 @@ impl Paragraph {
 
     pub fn keys(&self) -> impl Iterator<Item = String> + '_ {
         self.entries().filter_map(|e| e.key())
+    }
+
+    pub fn remove(&mut self, key: &str) {
+        for mut entry in self.entries() {
+            if entry.key().as_deref() == Some(key) {
+                entry.detach();
+            }
+        }
+    }
+
+    pub fn insert(&mut self, key: &str, value: &str) {
+        for mut entry in self.entries() {
+            if entry.key().as_deref() == Some(key) {
+                entry.set_value(value);
+                return;
+            }
+        }
+        todo!();
+    }
+
+    pub fn rename(&mut self, old_key: &str, new_key: &str) {
+        for mut entry in self.entries() {
+            if entry.key().as_deref() == Some(old_key) {
+                entry.set_key(new_key);
+            }
+        }
     }
 }
 
@@ -311,6 +341,18 @@ impl Entry {
             .map(|it| it.text().to_string())
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    pub fn set_key(&mut self, key: &str) {
+        todo!();
+    }
+
+    pub fn set_value(&mut self, value: &str) {
+        todo!();
+    }
+
+    pub fn detach(&mut self) {
+        self.0.detach();
     }
 }
 
