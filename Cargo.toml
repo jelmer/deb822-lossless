@@ -5,8 +5,8 @@ version = { workspace = true }
 edition = "2021"
 license = "Apache-2.0"
 description = "A parser for Debian control files"
-repository = "https://github.com/jelmer/debian-control-rs"
-homepage = "https://github.com/jelmer/debian-control-rs"
+repository = "https://github.com/jelmer/deb822-lossless"
+homepage = "https://github.com/jelmer/deb822-lossless"
 
 [workspace]
 members = ["debian-control", "debian-copyright"]
