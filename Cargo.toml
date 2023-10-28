@@ -1,20 +1,27 @@
 [package]
 name = "deb822-lossless"
 authors = ["Jelmer Vernooĳ <jelmer@debian.org>"]
-version = "0.1.2"
+version = { workspace = true }
 edition = "2021"
 license = "Apache-2.0"
-description = "A parser for Debian control files"
-repository = "https://github.com/jelmer/debian-control-rs"
-homepage = "https://github.com/jelmer/debian-control-rs"
+description = "A lossless parser for deb822 files"
+repository = { workspace = true }
+homepage = { workspace = true }
 
 [workspace]
 members = ["debian-control", "debian-copyright"]
 
-[dependencies]
-debversion = "0.2.2"
-regex = "1"
+[workspace.package]
+version = "0.1.4"
+repository = "https://github.com/jelmer/deb822-lossless"
+homepage = "https://github.com/jelmer/deb822-lossless"
+
+[workspace.dependencies]
 rowan = "0.15.11"
+
+[dependencies]
+regex = "1"
+rowan = { workspace = true }
 serde = { version = "1", features = ["derive"], optional = true }
 
 [features]
