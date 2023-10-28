@@ -1,4 +1,4 @@
-use crate::deb822::{Deb822, Paragraph};
+use deb822_lossless::{Deb822, Paragraph};
 use std::path::Path;
 
 pub const CURRENT_FORMAT: &str =
