@@ -352,11 +352,11 @@ impl Entry {
             .join("\n")
     }
 
-    pub fn set_key(&mut self, key: &str) {
+    pub fn set_key(&mut self, _key: &str) {
         todo!();
     }
 
-    pub fn set_value(&mut self, value: &str) {
+    pub fn set_value(&mut self, _value: &str) {
         todo!();
     }
 

@@ -1,7 +1,7 @@
 [package]
 name = "debian-copyright"
 authors = ["Jelmer Vernooĳ <jelmer@debian.org>"]
-version = "0.1.2"
+version = { workspace = true }
 edition = "2021"
 license = "Apache-2.0"
 description = "A parser for Debian copyright files"

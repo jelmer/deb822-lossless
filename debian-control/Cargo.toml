@@ -1,7 +1,7 @@
 [package]
 name = "debian-control"
 authors = ["Jelmer Vernooĳ <jelmer@debian.org>"]
-version = "0.1.2"
+version = { workspace = true }
 edition = "2021"
 license = "Apache-2.0"
 description = "A parser for Debian control files"
@@ -12,4 +12,4 @@ homepage = "https://github.com/jelmer/debian-control-rs"
 rowan = "0.15.11"
 debversion = "0.2.2"
 regex = "1"
-deb822-lossless = { path = ".." }
+deb822-lossless = { path = ".."  }

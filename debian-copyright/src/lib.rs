@@ -1,3 +1,7 @@
+//! A library for parsing and manipulating debian/copyright files that
+//! use the DEP-5 format.
+//!
+//! This library is intended to be used for manipulating debian/copyright
 use deb822_lossless::{Deb822, Paragraph};
 use std::path::Path;
 
@@ -43,6 +47,14 @@ impl Copyright {
 impl Default for Copyright {
     fn default() -> Self {
         Copyright(Deb822::new())
+    }
+}
+
+impl std::str::FromStr for Copyright {
+    type Err = deb822_lossless::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(Deb822::from_str(s)?))
     }
 }
 
