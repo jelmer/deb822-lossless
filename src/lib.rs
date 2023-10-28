@@ -9,6 +9,7 @@
 
 mod lex;
 use crate::lex::lex;
+use rowan::ast::AstNode;
 use std::str::FromStr;
 
 /// Let's start with defining all kinds of tokens and
@@ -59,7 +60,7 @@ impl std::error::Error for ParseError {}
 /// these two SyntaxKind types, allowing for a nicer SyntaxNode API where
 /// "kinds" are values from our `enum SyntaxKind`, instead of plain u16 values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Lang {}
+pub enum Lang {}
 impl rowan::Language for Lang {
     type Kind = SyntaxKind;
     fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind {
@@ -247,6 +248,22 @@ macro_rules! ast_node {
             }
         }
 
+        impl AstNode for $ast {
+            type Language = Lang;
+
+            fn can_cast(kind: SyntaxKind) -> bool {
+                kind == $kind
+            }
+
+            fn cast(syntax: SyntaxNode) -> Option<Self> {
+                Self::cast(syntax)
+            }
+
+            fn syntax(&self) -> &SyntaxNode {
+                &self.0
+            }
+        }
+
         impl ToString for $ast {
             fn to_string(&self) -> String {
                 self.0.text().to_string()
@@ -321,7 +338,11 @@ impl Paragraph {
                 return;
             }
         }
-        todo!();
+        let entry = Entry::new(key, value);
+        self.0.splice_children(
+            self.0.children().count()..self.0.children().count(),
+            vec![entry.0.clone_for_update().into()],
+        );
     }
 
     pub fn rename(&mut self, old_key: &str, new_key: &str) {
@@ -334,6 +355,19 @@ impl Paragraph {
 }
 
 impl Entry {
+    pub fn new(key: &str, value: &str) -> Entry {
+        let mut builder = GreenNodeBuilder::new();
+
+        builder.start_node(ENTRY.into());
+        builder.token(KEY.into(), key);
+        builder.token(COLON.into(), ":");
+        builder.token(WHITESPACE.into(), " ");
+        builder.token(VALUE.into(), value);
+        builder.token(NEWLINE.into(), "\n");
+        builder.finish_node();
+        Entry(SyntaxNode::new_root(builder.finish()))
+    }
+
     pub fn key(&self) -> Option<String> {
         self.0
             .children_with_tokens()
@@ -371,7 +405,7 @@ impl FromStr for Deb822 {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parsed = parse(s);
         if parsed.errors.is_empty() {
-            Ok(parsed.root())
+            Ok(parsed.root().clone_for_update())
         } else {
             Err(ParseError(parsed.errors))
         }
@@ -506,4 +540,64 @@ Description: This is a description
     );
 
     assert_eq!(node.text(), CONTROLV1);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_parse() {
+        let d: super::Deb822 = r#"Source: foo
+Maintainer: Foo Bar <jelmer@jelmer.uk>
+Section: net
+
+Package: foo
+Architecture: all
+Depends: libc6
+Description: This is a description
+ With details
+ "#
+        .parse()
+        .unwrap();
+        let mut ps = d.paragraphs();
+        let p = ps.next().unwrap();
+
+        assert_eq!(p.get("Source").as_deref(), Some("foo"));
+        assert_eq!(
+            p.get("Maintainer").as_deref(),
+            Some("Foo Bar <jelmer@jelmer.uk>")
+        );
+        assert_eq!(p.get("Section").as_deref(), Some("net"));
+
+        let b = ps.next().unwrap();
+        assert_eq!(b.get("Package").as_deref(), Some("foo"));
+    }
+
+    #[test]
+    fn test_modify() {
+        let d: super::Deb822 = r#"Source: foo
+Maintainer: Foo Bar <jelmer@jelmer.uk>
+Section: net
+
+Package: foo
+Architecture: all
+Depends: libc6
+Description: This is a description
+ With details
+ "#
+        .parse()
+        .unwrap();
+        let mut ps = d.paragraphs();
+        let mut p = ps.next().unwrap();
+        p.insert("Foo", "Bar");
+        p.remove("Section");
+        p.remove("Nonexistant");
+        assert_eq!(p.get("Foo").as_deref(), Some("Bar"));
+        assert_eq!(
+            p.to_string(),
+            r#"Source: foo
+Maintainer: Foo Bar <jelmer@jelmer.uk>
+Foo: Bar
+"#
+        );
+    }
 }
