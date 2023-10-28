@@ -1,5 +1,5 @@
 [package]
-name = "deb822-lossless"
+name = "debian-control"
 authors = ["Jelmer Vernooĳ <jelmer@debian.org>"]
 version = "0.1.2"
 edition = "2021"
@@ -8,15 +8,8 @@ description = "A parser for Debian control files"
 repository = "https://github.com/jelmer/debian-control-rs"
 homepage = "https://github.com/jelmer/debian-control-rs"
 
-[workspace]
-members = ["debian-control", "debian-copyright"]
-
 [dependencies]
+rowan = "0.15.11"
 debversion = "0.2.2"
 regex = "1"
-rowan = "0.15.11"
-serde = { version = "1", features = ["derive"], optional = true }
-
-[features]
-default = ["serde"]
-serde = ["dep:serde"]
+deb822-lossless = { path = ".." }
