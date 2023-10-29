@@ -11,13 +11,15 @@ pub enum SyntaxKind {
     IDENT = 0, // package name
     COLON,     // :
     PIPE,
-    CONSTRAINT, // (">=", "<=", "=", ">>", "<<")
     COMMA,      // ,
     L_PARENS,   // (
     R_PARENS,   // )
     L_BRACKET,  // [
     R_BRACKET,  // ]
     NOT,        // !
+    L_ANGLE,    // <
+    R_ANGLE,    // >
+    EQUAL,      // =
     WHITESPACE, // whitespace
     COMMENT,    // comments
     DOLLAR,     // $
@@ -26,11 +28,13 @@ pub enum SyntaxKind {
     ERROR, // as well as errors
 
     // composite nodes
-    ROOT,     // The entire file
-    ENTRY,    // A single entry
-    RELATION, // An alternative in a dependency
-    VERSION,  // A version constraint
+    ROOT,       // The entire file
+    ENTRY,      // A single entry
+    RELATION,   // An alternative in a dependency
+    VERSION,    // A version constraint
+    CONSTRAINT, // (">=", "<=", "=", ">>", "<<")
     ARCHITECTURES,
+    PROFILES,
     SUBSTVAR,
 }
 
@@ -164,9 +168,17 @@ impl<'a> Lexer<'a> {
                     self.input.next();
                     Some((SyntaxKind::R_CURLY, "}".to_owned()))
                 }
-                '<' | '>' | '=' => {
-                    let constraint = self.read_while(|c| c == '<' || c == '>' || c == '=');
-                    Some((SyntaxKind::CONSTRAINT, constraint))
+                '<' => {
+                    self.input.next();
+                    Some((SyntaxKind::L_ANGLE, "<".to_owned()))
+                }
+                '>' => {
+                    self.input.next();
+                    Some((SyntaxKind::R_ANGLE, ">".to_owned()))
+                }
+                '=' => {
+                    self.input.next();
+                    Some((SyntaxKind::EQUAL, "=".to_owned()))
                 }
                 _ if Self::is_whitespace(c) => {
                     let whitespace = self.read_while(Self::is_whitespace);
@@ -366,11 +378,17 @@ fn parse(text: &str) -> Parse {
                 self.builder.start_node(VERSION.into());
                 self.bump();
                 self.skip_ws();
-                if self.current() == Some(CONSTRAINT) {
+
+                self.builder.start_node(CONSTRAINT.into());
+
+                while self.current() == Some(L_ANGLE)
+                    || self.current() == Some(R_ANGLE)
+                    || self.current() == Some(EQUAL)
+                {
                     self.bump();
-                } else {
-                    self.error("Expected version constraint");
                 }
+
+                self.builder.finish_node();
 
                 self.skip_ws();
 
@@ -413,6 +431,45 @@ fn parse(text: &str) -> Parse {
                     }
                 }
                 self.builder.finish_node();
+            }
+            self.skip_ws();
+
+            while self.current() == Some(L_ANGLE) {
+                self.builder.start_node(PROFILES.into());
+                self.bump();
+
+                loop {
+                    self.skip_ws();
+                    match self.current() {
+                        Some(IDENT) => {
+                            self.bump();
+                        }
+                        Some(NOT) => {
+                            self.bump();
+                            self.skip_ws();
+                            if self.current() == Some(IDENT) {
+                                self.bump();
+                            } else {
+                                self.error("Expected profile");
+                            }
+                        }
+                        Some(R_ANGLE) => {
+                            self.bump();
+                            break;
+                        }
+                        None => {
+                            self.error("Expected profile or '>'");
+                            break;
+                        }
+                        _ => {
+                            self.error("Expected profile or '!' or '>'");
+                        }
+                    }
+                }
+
+                self.builder.finish_node();
+
+                self.skip_ws();
             }
 
             self.builder.finish_node();
@@ -570,20 +627,30 @@ impl Entry {
 }
 
 impl Relation {
+    pub fn name(&self) -> String {
+        self.0
+            .children_with_tokens()
+            .find_map(|it| match it {
+                SyntaxElement::Token(token) if token.kind() == IDENT => Some(token),
+                _ => None,
+            })
+            .unwrap()
+            .text()
+            .to_string()
+    }
+
     pub fn version(&self) -> Option<(VersionConstraint, Version)> {
         let vc = self.0.children().find(|n| n.kind() == VERSION);
         let vc = vc.as_ref()?;
-        let constraint = vc.children_with_tokens().find_map(|it| match it {
-            SyntaxElement::Token(token) if token.kind() == CONSTRAINT => Some(token),
-            _ => None,
-        });
+        let constraint = vc.children().find(|n| n.kind() == CONSTRAINT);
+
         let version = vc.children_with_tokens().find_map(|it| match it {
             SyntaxElement::Token(token) if token.kind() == IDENT => Some(token),
             _ => None,
         });
 
         if let (Some(constraint), Some(version)) = (constraint, version) {
-            let vc: VersionConstraint = constraint.text().to_string().parse().unwrap();
+            let vc: VersionConstraint = constraint.to_string().parse().unwrap();
             return Some((vc, (version.text().to_string()).parse().unwrap()));
         } else {
             None
@@ -602,6 +669,34 @@ impl Relation {
             } else {
                 None
             }
+        })
+    }
+
+    pub fn profiles(&self) -> impl Iterator<Item = Vec<String>> + '_ {
+        let profiles = self.0.children().filter(|n| n.kind() == PROFILES);
+
+        profiles.map(|profile| {
+            // iterate over nodes separated by whitespace tokens
+            let mut ret = vec![];
+            let mut current = vec![];
+            for token in profile.children_with_tokens() {
+                match token.kind() {
+                    WHITESPACE => {
+                        if !current.is_empty() {
+                            ret.push(current.concat());
+                            current = vec![];
+                        }
+                    }
+                    L_ANGLE | R_ANGLE => {}
+                    _ => {
+                        current.push(token.to_string());
+                    }
+                }
+            }
+            if !current.is_empty() {
+                ret.push(current.concat());
+            }
+            ret
         })
     }
 }
@@ -703,6 +798,40 @@ fn test_arch_list() {
             .into_iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn test_profiles() {
+    let input = "foo (>= 1.0) [i386 arm] <!nocheck> <!cross>, bar";
+    let parsed: Relations = input.parse().unwrap();
+    assert_eq!(parsed.to_string(), input);
+    assert_eq!(parsed.entries().count(), 2);
+    let entry = parsed.entries().next().unwrap();
+    assert_eq!(
+        entry.to_string(),
+        "foo (>= 1.0) [i386 arm] <!nocheck> <!cross>"
+    );
+    assert_eq!(entry.relations().count(), 1);
+    let relation = entry.relations().next().unwrap();
+    assert_eq!(
+        relation.to_string(),
+        "foo (>= 1.0) [i386 arm] <!nocheck> <!cross>"
+    );
+    assert_eq!(
+        relation.version(),
+        Some((VersionConstraint::GreaterThanEqual, "1.0".parse().unwrap()))
+    );
+    assert_eq!(
+        relation.arch_list().collect::<Vec<_>>(),
+        vec!["i386", "arm"]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        relation.profiles().collect::<Vec<_>>(),
+        vec![vec!["!nocheck"], vec!["!cross"]]
     );
 }
 
