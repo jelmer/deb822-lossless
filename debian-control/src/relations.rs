@@ -77,6 +77,33 @@ impl ToString for VersionConstraint {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BuildProfile {
+    Enabled(String),
+    Disabled(String),
+}
+
+impl ToString for BuildProfile {
+    fn to_string(&self) -> String {
+        match self {
+            BuildProfile::Enabled(s) => s.clone(),
+            BuildProfile::Disabled(s) => format!("!{}", s),
+        }
+    }
+}
+
+impl std::str::FromStr for BuildProfile {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some(s) = s.strip_prefix('!') {
+            Ok(BuildProfile::Disabled(s.to_string()))
+        } else {
+            Ok(BuildProfile::Enabled(s.to_string()))
+        }
+    }
+}
+
 use SyntaxKind::*;
 
 /// Convert our `SyntaxKind` into the rowan `SyntaxKind`.
@@ -672,7 +699,7 @@ impl Relation {
         })
     }
 
-    pub fn profiles(&self) -> impl Iterator<Item = Vec<String>> + '_ {
+    pub fn profiles(&self) -> impl Iterator<Item = Vec<BuildProfile>> + '_ {
         let profiles = self.0.children().filter(|n| n.kind() == PROFILES);
 
         profiles.map(|profile| {
@@ -683,7 +710,7 @@ impl Relation {
                 match token.kind() {
                     WHITESPACE => {
                         if !current.is_empty() {
-                            ret.push(current.concat());
+                            ret.push(current.join("").parse::<BuildProfile>().unwrap());
                             current = vec![];
                         }
                     }
@@ -694,7 +721,7 @@ impl Relation {
                 }
             }
             if !current.is_empty() {
-                ret.push(current.concat());
+                ret.push(current.concat().parse().unwrap());
             }
             ret
         })
@@ -831,7 +858,10 @@ fn test_profiles() {
     );
     assert_eq!(
         relation.profiles().collect::<Vec<_>>(),
-        vec![vec!["!nocheck"], vec!["!cross"]]
+        vec![
+            vec![BuildProfile::Disabled("nocheck".to_string())],
+            vec![BuildProfile::Disabled("cross".to_string())]
+        ]
     );
 }
 
