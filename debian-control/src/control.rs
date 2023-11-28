@@ -1,9 +1,14 @@
 use crate::relations::{Relations};
+use std::io::Read;
 
 
 pub struct Control(deb822_lossless::Deb822);
 
 impl Control {
+    pub fn new() -> Self {
+        Control(deb822_lossless::Deb822::new())
+    }
+
     pub fn source(&self) -> Option<Source> {
         self.0
             .paragraphs()
@@ -16,6 +21,24 @@ impl Control {
             .paragraphs()
             .filter(|p| p.get("Package").is_some())
             .map(Binary)
+    }
+
+    pub fn add_source(&mut self, name: &str) -> Source {
+        let mut p = self.0.add_paragraph();
+        p.insert("Source", name);
+        self.source().unwrap()
+    }
+
+    pub fn add_binary(&mut self, name: &str) -> Binary {
+        let mut p = self.0.add_paragraph();
+        p.insert("Package", name);
+        Binary(p)
+    }
+}
+
+impl Default for Control {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -35,9 +58,17 @@ impl Source {
         self.0.get("Source")
     }
 
+    pub fn set_name(&mut self, name: &str) {
+        self.0.insert("Source", name);
+    }
+
     /// The default section of the packages built from this source package.
     pub fn section(&self) -> Option<String> {
         self.0.get("Section")
+    }
+
+    pub fn set_section(&mut self, section: &str) {
+        self.0.insert("Section", section);
     }
 
     /// The default priority of the packages built from this source package.
@@ -45,14 +76,26 @@ impl Source {
         self.0.get("Priority").and_then(|v| v.parse().ok())
     }
 
+    pub fn set_priority(&mut self, priority: Priority) {
+        self.0.insert("Priority", priority.to_string().as_str());
+    }
+
     /// The maintainer of the package.
     pub fn maintainer(&self) -> Option<String> {
         self.0.get("Maintainer")
     }
 
+    pub fn set_maintainer(&mut self, maintainer: &str) {
+        self.0.insert("Maintainer", maintainer);
+    }
+
     /// The build dependencies of the package.
     pub fn build_depends(&self) -> Option<Relations> {
         self.0.get("Build-Depends").map(|s| s.parse().unwrap())
+    }
+
+    pub fn set_build_depends(&mut self, relations: &Relations) {
+        self.0.insert("Build-Depends", relations.to_string().as_str());
     }
 
     pub fn build_depends_indep(&self) -> Option<Relations> {
@@ -85,8 +128,16 @@ impl Source {
         self.0.get("Standards-Version")
     }
 
+    pub fn set_standards_version(&mut self, version: &str) {
+        self.0.insert("Standards-Version", version);
+    }
+
     pub fn homepage(&self) -> Option<url::Url> {
         self.0.get("Homepage").and_then(|s| s.parse().ok())
+    }
+
+    pub fn set_homepage(&mut self, homepage: &url::Url) {
+        self.0.insert("Homepage", homepage.to_string().as_str());
     }
 
     pub fn vcs_git(&self) -> Option<String> {
@@ -103,8 +154,24 @@ impl Source {
             .map(|s| s.split(',').map(|s| s.trim().to_owned()).collect())
     }
 
+    pub fn set_uploaders(&mut self, uploaders: &[&str]) {
+        self.0.insert(
+            "Uploaders",
+            uploaders
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+                .as_str(),
+        );
+    }
+
     pub fn architecture(&self) -> Option<String> {
         self.0.get("Architecture")
+    }
+
+    pub fn set_architecture(&mut self, arch: &str) {
+        self.0.insert("Architecture", arch);
     }
 
     pub fn rules_requires_root(&self) -> Option<bool> {
@@ -118,6 +185,12 @@ impl Source {
     }
 }
 
+impl ToString for Control {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
 pub struct Binary(deb822_lossless::Paragraph);
 
 #[derive(Debug, PartialEq, Eq)]
@@ -127,6 +200,19 @@ pub enum Priority {
     Standard,
     Optional,
     Extra,
+}
+
+impl ToString for Priority {
+    fn to_string(&self) -> String {
+        match self {
+            Priority::Required => "required",
+            Priority::Important => "important",
+            Priority::Standard => "standard",
+            Priority::Optional => "optional",
+            Priority::Extra => "extra",
+        }
+        .to_owned()
+    }
 }
 
 impl std::str::FromStr for Priority {
@@ -150,9 +236,17 @@ impl Binary {
         self.0.get("Package")
     }
 
+    pub fn set_name(&mut self, name: &str) {
+        self.0.insert("Package", name);
+    }
+
     /// The section of the package.
     pub fn section(&self) -> Option<String> {
         self.0.get("Section")
+    }
+
+    pub fn set_section(&mut self, section: &str) {
+        self.0.insert("Section", section);
     }
 
     /// The priority of the package.
@@ -160,9 +254,17 @@ impl Binary {
         self.0.get("Priority").and_then(|v| v.parse().ok())
     }
 
+    pub fn set_priority(&mut self, priority: Priority) {
+        self.0.insert("Priority", priority.to_string().as_str());
+    }
+
     /// The architecture of the package.
     pub fn architecture(&self) -> Option<String> {
         self.0.get("Architecture")
+    }
+
+    pub fn set_architecture(&mut self, arch: &str) {
+        self.0.insert("Architecture", arch);
     }
 
     /// The dependencies of the package.
@@ -214,12 +316,24 @@ impl Binary {
         self.0.get("Essential")
     }
 
+    pub fn set_essential(&mut self, essential: &str) {
+        self.0.insert("Essential", essential);
+    }
+
     pub fn description(&self) -> Option<String> {
         self.0.get("Description")
     }
 
+    pub fn set_description(&mut self, description: &str) {
+        self.0.insert("Description", description);
+    }
+
     pub fn homepage(&self) -> Option<url::Url> {
         self.0.get("Homepage").and_then(|s| s.parse().ok())
+    }
+
+    pub fn set_homepage(&mut self, url: &url::Url) {
+        self.0.insert("Homepage", url.as_str());
     }
 }
 

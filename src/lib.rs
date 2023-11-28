@@ -288,12 +288,28 @@ impl Deb822 {
 
         builder.start_node(ROOT.into());
         builder.finish_node();
-        Deb822(SyntaxNode::new_root(builder.finish()))
+        Deb822(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
     /// Returns an iterator over all paragraphs in the file.
     pub fn paragraphs(&self) -> impl Iterator<Item = Paragraph> {
         self.0.children().filter_map(Paragraph::cast)
+    }
+
+    pub fn add_paragraph(&mut self) -> Paragraph {
+        let paragraph = Paragraph::new();
+        let mut to_insert = vec![];
+        if self.0.children().count() > 0 {
+            let mut builder = GreenNodeBuilder::new();
+            builder.token(NEWLINE.into(), "\n");
+            to_insert.push(SyntaxNode::new_root(builder.finish()).clone_for_update().into());
+        }
+        to_insert.push(paragraph.0.clone().into());
+        self.0.splice_children(
+            self.0.children().count()..self.0.children().count(),
+            to_insert
+        );
+        paragraph
     }
 }
 
@@ -303,7 +319,7 @@ impl Paragraph {
 
         builder.start_node(PARAGRAPH.into());
         builder.finish_node();
-        Paragraph(SyntaxNode::new_root(builder.finish()))
+        Paragraph(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
     /// Returns the value of the given key in the paragraph.
