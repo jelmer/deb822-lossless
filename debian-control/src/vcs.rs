@@ -3,13 +3,13 @@ use std::borrow::Cow;
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
-pub struct VcsInfo {
-    repo_url: String,
-    branch: Option<String>,
-    subpath: Option<String>,
+pub struct ParsedVcs {
+    pub repo_url: String,
+    pub branch: Option<String>,
+    pub subpath: Option<String>,
 }
 
-impl FromStr for VcsInfo {
+impl FromStr for ParsedVcs {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -33,7 +33,7 @@ impl FromStr for VcsInfo {
             repo_url = s.to_string();
         }
 
-        Ok(VcsInfo {
+        Ok(ParsedVcs {
             repo_url,
             branch,
             subpath,
@@ -41,7 +41,7 @@ impl FromStr for VcsInfo {
     }
 }
 
-impl ToString for VcsInfo {
+impl ToString for ParsedVcs {
     fn to_string(&self) -> String {
         let mut url = self.repo_url.clone();
 
@@ -57,13 +57,32 @@ impl ToString for VcsInfo {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum Vcs {
+    Git {
+        repo_url: String,
+        branch: Option<String>,
+        subpath: Option<String>,
+    },
+    Bzr {
+        repo_url: String,
+        subpath: String,
+    },
+    Hg {
+        repo_url: String,
+    },
+    Svn {
+        url: String,
+    },
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn test_vcs_info() {
-        let vcs_info = VcsInfo::from_str("https://github.com/jelmer/example").unwrap();
+        let vcs_info = ParsedVcs::from_str("https://github.com/jelmer/example").unwrap();
         assert_eq!(vcs_info.repo_url, "https://github.com/jelmer/example");
         assert_eq!(vcs_info.branch, None);
         assert_eq!(vcs_info.subpath, None);
@@ -71,7 +90,7 @@ mod test {
 
     #[test]
     fn test_vcs_info_with_branch() {
-        let vcs_info = VcsInfo::from_str("https://github.com/jelmer/example -b branch").unwrap();
+        let vcs_info = ParsedVcs::from_str("https://github.com/jelmer/example -b branch").unwrap();
         assert_eq!(vcs_info.repo_url, "https://github.com/jelmer/example");
         assert_eq!(vcs_info.branch, Some("branch".to_string()));
         assert_eq!(vcs_info.subpath, None);
@@ -79,7 +98,7 @@ mod test {
 
     #[test]
     fn test_vcs_info_with_subpath() {
-        let vcs_info = VcsInfo::from_str("https://github.com/jelmer/example [subpath]").unwrap();
+        let vcs_info = ParsedVcs::from_str("https://github.com/jelmer/example [subpath]").unwrap();
         assert_eq!(vcs_info.repo_url, "https://github.com/jelmer/example");
         assert_eq!(vcs_info.branch, None);
         assert_eq!(vcs_info.subpath, Some("subpath".to_string()));
@@ -88,7 +107,7 @@ mod test {
     #[test]
     fn test_vcs_info_with_branch_and_subpath() {
         let vcs_info =
-            VcsInfo::from_str("https://github.com/jelmer/example -b branch [subpath]").unwrap();
+            ParsedVcs::from_str("https://github.com/jelmer/example -b branch [subpath]").unwrap();
         assert_eq!(vcs_info.repo_url, "https://github.com/jelmer/example");
         assert_eq!(vcs_info.branch, Some("branch".to_string()));
         assert_eq!(vcs_info.subpath, Some("subpath".to_string()));

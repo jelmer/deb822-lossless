@@ -298,6 +298,14 @@ impl Deb822 {
 }
 
 impl Paragraph {
+    pub fn new() -> Paragraph {
+        let mut builder = GreenNodeBuilder::new();
+
+        builder.start_node(PARAGRAPH.into());
+        builder.finish_node();
+        Paragraph(SyntaxNode::new_root(builder.finish()))
+    }
+
     /// Returns the value of the given key in the paragraph.
     pub fn get(&self, key: &str) -> Option<String> {
         self.entries()
@@ -317,6 +325,14 @@ impl Paragraph {
     pub fn items(&self) -> impl Iterator<Item = (String, String)> + '_ {
         self.entries()
             .filter_map(|e| e.key().map(|k| (k, e.value())))
+    }
+
+    pub fn get_all<'a>(&'a self, key: &'a str) -> impl Iterator<Item = String> + '_ {
+        self.items().filter_map(move |(k, v)| if k.as_str() == key { Some(v) } else { None })
+    }
+
+    pub fn contains(&self, key: &str) -> bool {
+        self.get_all(key).any(|_| true)
     }
 
     pub fn keys(&self) -> impl Iterator<Item = String> + '_ {
@@ -351,6 +367,24 @@ impl Paragraph {
                 entry.set_key(new_key);
             }
         }
+    }
+}
+
+impl Default for Paragraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::str::FromStr for Paragraph {
+    type Err = ParseError;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let deb822 = Deb822::from_str(text)?;
+
+        let mut paragraphs = deb822.paragraphs();
+
+        paragraphs.next().ok_or_else(||ParseError(vec!["no paragraphs".to_string()]))
     }
 }
 

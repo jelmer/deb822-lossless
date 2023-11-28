@@ -9,10 +9,10 @@ repository = { workspace = true }
 homepage = { workspace = true }
 
 [workspace]
-members = ["debian-control", "debian-copyright"]
+members = ["debian-control", "debian-copyright", "dep3"]
 
 [workspace.package]
-version = "0.1.4"
+version = "0.1.5"
 repository = "https://github.com/jelmer/deb822-lossless"
 homepage = "https://github.com/jelmer/deb822-lossless"
 
