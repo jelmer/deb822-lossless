@@ -1,5 +1,5 @@
-use crate::relations::{Relations, VersionConstraint};
-use debversion::Version;
+use crate::relations::{Relations};
+
 
 pub struct Control(deb822_lossless::Deb822);
 
@@ -226,6 +226,7 @@ impl Binary {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::relations::VersionConstraint;
     #[test]
     fn test_parse() {
         let control: Control = r#"Source: foo
