@@ -256,6 +256,16 @@ impl PatchHeader {
             self.0.insert("Description", long_description);
         }
     }
+
+    pub fn write<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(self.to_string().as_bytes())
+    }
+}
+
+impl ToString for PatchHeader {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
 }
 
 impl Default for PatchHeader {
