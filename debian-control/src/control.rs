@@ -1,5 +1,4 @@
 use crate::relations::{Relations};
-use std::io::Read;
 
 
 pub struct Control(deb822_lossless::Deb822);

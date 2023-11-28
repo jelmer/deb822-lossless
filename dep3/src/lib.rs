@@ -18,7 +18,6 @@
 //! assert_eq!(patch_header.vendor_bugs("Debian").collect::<Vec<_>>(), vec!["https://bugs.debian.org/123456".to_string()]);
 //! ```
 use deb822_lossless::Paragraph;
-use std::str::FromStr;
 
 pub struct PatchHeader(Paragraph);
 
