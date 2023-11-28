@@ -327,6 +327,10 @@ impl Paragraph {
             .filter_map(|e| e.key().map(|k| (k, e.value())))
     }
 
+    pub fn get_all<'a>(&'a self, key: &'a str) -> impl Iterator<Item = String> + '_ {
+        self.items().filter_map(move |(k, v)| if k.as_str() == key { Some(v) } else { None })
+    }
+
     pub fn keys(&self) -> impl Iterator<Item = String> + '_ {
         self.entries().filter_map(|e| e.key())
     }
@@ -365,6 +369,18 @@ impl Paragraph {
 impl Default for Paragraph {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl std::str::FromStr for Paragraph {
+    type Err = ParseError;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let deb822 = Deb822::from_str(text)?;
+
+        let mut paragraphs = deb822.paragraphs();
+
+        paragraphs.next().ok_or_else(||ParseError(vec!["no paragraphs".to_string()]))
     }
 }
 
