@@ -331,6 +331,10 @@ impl Paragraph {
         self.items().filter_map(move |(k, v)| if k.as_str() == key { Some(v) } else { None })
     }
 
+    pub fn contains(&self, key: &str) -> bool {
+        self.get_all(key).any(|_| true)
+    }
+
     pub fn keys(&self) -> impl Iterator<Item = String> + '_ {
         self.entries().filter_map(|e| e.key())
     }

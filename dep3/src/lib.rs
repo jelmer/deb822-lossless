@@ -10,6 +10,16 @@ pub enum Forwarded {
     Yes(String)
 }
 
+impl ToString for Forwarded {
+    fn to_string(&self) -> String {
+        match self {
+            Forwarded::No => "no".to_string(),
+            Forwarded::NotNeeded => "not-needed".to_string(),
+            Forwarded::Yes(s) => s.to_string(),
+        }
+    }
+}
+
 impl std::str::FromStr for Forwarded {
     type Err = &'static str;
 
@@ -33,16 +43,71 @@ pub enum OriginCategory {
     Other
 }
 
+impl ToString for OriginCategory {
+    fn to_string(&self) -> String {
+        match self {
+            OriginCategory::Backport => "backport".to_string(),
+            OriginCategory::Vendor => "vendor".to_string(),
+            OriginCategory::Upstream => "upstream".to_string(),
+            OriginCategory::Other => "other".to_string(),
+        }
+    }
+}
+
+impl std::str::FromStr for OriginCategory {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "backport" => Ok(OriginCategory::Backport),
+            "vendor" => Ok(OriginCategory::Vendor),
+            "upstream" => Ok(OriginCategory::Upstream),
+            "other" => Ok(OriginCategory::Other),
+            _ => Err("invalid origin category")
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Origin {
     Commit(String),
     Other(String)
 }
 
+impl ToString for Origin {
+    fn to_string(&self) -> String {
+        match self {
+            Origin::Commit(s) => format!("commit:{}", s),
+            Origin::Other(s) => s.to_string(),
+        }
+    }
+}
+
+impl std::str::FromStr for Origin {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some(rest) = s.strip_prefix("commit:") {
+            Ok(Origin::Commit(rest.to_string()))
+        } else {
+            Ok(Origin::Other(s.to_string()))
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum AppliedUpstream {
     Commit(String),
     Other(String)
+}
+
+impl ToString for AppliedUpstream {
+    fn to_string(&self) -> String {
+        match self {
+            AppliedUpstream::Commit(s) => format!("commit:{}", s),
+            AppliedUpstream::Other(s) => s.to_string(),
+        }
+    }
 }
 
 impl std::str::FromStr for AppliedUpstream {
@@ -86,12 +151,28 @@ impl PatchHeader {
         self.0.get("Origin").as_deref().map(parse_origin)
     }
 
+    pub fn set_origin(&mut self, category: Option<OriginCategory>, origin: Origin) {
+        self.0.insert("Origin", format!("{}{}", category.map(|c| c.to_string() + ", ").unwrap_or_default(), origin.to_string()).as_str());
+    }
+
     pub fn forwarded(&self) -> Option<Forwarded> {
         self.0.get("Forwarded").as_deref().map(|s| s.parse().unwrap())
     }
 
+    pub fn set_forwarded(&mut self, forwarded: Forwarded) {
+        self.0.insert("Forwarded", forwarded.to_string().as_str());
+    }
+
     pub fn author(&self) -> Option<String> {
         self.0.get("Author").or_else(|| self.0.get("From"))
+    }
+
+    pub fn set_author(&mut self, author: &str) {
+        if self.0.contains("From") {
+            self.0.insert("From", author);
+        } else {
+            self.0.insert("Author", author);
+        }
     }
 
     pub fn reviewed_by(&self) -> Vec<String> {
@@ -102,8 +183,16 @@ impl PatchHeader {
         self.0.get("Last-Update").as_deref().and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
     }
 
+    pub fn set_last_update(&mut self, date: chrono::NaiveDate) {
+        self.0.insert("Last-Update", date.format("%Y-%m-%d").to_string().as_str());
+    }
+
     pub fn applied_upstream(&self) -> Option<AppliedUpstream> {
         self.0.get("Applied-Upstream").as_deref().map(|s| s.parse().unwrap())
+    }
+
+    pub fn set_applied_upstream(&mut self, applied_upstream: AppliedUpstream) {
+        self.0.insert("Applied-Upstream", applied_upstream.to_string().as_str());
     }
 
     pub fn bugs(&self) -> impl Iterator<Item = (Option<String>, String)> + '_ {
@@ -118,6 +207,14 @@ impl PatchHeader {
         })
     }
 
+    pub fn set_upstream_bug(&mut self, bug: &str) {
+        self.0.insert("Bug", bug);
+    }
+
+    pub fn set_vendor_bug(&mut self, vendor: &str, bug: &str) {
+        self.0.insert(format!("Bug-{}", vendor).as_str(), bug);
+    }
+
     fn description_field(&self) -> Option<String> {
         self.0.get("Description").or_else(|| self.0.get("Subject"))
     }
@@ -126,8 +223,38 @@ impl PatchHeader {
         self.description_field().as_deref().map(|s| s.split('\n').next().unwrap_or(s).to_string())
     }
 
+    pub fn set_description(&mut self, description: &str) {
+        if let Some(subject) = self.0.get("Subject") {
+            // Replace the first line with ours
+            let new = format!("{}\n{}", description, subject.split_once('\n').map(|x| x.1).unwrap_or(""));
+            self.0.insert("Subject", new.as_str());
+        } else if let Some(description) = self.0.get("Description") {
+            // Replace the first line with ours
+            let new = format!("{}\n{}", description.split_once('\n').map(|x| x.1).unwrap_or(""), description);
+            self.0.insert("Description", new.as_str());
+        } else {
+            self.0.insert("Description", description);
+        }
+    }
+
     pub fn long_description(&self) -> Option<String> {
         self.description_field().as_deref().map(|s| s.split_once('\n').map(|x| x.1).unwrap_or("").to_string())
+    }
+
+    pub fn set_long_description(&mut self, long_description: &str) {
+        if let Some(subject) = self.0.get("Subject") {
+            // Keep the first line, but replace the rest with our text
+            let first_line = subject.split_once('\n').map(|x| x.0).unwrap_or(subject.as_str());
+            let new = format!("{}\n{}", first_line, long_description);
+            self.0.insert("Subject", new.as_str());
+        } else if let Some(description) = self.0.get("Description") {
+            // Keep the first line, but replace the rest with our text
+            let first_line = description.split_once('\n').map(|x| x.0).unwrap_or(description.as_str());
+            let new = format!("{}\n{}", first_line, long_description);
+            self.0.insert("Description", new.as_str());
+        } else {
+            self.0.insert("Description", long_description);
+        }
     }
 }
 
