@@ -365,6 +365,7 @@ mod tests {
 Section: libs
 Priority: optional
 Build-Depends: bar (>= 1.0.0), baz (>= 1.0.0)
+Homepage: https://example.com
 
 "#
         .parse()
@@ -374,6 +375,10 @@ Build-Depends: bar (>= 1.0.0), baz (>= 1.0.0)
         assert_eq!(source.name(), Some("foo".to_owned()));
         assert_eq!(source.section(), Some("libs".to_owned()));
         assert_eq!(source.priority(), Some(super::Priority::Optional));
+        assert_eq!(
+            source.homepage(),
+            Some("https://example.com".parse().unwrap())
+        );
         let bd = source.build_depends().unwrap();
         let entries = bd.entries().collect::<Vec<_>>();
         assert_eq!(entries.len(), 2);

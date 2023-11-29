@@ -722,6 +722,39 @@ Description: This is a description
     }
 
     #[test]
+    fn test_after_multi_line() {
+        let d: super::Deb822 = r#"Source: golang-github-blah-blah
+Section: devel
+Priority: optional
+Standards-Version: 4.2.0
+Maintainer: Some Maintainer <example@example.com>
+Build-Depends: debhelper (>= 11~),
+               dh-golang,
+               golang-any
+Homepage: https://github.com/j-keck/arping
+"#.parse().unwrap();
+        let mut ps = d.paragraphs();
+        let p = ps.next().unwrap();
+        assert_eq!(p.get("Source").as_deref(), Some("golang-github-blah-blah"));
+        assert_eq!(p.get("Section").as_deref(), Some("devel"));
+        assert_eq!(p.get("Priority").as_deref(), Some("optional"));
+        assert_eq!(
+            p.get("Standards-Version").as_deref(),
+            Some("4.2.0")
+        );
+        assert_eq!(
+            p.get("Maintainer").as_deref(),
+            Some("Some Maintainer <example@example.com>"));
+        assert_eq!(
+            p.get("Build-Depends").as_deref(),
+            Some("debhelper (>= 11~),\ndh-golang,\ngolang-any"));
+        assert_eq!(
+            p.get("Homepage").as_deref(),
+            Some("https://github.com/j-keck/arping"));
+    }
+
+
+    #[test]
     fn test_modify() {
         let d: super::Deb822 = r#"Source: foo
 Maintainer: Foo Bar <jelmer@jelmer.uk>
