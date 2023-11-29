@@ -15,6 +15,7 @@
 //!
 //! let input = r#"Package: deb822-lossless
 //! Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
+//! Homepage: https://github.com/jelmer/deb822-lossless
 //! Section: rust
 //!
 //! Package: deb822-lossless
@@ -27,6 +28,8 @@
 //!
 //! let deb822 = Deb822::from_str(input).unwrap();
 //! assert_eq!(deb822.paragraphs().count(), 2);
+//! let homepage = deb822.paragraphs().nth(0).unwrap().get("Homepage");
+//! assert_eq!(homepage.as_deref(), Some("https://github.com/jelmer/deb822-lossless"));
 //! ```
 
 mod lex;
