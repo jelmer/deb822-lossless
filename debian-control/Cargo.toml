@@ -12,5 +12,5 @@ homepage = { workspace = true }
 rowan = "0.15.11"
 debversion = "0.2.2"
 regex = "1"
-deb822-lossless = { version = "0.1.6", path = ".." }
+deb822-lossless = { version = "0.1.7", path = ".." }
 url = "2.4.1"
