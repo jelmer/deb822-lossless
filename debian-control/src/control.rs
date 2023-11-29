@@ -33,6 +33,10 @@ impl Control {
         p.insert("Package", name);
         Binary(p)
     }
+
+    pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self, std::io::Error> {
+        Ok(Control(deb822_lossless::Deb822::from_file(path)?))
+    }
 }
 
 impl Default for Control {
