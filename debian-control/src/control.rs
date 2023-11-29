@@ -402,4 +402,21 @@ Homepage: https://example.com
             ))
         );
     }
+
+    #[test]
+    fn test_description() {
+        let control: Control = r#"Source: foo
+
+Package: foo
+Description: this is the short description
+ And the longer one
+ .
+ is on the next lines
+"#.parse().unwrap();
+        let binary = control.binaries().next().unwrap();
+        assert_eq!(
+            binary.description(),
+            Some("this is the short description\nAnd the longer one\n.\nis on the next lines".to_owned())
+        );
+    }
 }
