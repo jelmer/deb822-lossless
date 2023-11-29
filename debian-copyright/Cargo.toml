@@ -11,4 +11,4 @@ homepage = { workspace = true }
 [dependencies]
 debversion = "0.2.2"
 regex = "1.10.2"
-deb822-lossless = { version = "0.1.4", path = ".." }
+deb822-lossless = { version = "0.1.7", path = ".." }
