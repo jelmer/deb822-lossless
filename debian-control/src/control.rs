@@ -1,4 +1,4 @@
-use crate::relations::{Relations};
+use crate::relations::Relations;
 
 
 pub struct Control(deb822_lossless::Deb822);
@@ -34,8 +34,15 @@ impl Control {
         Binary(p)
     }
 
-    pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self, std::io::Error> {
+    pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self, deb822_lossless::Error> {
         Ok(Control(deb822_lossless::Deb822::from_file(path)?))
+    }
+
+    pub fn from_file_relaxed<P: AsRef<std::path::Path>>(
+        path: P,
+    ) -> Result<(Self, Vec<String>), std::io::Error> {
+        let (control, errors) = deb822_lossless::Deb822::from_file_relaxed(path)?;
+        Ok((Control(control), errors))
     }
 }
 
@@ -59,6 +66,10 @@ impl Source {
     /// The name of the source package.
     pub fn name(&self) -> Option<String> {
         self.0.get("Source")
+    }
+
+    pub fn get(&self, key: &str) -> Option<String> {
+        self.0.get(key)
     }
 
     pub fn set_name(&mut self, name: &str) {
@@ -337,6 +348,10 @@ impl Binary {
 
     pub fn set_homepage(&mut self, url: &url::Url) {
         self.0.insert("Homepage", url.as_str());
+    }
+
+    pub fn get(&self, key: &str) -> Option<String> {
+        self.0.get(key)
     }
 }
 

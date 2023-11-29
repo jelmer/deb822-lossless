@@ -32,6 +32,7 @@ pub enum SyntaxKind {
     ROOT,      // The entire file
     PARAGRAPH, // A deb822 paragraph
     ENTRY,     // A single key-value pair
+    EMPTY_LINE, // An empty line
 }
 
 use SyntaxKind::*;
@@ -56,6 +57,35 @@ impl std::fmt::Display for ParseError {
 }
 
 impl std::error::Error for ParseError {}
+
+#[derive(Debug)]
+pub enum Error {
+    ParseError(ParseError),
+    IoError(std::io::Error),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self {
+            Error::ParseError(err) => write!(f, "{}", err),
+            Error::IoError(err) => write!(f, "{}", err),
+        }
+    }
+}
+
+impl From<ParseError> for Error {
+    fn from(err: ParseError) -> Self {
+        Self::ParseError(err)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
+        Self::IoError(err)
+    }
+}
+
+impl std::error::Error for Error {}
 
 /// Second, implementing the `Language` trait teaches rowan to convert between
 /// these two SyntaxKind types, allowing for a nicer SyntaxNode API where
@@ -196,7 +226,14 @@ fn parse(text: &str) -> Parse {
                 || self.current() == Some(COMMENT)
                 || self.current() == Some(NEWLINE)
             {
-                self.bump()
+                self.builder.start_node(EMPTY_LINE.into());
+                while self.current() != Some(NEWLINE) && self.current().is_some() {
+                    self.bump();
+                }
+                if self.current() == Some(NEWLINE) {
+                    self.bump();
+                }
+                self.builder.finish_node();
             }
         }
     }
@@ -303,7 +340,9 @@ impl Deb822 {
         let mut to_insert = vec![];
         if self.0.children().count() > 0 {
             let mut builder = GreenNodeBuilder::new();
+            builder.start_node(EMPTY_LINE.into());
             builder.token(NEWLINE.into(), "\n");
+            builder.finish_node();
             to_insert.push(SyntaxNode::new_root(builder.finish()).clone_for_update().into());
         }
         to_insert.push(paragraph.0.clone().into());
@@ -312,6 +351,21 @@ impl Deb822 {
             to_insert
         );
         paragraph
+    }
+
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Deb822, Error> {
+        let text = std::fs::read_to_string(path)?;
+        Ok(Deb822::from_str(&text)?)
+    }
+
+    pub fn from_file_relaxed(path: impl AsRef<Path>) -> Result<(Deb822, Vec<String>), std::io::Error> {
+        let text = std::fs::read_to_string(path)?;
+        Ok(Self::from_str_relaxed(&text))
+    }
+
+    fn from_str_relaxed(s: &str) -> (Self, Vec<String>) {
+        let parsed = parse(s);
+        (parsed.root(), parsed.errors)
     }
 }
 
@@ -386,6 +440,7 @@ impl Paragraph {
         );
     }
 
+    /// Rename the given field in the paragraph.
     pub fn rename(&mut self, old_key: &str, new_key: &str) {
         for mut entry in self.entries() {
             if entry.key().as_deref() == Some(old_key) {
@@ -514,10 +569,13 @@ Description: This is a description
       WHITESPACE@58..59 " "
       VALUE@59..62 "net"
       NEWLINE@62..63 "\n"
-  NEWLINE@63..64 "\n"
-  COMMENT@64..83 "# This is a comment"
-  NEWLINE@83..84 "\n"
-  NEWLINE@84..85 "\n"
+  EMPTY_LINE@63..64
+    NEWLINE@63..64 "\n"
+  EMPTY_LINE@64..84
+    COMMENT@64..83 "# This is a comment"
+    NEWLINE@83..84 "\n"
+  EMPTY_LINE@84..85
+    NEWLINE@84..85 "\n"
   PARAGRAPH@85..203
     ENTRY@85..98
       KEY@85..92 "Package"
@@ -659,4 +717,25 @@ Foo: Bar
 "#
         );
     }
+
+    #[test]
+    fn test_add_paragraph() {
+        let mut d = super::Deb822::new();
+        let mut p = d.add_paragraph();
+        p.insert("Foo", "Bar");
+        assert_eq!(p.get("Foo").as_deref(), Some("Bar"));
+        assert_eq!(p.to_string(), r#"Foo: Bar
+"#);
+        assert_eq!(d.to_string(), r#"Foo: Bar
+"#);
+
+        let mut p = d.add_paragraph();
+        p.insert("Foo", "Blah");
+        assert_eq!(p.get("Foo").as_deref(), Some("Blah"));
+        assert_eq!(d.to_string(), r#"Foo: Bar
+
+Foo: Blah
+"#);
+    }
+
 }
