@@ -11,6 +11,7 @@ mod lex;
 use crate::lex::lex;
 use rowan::ast::AstNode;
 use std::str::FromStr;
+use std::path::Path;
 
 /// Let's start with defining all kinds of tokens and
 /// composite nodes.
@@ -296,6 +297,7 @@ impl Deb822 {
         self.0.children().filter_map(Paragraph::cast)
     }
 
+    /// Add a new empty paragraph to the end of the file.
     pub fn add_paragraph(&mut self) -> Paragraph {
         let paragraph = Paragraph::new();
         let mut to_insert = vec![];
@@ -338,23 +340,29 @@ impl Paragraph {
         self.0.children().filter_map(Entry::cast)
     }
 
+    /// Returns an iterator over all items in the paragraph.
     pub fn items(&self) -> impl Iterator<Item = (String, String)> + '_ {
         self.entries()
             .filter_map(|e| e.key().map(|k| (k, e.value())))
     }
 
+    /// Returns an iterator over all values for the given key in the paragraph.
     pub fn get_all<'a>(&'a self, key: &'a str) -> impl Iterator<Item = String> + '_ {
         self.items().filter_map(move |(k, v)| if k.as_str() == key { Some(v) } else { None })
     }
 
+    #[deprecated(note = "use `contains_key` instead")]
+    /// Returns true if the paragraph contains the given key.
     pub fn contains(&self, key: &str) -> bool {
         self.get_all(key).any(|_| true)
     }
 
+    /// Returns an iterator over all keys in the paragraph.
     pub fn keys(&self) -> impl Iterator<Item = String> + '_ {
         self.entries().filter_map(|e| e.key())
     }
 
+    /// Remove the given field from the paragraph.
     pub fn remove(&mut self, key: &str) {
         for mut entry in self.entries() {
             if entry.key().as_deref() == Some(key) {
@@ -363,6 +371,7 @@ impl Paragraph {
         }
     }
 
+    /// Add a new field to the paragraph.
     pub fn insert(&mut self, key: &str, value: &str) {
         for mut entry in self.entries() {
             if entry.key().as_deref() == Some(key) {

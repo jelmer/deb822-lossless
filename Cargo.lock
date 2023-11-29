@@ -119,7 +119,7 @@ dependencies = [
 
 [[package]]
 name = "dep3"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "deb822-lossless",
