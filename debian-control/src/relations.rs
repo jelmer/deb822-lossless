@@ -654,6 +654,44 @@ impl Entry {
 }
 
 impl Relation {
+    pub fn new(name: &str, version_constraint: Option<(VersionConstraint, Version)>) -> Self {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(SyntaxKind::RELATION.into());
+        builder.token(IDENT.into(), name);
+        if let Some((vc, version)) = version_constraint {
+            builder.token(WHITESPACE.into(), " ");
+            builder.start_node(SyntaxKind::VERSION.into());
+            builder.token(L_PARENS.into(), "(");
+            builder.start_node(SyntaxKind::CONSTRAINT.into());
+            for c in vc.to_string().chars() {
+                builder.token(match c {
+                    '>' => R_ANGLE.into(),
+                    '<' => L_ANGLE.into(),
+                    '=' => EQUAL.into(),
+                    _ => unreachable!(),
+                }, c.to_string().as_str());
+            }
+            builder.finish_node();
+
+            builder.token(WHITESPACE.into(), " ");
+
+            builder.token(IDENT.into(), version.to_string().as_str());
+
+            builder.token(R_PARENS.into(), ")");
+
+            builder.finish_node();
+        }
+
+        builder.finish_node();
+        Relation(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+
+    /// Remove the version constraint from the relation.
+    pub fn drop_constraint(&mut self) {
+        self.0.children().find(|n| n.kind() == VERSION).unwrap().detach();
+    }
+
+    /// Return the name of the package in the relation.
     pub fn name(&self) -> String {
         self.0
             .children_with_tokens()
@@ -666,6 +704,7 @@ impl Relation {
             .to_string()
     }
 
+    /// Return the version constraint and the version it is constrained to.
     pub fn version(&self) -> Option<(VersionConstraint, Version)> {
         let vc = self.0.children().find(|n| n.kind() == VERSION);
         let vc = vc.as_ref()?;
@@ -684,7 +723,8 @@ impl Relation {
         }
     }
 
-    pub fn arch_list(&self) -> impl Iterator<Item = String> + '_ {
+    /// Return an iterator over the architectures for this relation
+    pub fn architectures(&self) -> impl Iterator<Item = String> + '_ {
         let architectures = self.0.children().find(|n| n.kind() == ARCHITECTURES);
 
         let architectures = architectures.as_ref().unwrap();
@@ -699,6 +739,7 @@ impl Relation {
         })
     }
 
+    /// Returns an iterator over the build profiles for this relation<up><up>
     pub fn profiles(&self) -> impl Iterator<Item = Vec<BuildProfile>> + '_ {
         let profiles = self.0.children().filter(|n| n.kind() == PROFILES);
 
@@ -802,7 +843,7 @@ fn test_multiple() {
 }
 
 #[test]
-fn test_arch_list() {
+fn test_architectures() {
     let input = "python3-dulwich [amd64 arm64 armhf i386 mips mips64el mipsel ppc64el s390x]";
     let parsed: Relations = input.parse().unwrap();
     assert_eq!(parsed.to_string(), input);
@@ -820,7 +861,7 @@ fn test_arch_list() {
     );
     assert_eq!(relation.version(), None);
     assert_eq!(
-        relation.arch_list().collect::<Vec<_>>(),
+        relation.architectures().collect::<Vec<_>>(),
         vec!["amd64", "arm64", "armhf", "i386", "mips", "mips64el", "mipsel", "ppc64el", "s390x"]
             .into_iter()
             .map(|s| s.to_string())
@@ -850,7 +891,7 @@ fn test_profiles() {
         Some((VersionConstraint::GreaterThanEqual, "1.0".parse().unwrap()))
     );
     assert_eq!(
-        relation.arch_list().collect::<Vec<_>>(),
+        relation.architectures().collect::<Vec<_>>(),
         vec!["i386", "arm"]
             .into_iter()
             .map(|s| s.to_string())
@@ -877,4 +918,20 @@ fn test_substvar() {
         parsed.substvars().collect::<Vec<_>>(),
         vec!["${shlibs:Depends}"]
     );
+}
+
+#[test]
+fn test_new() {
+    let r = Relation::new("samba", Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
+
+    assert_eq!(r.to_string(), "samba (>= 2.0)");
+}
+
+#[test]
+fn test_drop_constraint() {
+    let mut r = Relation::new("samba", Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
+
+    r.drop_constraint();
+
+    assert_eq!(r.to_string(), "samba");
 }
