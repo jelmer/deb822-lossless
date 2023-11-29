@@ -326,14 +326,15 @@ impl Binary {
         self.0.get("Multi-Arch")
     }
 
-    pub fn essential(&self) -> Option<String> {
-        self.0.get("Essential")
+    pub fn essential(&self) -> bool {
+        self.0.get("Essential").map(|s| s == "yes").unwrap_or(false)
     }
 
-    pub fn set_essential(&mut self, essential: &str) {
-        self.0.insert("Essential", essential);
+    pub fn set_essential(&mut self, essential: bool) {
+        self.0.insert("Essential", if essential { "yes" } else { "no" });
     }
 
+    /// Binary package description
     pub fn description(&self) -> Option<String> {
         self.0.get("Description")
     }
