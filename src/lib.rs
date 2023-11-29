@@ -310,6 +310,12 @@ macro_rules! ast_node {
     };
 }
 
+impl std::fmt::Debug for Deb822 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Deb822").finish()
+    }
+}
+
 ast_node!(Deb822, ROOT);
 ast_node!(Paragraph, PARAGRAPH);
 ast_node!(Entry, ENTRY);
@@ -385,6 +391,7 @@ impl Paragraph {
             .map(|e| e.value())
     }
 
+    /// Returns whether the paragraph contains the given key.
     pub fn contains_key(&self, key: &str) -> bool {
         self.get(key).is_some()
     }
