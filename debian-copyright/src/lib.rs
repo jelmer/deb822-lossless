@@ -31,7 +31,8 @@
 //! "#;
 //!
 //! let c = text.parse::<Copyright>().unwrap();
-//! assert_eq!(c.find_license_for_file(Path::new("debian/foo")).unwrap().name(), Some("GPL-3+"));
+//! let license = c.find_license_for_file(Path::new("debian/foo")).unwrap();
+//! assert_eq!(license.name(), Some("GPL-3+"));
 //! ```
 
 use deb822_lossless::{Deb822, Paragraph};
@@ -122,18 +123,23 @@ impl Copyright {
     }
 
     pub fn from_str_relaxed(s: &str) -> Result<(Self, Vec<String>), Error> {
+        if !s.starts_with("Format:") {
+            return Err(Error::NotMachineReadable);
+        }
+
         let (deb822, errors) = Deb822::from_str_relaxed(s);
         Ok((Self(deb822), errors))
     }
 
     pub fn from_file_relaxed<P: AsRef<Path>>(path: P) -> Result<(Self, Vec<String>), Error> {
-        let (deb822, errors) = Deb822::from_file_relaxed(path)?;
-        Ok((Self(deb822), errors))
+        let text = std::fs::read_to_string(path)?;
+        Self::from_str_relaxed(&text)
     }
 
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
-        let deb822 = Deb822::from_file(path)?;
-        Ok(Self(deb822))
+        let text = std::fs::read_to_string(path)?;
+        use std::str::FromStr;
+        Self::from_str(&text)
     }
 }
 
@@ -208,6 +214,10 @@ impl Header {
         self.0
             .get("Format")
             .or_else(|| self.0.get("Format-Specification"))
+    }
+
+    pub fn get(&self, key: &str) -> Option<String> {
+        self.0.get(key)
     }
 
     pub fn upstream_name(&self) -> Option<String> {
