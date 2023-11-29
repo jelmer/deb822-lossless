@@ -120,12 +120,43 @@ impl Copyright {
         }
         self.find_license_by_name(license.name()?)
     }
+
+    pub fn from_str_relaxed(s: &str) -> Result<(Self, Vec<String>), Error> {
+        let (deb822, errors) = Deb822::from_str_relaxed(s);
+        Ok((Self(deb822), errors))
+    }
+
+    pub fn from_file_relaxed<P: AsRef<Path>>(path: P) -> Result<(Self, Vec<String>), Error> {
+        let (deb822, errors) = Deb822::from_file_relaxed(path)?;
+        Ok((Self(deb822), errors))
+    }
+
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
+        let deb822 = Deb822::from_file(path)?;
+        Ok(Self(deb822))
+    }
 }
 
 #[derive(Debug)]
 pub enum Error {
     ParseError(deb822_lossless::ParseError),
+    IoError(std::io::Error),
     NotMachineReadable,
+}
+
+impl From<deb822_lossless::Error> for Error {
+    fn from(e: deb822_lossless::Error) -> Self {
+        match e {
+            deb822_lossless::Error::ParseError(e) => Error::ParseError(e),
+            deb822_lossless::Error::IoError(e) => Error::IoError(e),
+        }
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::IoError(e)
+    }
 }
 
 impl From<deb822_lossless::ParseError> for Error {
@@ -139,6 +170,7 @@ impl std::fmt::Display for Error {
         match &self {
             Error::ParseError(e) => write!(f, "parse error: {}", e),
             Error::NotMachineReadable => write!(f, "not machine readable"),
+            Error::IoError(e) => write!(f, "io error: {}", e),
         }
     }
 }

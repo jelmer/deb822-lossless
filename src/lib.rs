@@ -359,17 +359,17 @@ impl Deb822 {
         paragraph
     }
 
-    pub fn from_file(path: impl AsRef<Path>) -> Result<Deb822, Error> {
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, Error> {
         let text = std::fs::read_to_string(path)?;
-        Ok(Deb822::from_str(&text)?)
+        Ok(Self::from_str(&text)?)
     }
 
-    pub fn from_file_relaxed(path: impl AsRef<Path>) -> Result<(Deb822, Vec<String>), std::io::Error> {
+    pub fn from_file_relaxed(path: impl AsRef<Path>) -> Result<(Self, Vec<String>), std::io::Error> {
         let text = std::fs::read_to_string(path)?;
         Ok(Self::from_str_relaxed(&text))
     }
 
-    fn from_str_relaxed(s: &str) -> (Self, Vec<String>) {
+    pub fn from_str_relaxed(s: &str) -> (Self, Vec<String>) {
         let parsed = parse(s);
         (parsed.root(), parsed.errors)
     }
