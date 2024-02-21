@@ -109,7 +109,9 @@ impl Copyright {
     }
 
     pub fn find_license_by_name(&self, name: &str) -> Option<License> {
-        self.iter_licenses().find(|p| p.name().as_deref() == Some(name)).map(|x| x.into())
+        self.iter_licenses()
+            .find(|p| p.name().as_deref() == Some(name))
+            .map(|x| x.into())
     }
 
     /// Returns the license for the given file.
@@ -302,7 +304,7 @@ impl FilesParagraph {
                     } else {
                         License::Named(name.to_string(), text.to_string())
                     }
-                }
+                },
             )
         })
     }
@@ -321,7 +323,7 @@ impl From<LicenseParagraph> for License {
                 } else {
                     License::Named(name.to_string(), text.to_string())
                 }
-            }
+            },
         )
     }
 }
@@ -332,11 +334,15 @@ impl LicenseParagraph {
     }
 
     pub fn name(&self) -> Option<String> {
-        self.0.get("License").and_then(|x| x.split_once('\n').map(|(name, _)| name.to_string()))
+        self.0
+            .get("License")
+            .and_then(|x| x.split_once('\n').map(|(name, _)| name.to_string()))
     }
 
     pub fn text(&self) -> Option<String> {
-        self.0.get("License").and_then(|x| x.split_once('\n').map(|(_, text)| text.to_string()))
+        self.0
+            .get("License")
+            .and_then(|x| x.split_once('\n').map(|(_, text)| text.to_string()))
     }
 }
 
@@ -379,7 +385,10 @@ This copyright file is not machine readable.
     #[test]
     fn test_new() {
         let n = super::Copyright::new();
-        assert_eq!(n.to_string().as_str(), "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n");
+        assert_eq!(
+            n.to_string().as_str(),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n"
+        );
     }
 
     #[test]
@@ -405,9 +414,7 @@ License: GPL-3+
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
 "#;
-        let copyright = s
-            .parse::<super::Copyright>()
-            .expect("failed to parse");
+        let copyright = s.parse::<super::Copyright>().expect("failed to parse");
 
         assert_eq!(
             "https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/",
@@ -415,10 +422,13 @@ License: GPL-3+
         );
         assert_eq!("foo", copyright.header().unwrap().upstream_name().unwrap());
         assert_eq!(
-            "Joe Bloggs <joe@example.com>", copyright.header().unwrap()
-                .upstream_contact().unwrap());
-        assert_eq!("https://example.com/foo", copyright.header().unwrap()
-                .source().unwrap());
+            "Joe Bloggs <joe@example.com>",
+            copyright.header().unwrap().upstream_contact().unwrap()
+        );
+        assert_eq!(
+            "https://example.com/foo",
+            copyright.header().unwrap().source().unwrap()
+        );
 
         let files = copyright.iter_files().collect::<Vec<_>>();
         assert_eq!(2, files.len());
@@ -449,15 +459,15 @@ the Free Software Foundation, either version 3 of the License, or
         let upstream_files = copyright.find_files(std::path::Path::new("foo.c")).unwrap();
         assert_eq!(vec!["*"], upstream_files.files());
 
-        let debian_files = copyright.find_files(std::path::Path::new("debian/foo.c")).unwrap();
+        let debian_files = copyright
+            .find_files(std::path::Path::new("debian/foo.c"))
+            .unwrap();
         assert_eq!(vec!["debian/*"], debian_files.files());
 
         let gpl = copyright.find_license_by_name("GPL-3+");
         assert!(gpl.is_some());
 
-        let gpl = copyright.find_license_for_file(
-            std::path::Path::new("debian/foo.c"),
-        );
+        let gpl = copyright.find_license_for_file(std::path::Path::new("debian/foo.c"));
         assert_eq!(gpl.unwrap().name().unwrap(), "GPL-3+");
     }
 }

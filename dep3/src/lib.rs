@@ -25,7 +25,7 @@ pub struct PatchHeader(Paragraph);
 pub enum Forwarded {
     No,
     NotNeeded,
-    Yes(String)
+    Yes(String),
 }
 
 impl ToString for Forwarded {
@@ -45,7 +45,7 @@ impl std::str::FromStr for Forwarded {
         match s {
             "no" => Ok(Forwarded::No),
             "not-needed" => Ok(Forwarded::NotNeeded),
-            s => Ok(Forwarded::Yes(s.to_string()))
+            s => Ok(Forwarded::Yes(s.to_string())),
         }
     }
 }
@@ -58,7 +58,7 @@ pub enum OriginCategory {
     Vendor,
     /// a patch cherry-picked from the upstream VCS
     Upstream,
-    Other
+    Other,
 }
 
 impl ToString for OriginCategory {
@@ -81,7 +81,7 @@ impl std::str::FromStr for OriginCategory {
             "vendor" => Ok(OriginCategory::Vendor),
             "upstream" => Ok(OriginCategory::Upstream),
             "other" => Ok(OriginCategory::Other),
-            _ => Err("invalid origin category")
+            _ => Err("invalid origin category"),
         }
     }
 }
@@ -89,7 +89,7 @@ impl std::str::FromStr for OriginCategory {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Origin {
     Commit(String),
-    Other(String)
+    Other(String),
 }
 
 impl ToString for Origin {
@@ -116,7 +116,7 @@ impl std::str::FromStr for Origin {
 #[derive(Debug, PartialEq, Eq)]
 pub enum AppliedUpstream {
     Commit(String),
-    Other(String)
+    Other(String),
 }
 
 impl ToString for AppliedUpstream {
@@ -159,7 +159,6 @@ pub fn parse_origin(s: &str) -> (Option<OriginCategory>, Origin) {
     }
 }
 
-
 impl PatchHeader {
     pub fn new() -> Self {
         PatchHeader(Paragraph::new())
@@ -170,11 +169,22 @@ impl PatchHeader {
     }
 
     pub fn set_origin(&mut self, category: Option<OriginCategory>, origin: Origin) {
-        self.0.insert("Origin", format!("{}{}", category.map(|c| c.to_string() + ", ").unwrap_or_default(), origin.to_string()).as_str());
+        self.0.insert(
+            "Origin",
+            format!(
+                "{}{}",
+                category.map(|c| c.to_string() + ", ").unwrap_or_default(),
+                origin.to_string()
+            )
+            .as_str(),
+        );
     }
 
     pub fn forwarded(&self) -> Option<Forwarded> {
-        self.0.get("Forwarded").as_deref().map(|s| s.parse().unwrap())
+        self.0
+            .get("Forwarded")
+            .as_deref()
+            .map(|s| s.parse().unwrap())
     }
 
     pub fn set_forwarded(&mut self, forwarded: Forwarded) {
@@ -198,19 +208,27 @@ impl PatchHeader {
     }
 
     pub fn last_update(&self) -> Option<chrono::NaiveDate> {
-        self.0.get("Last-Update").as_deref().and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
+        self.0
+            .get("Last-Update")
+            .as_deref()
+            .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
     }
 
     pub fn set_last_update(&mut self, date: chrono::NaiveDate) {
-        self.0.insert("Last-Update", date.format("%Y-%m-%d").to_string().as_str());
+        self.0
+            .insert("Last-Update", date.format("%Y-%m-%d").to_string().as_str());
     }
 
     pub fn applied_upstream(&self) -> Option<AppliedUpstream> {
-        self.0.get("Applied-Upstream").as_deref().map(|s| s.parse().unwrap())
+        self.0
+            .get("Applied-Upstream")
+            .as_deref()
+            .map(|s| s.parse().unwrap())
     }
 
     pub fn set_applied_upstream(&mut self, applied_upstream: AppliedUpstream) {
-        self.0.insert("Applied-Upstream", applied_upstream.to_string().as_str());
+        self.0
+            .insert("Applied-Upstream", applied_upstream.to_string().as_str());
     }
 
     pub fn bugs(&self) -> impl Iterator<Item = (Option<String>, String)> + '_ {
@@ -248,17 +266,27 @@ impl PatchHeader {
     }
 
     pub fn description(&self) -> Option<String> {
-        self.description_field().as_deref().map(|s| s.split('\n').next().unwrap_or(s).to_string())
+        self.description_field()
+            .as_deref()
+            .map(|s| s.split('\n').next().unwrap_or(s).to_string())
     }
 
     pub fn set_description(&mut self, description: &str) {
         if let Some(subject) = self.0.get("Subject") {
             // Replace the first line with ours
-            let new = format!("{}\n{}", description, subject.split_once('\n').map(|x| x.1).unwrap_or(""));
+            let new = format!(
+                "{}\n{}",
+                description,
+                subject.split_once('\n').map(|x| x.1).unwrap_or("")
+            );
             self.0.insert("Subject", new.as_str());
         } else if let Some(description) = self.0.get("Description") {
             // Replace the first line with ours
-            let new = format!("{}\n{}", description.split_once('\n').map(|x| x.1).unwrap_or(""), description);
+            let new = format!(
+                "{}\n{}",
+                description.split_once('\n').map(|x| x.1).unwrap_or(""),
+                description
+            );
             self.0.insert("Description", new.as_str());
         } else {
             self.0.insert("Description", description);
@@ -266,18 +294,26 @@ impl PatchHeader {
     }
 
     pub fn long_description(&self) -> Option<String> {
-        self.description_field().as_deref().map(|s| s.split_once('\n').map(|x| x.1).unwrap_or("").to_string())
+        self.description_field()
+            .as_deref()
+            .map(|s| s.split_once('\n').map(|x| x.1).unwrap_or("").to_string())
     }
 
     pub fn set_long_description(&mut self, long_description: &str) {
         if let Some(subject) = self.0.get("Subject") {
             // Keep the first line, but replace the rest with our text
-            let first_line = subject.split_once('\n').map(|x| x.0).unwrap_or(subject.as_str());
+            let first_line = subject
+                .split_once('\n')
+                .map(|x| x.0)
+                .unwrap_or(subject.as_str());
             let new = format!("{}\n{}", first_line, long_description);
             self.0.insert("Subject", new.as_str());
         } else if let Some(description) = self.0.get("Description") {
             // Keep the first line, but replace the rest with our text
-            let first_line = description.split_once('\n').map(|x| x.0).unwrap_or(description.as_str());
+            let first_line = description
+                .split_once('\n')
+                .map(|x| x.0)
+                .unwrap_or(description.as_str());
             let new = format!("{}\n{}", first_line, long_description);
             self.0.insert("Description", new.as_str());
         } else {
@@ -331,17 +367,40 @@ Bug-Debian: http://bugs.debian.org/510219
 
         let header = PatchHeader::from_str(text).unwrap();
 
-        assert_eq!(header.origin(), Some((Some(super::OriginCategory::Upstream), super::Origin::Other("http://sourceware.org/git/?p=glibc.git;a=commitdiff;h=bdb56bac".to_string()))));
+        assert_eq!(
+            header.origin(),
+            Some((
+                Some(super::OriginCategory::Upstream),
+                super::Origin::Other(
+                    "http://sourceware.org/git/?p=glibc.git;a=commitdiff;h=bdb56bac".to_string()
+                )
+            ))
+        );
         assert_eq!(header.forwarded(), None);
-        assert_eq!(header.author(), Some("Ulrich Drepper <drepper@redhat.com>".to_string()));
+        assert_eq!(
+            header.author(),
+            Some("Ulrich Drepper <drepper@redhat.com>".to_string())
+        );
         assert_eq!(header.reviewed_by(), Vec::<&str>::new());
         assert_eq!(header.last_update(), None);
         assert_eq!(header.applied_upstream(), None);
-        assert_eq!(header.bugs().collect::<Vec<_>>(), vec![
-            (None, "http://sourceware.org/bugzilla/show_bug.cgi?id=9697".to_string()),
-            (Some("Debian".to_string()), "http://bugs.debian.org/510219".to_string()),
-        ]);
-        assert_eq!(header.description(), Some("Fix regex problems with some multi-bytes characters".to_string()));
+        assert_eq!(
+            header.bugs().collect::<Vec<_>>(),
+            vec![
+                (
+                    None,
+                    "http://sourceware.org/bugzilla/show_bug.cgi?id=9697".to_string()
+                ),
+                (
+                    Some("Debian".to_string()),
+                    "http://bugs.debian.org/510219".to_string()
+                ),
+            ]
+        );
+        assert_eq!(
+            header.description(),
+            Some("Fix regex problems with some multi-bytes characters".to_string())
+        );
     }
 
     #[test]
@@ -358,13 +417,27 @@ Last-Update: 2006-12-21
         let header = PatchHeader::from_str(text).unwrap();
 
         assert_eq!(header.origin(), None);
-        assert_eq!(header.forwarded(), Some(super::Forwarded::Yes("http://lists.example.com/oct-2006/1234.html".to_string())));
-        assert_eq!(header.author(), Some("John Doe <johndoe-guest@users.alioth.debian.org>".to_string()));
+        assert_eq!(
+            header.forwarded(),
+            Some(super::Forwarded::Yes(
+                "http://lists.example.com/oct-2006/1234.html".to_string()
+            ))
+        );
+        assert_eq!(
+            header.author(),
+            Some("John Doe <johndoe-guest@users.alioth.debian.org>".to_string())
+        );
         assert_eq!(header.reviewed_by(), Vec::<&str>::new());
-        assert_eq!(header.last_update(), Some(chrono::NaiveDate::from_ymd(2006, 12, 21)));
+        assert_eq!(
+            header.last_update(),
+            Some(chrono::NaiveDate::from_ymd(2006, 12, 21))
+        );
         assert_eq!(header.applied_upstream(), None);
         assert_eq!(header.bugs().collect::<Vec<_>>(), vec![]);
-        assert_eq!(header.description(), Some("Use FHS compliant paths by default".to_string()));
+        assert_eq!(
+            header.description(),
+            Some("Use FHS compliant paths by default".to_string())
+        );
     }
 
     #[test]
@@ -380,17 +453,35 @@ Author: Thiemo Seufer <ths@debian.org>
 
         let header = PatchHeader::from_str(text).unwrap();
 
-        assert_eq!(header.origin(), Some((Some(super::OriginCategory::Vendor), super::Origin::Other("http://bugs.debian.org/cgi-bin/bugreport.cgi?msg=80;bug=265678".to_string()))));
+        assert_eq!(
+            header.origin(),
+            Some((
+                Some(super::OriginCategory::Vendor),
+                super::Origin::Other(
+                    "http://bugs.debian.org/cgi-bin/bugreport.cgi?msg=80;bug=265678".to_string()
+                )
+            ))
+        );
         assert_eq!(header.forwarded(), Some(super::Forwarded::NotNeeded));
-        assert_eq!(header.author(), Some("Thiemo Seufer <ths@debian.org>".to_string()));
+        assert_eq!(
+            header.author(),
+            Some("Thiemo Seufer <ths@debian.org>".to_string())
+        );
         assert_eq!(header.reviewed_by(), Vec::<&str>::new());
         assert_eq!(header.last_update(), None);
         assert_eq!(header.applied_upstream(), None);
-        assert_eq!(header.bugs().collect::<Vec<_>>(), vec![
-            (Some("Debian".to_string()), "http://bugs.debian.org/265678".to_string()),
-        ]);
+        assert_eq!(
+            header.bugs().collect::<Vec<_>>(),
+            vec![(
+                Some("Debian".to_string()),
+                "http://bugs.debian.org/265678".to_string()
+            ),]
+        );
 
-        assert_eq!(header.description(), Some("Workaround for broken symbol resolving on mips/mipsel".to_string()));
+        assert_eq!(
+            header.description(),
+            Some("Workaround for broken symbol resolving on mips/mipsel".to_string())
+        );
     }
 
     #[test]
@@ -405,12 +496,31 @@ Last-Update: 2010-03-29
         let header = PatchHeader::from_str(text).unwrap();
 
         assert_eq!(header.origin(), None);
-        assert_eq!(header.forwarded(), Some(super::Forwarded::Yes("http://lists.example.com/2010/03/1234.html".to_string())));
-        assert_eq!(header.author(), Some("John Doe <johndoe-guest@users.alioth.debian.org>".to_string()));
+        assert_eq!(
+            header.forwarded(),
+            Some(super::Forwarded::Yes(
+                "http://lists.example.com/2010/03/1234.html".to_string()
+            ))
+        );
+        assert_eq!(
+            header.author(),
+            Some("John Doe <johndoe-guest@users.alioth.debian.org>".to_string())
+        );
         assert_eq!(header.reviewed_by(), Vec::<&str>::new());
-        assert_eq!(header.last_update(), Some(chrono::NaiveDate::from_ymd(2010, 3, 29)));
-        assert_eq!(header.applied_upstream(), Some(super::AppliedUpstream::Other("1.2, http://bzr.example.com/frobnicator/trunk/revision/123".to_string())));
+        assert_eq!(
+            header.last_update(),
+            Some(chrono::NaiveDate::from_ymd(2010, 3, 29))
+        );
+        assert_eq!(
+            header.applied_upstream(),
+            Some(super::AppliedUpstream::Other(
+                "1.2, http://bzr.example.com/frobnicator/trunk/revision/123".to_string()
+            ))
+        );
         assert_eq!(header.bugs().collect::<Vec<_>>(), vec![]);
-        assert_eq!(header.description(), Some("Fix widget frobnication speeds".to_string()));
+        assert_eq!(
+            header.description(),
+            Some("Fix widget frobnication speeds".to_string())
+        );
     }
 }

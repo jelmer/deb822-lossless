@@ -35,8 +35,8 @@
 mod lex;
 use crate::lex::lex;
 use rowan::ast::AstNode;
-use std::str::FromStr;
 use std::path::Path;
+use std::str::FromStr;
 
 /// Let's start with defining all kinds of tokens and
 /// composite nodes.
@@ -54,9 +54,9 @@ pub enum SyntaxKind {
     ERROR,      // as well as errors
 
     // composite nodes
-    ROOT,      // The entire file
-    PARAGRAPH, // A deb822 paragraph
-    ENTRY,     // A single key-value pair
+    ROOT,       // The entire file
+    PARAGRAPH,  // A deb822 paragraph
+    ENTRY,      // A single key-value pair
     EMPTY_LINE, // An empty line
 }
 
@@ -374,12 +374,16 @@ impl Deb822 {
             builder.start_node(EMPTY_LINE.into());
             builder.token(NEWLINE.into(), "\n");
             builder.finish_node();
-            to_insert.push(SyntaxNode::new_root(builder.finish()).clone_for_update().into());
+            to_insert.push(
+                SyntaxNode::new_root(builder.finish())
+                    .clone_for_update()
+                    .into(),
+            );
         }
         to_insert.push(paragraph.0.clone().into());
         self.0.splice_children(
             self.0.children().count()..self.0.children().count(),
-            to_insert
+            to_insert,
         );
         paragraph
     }
@@ -389,7 +393,9 @@ impl Deb822 {
         Ok(Self::from_str(&text)?)
     }
 
-    pub fn from_file_relaxed(path: impl AsRef<Path>) -> Result<(Self, Vec<String>), std::io::Error> {
+    pub fn from_file_relaxed(
+        path: impl AsRef<Path>,
+    ) -> Result<(Self, Vec<String>), std::io::Error> {
         let text = std::fs::read_to_string(path)?;
         Ok(Self::from_str_relaxed(&text))
     }
@@ -434,7 +440,8 @@ impl Paragraph {
 
     /// Returns an iterator over all values for the given key in the paragraph.
     pub fn get_all<'a>(&'a self, key: &'a str) -> impl Iterator<Item = String> + '_ {
-        self.items().filter_map(move |(k, v)| if k.as_str() == key { Some(v) } else { None })
+        self.items()
+            .filter_map(move |(k, v)| if k.as_str() == key { Some(v) } else { None })
     }
 
     #[deprecated(note = "use `contains_key` instead")]
@@ -496,7 +503,9 @@ impl std::str::FromStr for Paragraph {
 
         let mut paragraphs = deb822.paragraphs();
 
-        paragraphs.next().ok_or_else(||ParseError(vec!["no paragraphs".to_string()]))
+        paragraphs
+            .next()
+            .ok_or_else(|| ParseError(vec!["no paragraphs".to_string()]))
     }
 }
 
@@ -732,27 +741,28 @@ Build-Depends: debhelper (>= 11~),
                dh-golang,
                golang-any
 Homepage: https://github.com/j-keck/arping
-"#.parse().unwrap();
+"#
+        .parse()
+        .unwrap();
         let mut ps = d.paragraphs();
         let p = ps.next().unwrap();
         assert_eq!(p.get("Source").as_deref(), Some("golang-github-blah-blah"));
         assert_eq!(p.get("Section").as_deref(), Some("devel"));
         assert_eq!(p.get("Priority").as_deref(), Some("optional"));
-        assert_eq!(
-            p.get("Standards-Version").as_deref(),
-            Some("4.2.0")
-        );
+        assert_eq!(p.get("Standards-Version").as_deref(), Some("4.2.0"));
         assert_eq!(
             p.get("Maintainer").as_deref(),
-            Some("Some Maintainer <example@example.com>"));
+            Some("Some Maintainer <example@example.com>")
+        );
         assert_eq!(
             p.get("Build-Depends").as_deref(),
-            Some("debhelper (>= 11~),\ndh-golang,\ngolang-any"));
+            Some("debhelper (>= 11~),\ndh-golang,\ngolang-any")
+        );
         assert_eq!(
             p.get("Homepage").as_deref(),
-            Some("https://github.com/j-keck/arping"));
+            Some("https://github.com/j-keck/arping")
+        );
     }
-
 
     #[test]
     fn test_modify() {
@@ -789,18 +799,26 @@ Foo: Bar
         let mut p = d.add_paragraph();
         p.insert("Foo", "Bar");
         assert_eq!(p.get("Foo").as_deref(), Some("Bar"));
-        assert_eq!(p.to_string(), r#"Foo: Bar
-"#);
-        assert_eq!(d.to_string(), r#"Foo: Bar
-"#);
+        assert_eq!(
+            p.to_string(),
+            r#"Foo: Bar
+"#
+        );
+        assert_eq!(
+            d.to_string(),
+            r#"Foo: Bar
+"#
+        );
 
         let mut p = d.add_paragraph();
         p.insert("Foo", "Blah");
         assert_eq!(p.get("Foo").as_deref(), Some("Blah"));
-        assert_eq!(d.to_string(), r#"Foo: Bar
+        assert_eq!(
+            d.to_string(),
+            r#"Foo: Bar
 
 Foo: Blah
-"#);
+"#
+        );
     }
-
 }

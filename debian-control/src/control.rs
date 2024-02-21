@@ -1,6 +1,5 @@
 use crate::relations::Relations;
 
-
 pub struct Control(deb822_lossless::Deb822);
 
 impl Control {
@@ -109,7 +108,8 @@ impl Source {
     }
 
     pub fn set_build_depends(&mut self, relations: &Relations) {
-        self.0.insert("Build-Depends", relations.to_string().as_str());
+        self.0
+            .insert("Build-Depends", relations.to_string().as_str());
     }
 
     pub fn build_depends_indep(&self) -> Option<Relations> {
@@ -331,7 +331,8 @@ impl Binary {
     }
 
     pub fn set_essential(&mut self, essential: bool) {
-        self.0.insert("Essential", if essential { "yes" } else { "no" });
+        self.0
+            .insert("Essential", if essential { "yes" } else { "no" });
     }
 
     /// Binary package description
@@ -412,11 +413,16 @@ Description: this is the short description
  And the longer one
  .
  is on the next lines
-"#.parse().unwrap();
+"#
+        .parse()
+        .unwrap();
         let binary = control.binaries().next().unwrap();
         assert_eq!(
             binary.description(),
-            Some("this is the short description\nAnd the longer one\n.\nis on the next lines".to_owned())
+            Some(
+                "this is the short description\nAnd the longer one\n.\nis on the next lines"
+                    .to_owned()
+            )
         );
     }
 }

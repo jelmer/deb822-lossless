@@ -664,12 +664,15 @@ impl Relation {
             builder.token(L_PARENS.into(), "(");
             builder.start_node(SyntaxKind::CONSTRAINT.into());
             for c in vc.to_string().chars() {
-                builder.token(match c {
-                    '>' => R_ANGLE.into(),
-                    '<' => L_ANGLE.into(),
-                    '=' => EQUAL.into(),
-                    _ => unreachable!(),
-                }, c.to_string().as_str());
+                builder.token(
+                    match c {
+                        '>' => R_ANGLE.into(),
+                        '<' => L_ANGLE.into(),
+                        '=' => EQUAL.into(),
+                        _ => unreachable!(),
+                    },
+                    c.to_string().as_str(),
+                );
             }
             builder.finish_node();
 
@@ -688,7 +691,11 @@ impl Relation {
 
     /// Remove the version constraint from the relation.
     pub fn drop_constraint(&mut self) {
-        self.0.children().find(|n| n.kind() == VERSION).unwrap().detach();
+        self.0
+            .children()
+            .find(|n| n.kind() == VERSION)
+            .unwrap()
+            .detach();
     }
 
     /// Return the name of the package in the relation.
@@ -922,14 +929,20 @@ fn test_substvar() {
 
 #[test]
 fn test_new() {
-    let r = Relation::new("samba", Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
+    let r = Relation::new(
+        "samba",
+        Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())),
+    );
 
     assert_eq!(r.to_string(), "samba (>= 2.0)");
 }
 
 #[test]
 fn test_drop_constraint() {
-    let mut r = Relation::new("samba", Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
+    let mut r = Relation::new(
+        "samba",
+        Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())),
+    );
 
     r.drop_constraint();
 
