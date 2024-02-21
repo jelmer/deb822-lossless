@@ -690,12 +690,21 @@ impl Relation {
     }
 
     /// Remove the version constraint from the relation.
-    pub fn drop_constraint(&mut self) {
-        self.0
-            .children()
-            .find(|n| n.kind() == VERSION)
-            .unwrap()
-            .detach();
+    pub fn drop_constraint(&mut self) -> bool {
+        let version_token = self.0.children().find(|n| n.kind() == VERSION);
+        if let Some(version_token) = version_token {
+            // Remove any whitespace before the version token
+            let prev = version_token.prev_sibling_or_token();
+            if let Some(prev) = prev {
+                if prev.kind() == WHITESPACE {
+                    prev.detach();
+                }
+            }
+            version_token.detach();
+            return true;
+        }
+
+        false
     }
 
     /// Return the name of the package in the relation.
