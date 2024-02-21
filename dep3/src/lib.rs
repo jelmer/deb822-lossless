@@ -196,7 +196,7 @@ impl PatchHeader {
     }
 
     pub fn set_author(&mut self, author: &str) {
-        if self.0.contains("From") {
+        if self.0.contains_key("From") {
             self.0.insert("From", author);
         } else {
             self.0.insert("Author", author);
