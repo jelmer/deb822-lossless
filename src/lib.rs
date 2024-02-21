@@ -485,6 +485,23 @@ impl Paragraph {
             vec![entry.0.clone_for_update().into()],
         );
     }
+
+    /// Rename the given field in the paragraph.
+    pub fn rename(&mut self, old_key: &str, new_key: &str) -> bool {
+        for entry in self.entries() {
+            if entry.key().as_deref() == Some(old_key) {
+                self.0.splice_children(
+                    entry.0.index()..entry.0.index() + 1,
+                    vec![Entry::new(new_key, entry.value().as_str())
+                        .0
+                        .clone_for_update()
+                        .into()],
+                );
+                return true;
+            }
+        }
+        false
+    }
 }
 
 impl Default for Paragraph {
@@ -781,6 +798,30 @@ Maintainer: Foo Bar <jelmer@jelmer.uk>
 Foo: Bar
 "#
         );
+    }
+
+    #[test]
+    fn test_rename_field() {
+        let d: super::Deb822 = r#"Source: foo
+Vcs-Browser: https://salsa.debian.org/debian/foo
+"#
+        .parse()
+        .unwrap();
+        let mut ps = d.paragraphs();
+        let mut p = ps.next().unwrap();
+        assert!(p.rename("Vcs-Browser", "Homepage"));
+        assert_eq!(
+            p.to_string(),
+            r#"Source: foo
+Homepage: https://salsa.debian.org/debian/foo
+"#
+        );
+
+        assert_eq!(
+            p.get("Homepage").as_deref(),
+            Some("https://salsa.debian.org/debian/foo")
+        );
+        assert_eq!(p.get("Vcs-Browser").as_deref(), None);
     }
 
     #[test]
