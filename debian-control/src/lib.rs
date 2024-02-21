@@ -29,6 +29,70 @@
 //! "#);
 //! ```
 pub mod control;
-pub use control::{Control, Source, Binary, Priority};
+pub use control::{Binary, Control, Priority, Source};
 pub mod relations;
 pub mod vcs;
+
+#[derive(Debug, PartialEq)]
+pub enum ParseIdentityError {
+    NoEmail,
+}
+
+impl std::fmt::Display for ParseIdentityError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ParseIdentityError::NoEmail => write!(f, "No email found"),
+        }
+    }
+}
+
+impl std::error::Error for ParseIdentityError {}
+
+/// Parse an identity string into a name and an email address.
+///
+/// The input string should be in the format `Name <email>`. If the email is missing, an error is
+/// returned.
+///
+/// # Example
+/// ```
+/// use debian_control::parse_identity;
+/// assert_eq!(parse_identity("Joe Example <joe@example.com">), Ok(("Joe Example", "joe@example.com")));
+/// ```
+///
+/// # Arguments
+/// * `s` - The input string.
+///
+/// # Returns
+/// A tuple with the name and the email address.
+pub fn parse_identity(s: &str) -> Result<(&str, &str), ParseIdentityError> {
+    // Support Name <email> and email, but ensure email contains an "@".
+    if let Some((name, email)) = s.split_once('<') {
+        if let Some(email) = email.strip_suffix('>') {
+            Ok((name.trim(), email.trim()))
+        } else {
+            Err(ParseIdentityError::NoEmail)
+        }
+    } else if s.contains('@') {
+        Ok(("", s.trim()))
+    } else {
+        Err(ParseIdentityError::NoEmail)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_identity() {
+        assert_eq!(
+            parse_identity("Joe Example <joe@example.com>"),
+            Ok(("Joe Example", "joe@example.com"))
+        );
+        assert_eq!(
+            parse_identity("joe@example.com"),
+            Ok(("", "joe@example.com"))
+        );
+        assert_eq!(parse_identity("somebody"), Err(ParseIdentityError::NoEmail));
+    }
+}
