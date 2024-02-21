@@ -56,7 +56,7 @@ impl std::error::Error for ParseIdentityError {}
 /// # Example
 /// ```
 /// use debian_control::parse_identity;
-/// assert_eq!(parse_identity("Joe Example <joe@example.com">), Ok(("Joe Example", "joe@example.com")));
+/// assert_eq!(parse_identity("Joe Example <joe@example.com>"), Ok(("Joe Example", "joe@example.com")));
 /// ```
 ///
 /// # Arguments
