@@ -173,7 +173,9 @@ fn parse(text: &str) -> Parse {
                 self.skip_ws();
             } else {
                 self.builder.start_node(ERROR.into());
-                self.bump();
+                if self.current().is_some() {
+                    self.bump();
+                }
                 self.errors.push("expected ':'".to_string());
                 self.builder.finish_node();
             }
@@ -466,9 +468,14 @@ impl Paragraph {
 
     /// Add a new field to the paragraph.
     pub fn insert(&mut self, key: &str, value: &str) {
-        for mut entry in self.entries() {
+        let new_entry = Entry::new(key, value);
+
+        for entry in self.entries() {
             if entry.key().as_deref() == Some(key) {
-                entry.set_value(value);
+                self.0.splice_children(
+                    entry.0.index()..entry.0.index() + 1,
+                    vec![new_entry.0.clone_for_update().into()],
+                );
                 return;
             }
         }
@@ -477,15 +484,6 @@ impl Paragraph {
             self.0.children().count()..self.0.children().count(),
             vec![entry.0.clone_for_update().into()],
         );
-    }
-
-    /// Rename the given field in the paragraph.
-    pub fn rename(&mut self, old_key: &str, new_key: &str) {
-        for mut entry in self.entries() {
-            if entry.key().as_deref() == Some(old_key) {
-                entry.set_key(new_key);
-            }
-        }
     }
 }
 
@@ -539,14 +537,6 @@ impl Entry {
             .map(|it| it.text().to_string())
             .collect::<Vec<_>>()
             .join("\n")
-    }
-
-    pub fn set_key(&mut self, _key: &str) {
-        todo!();
-    }
-
-    pub fn set_value(&mut self, _value: &str) {
-        todo!();
     }
 
     pub fn detach(&mut self) {
@@ -765,7 +755,7 @@ Homepage: https://github.com/j-keck/arping
     }
 
     #[test]
-    fn test_modify() {
+    fn test_remove_field() {
         let d: super::Deb822 = r#"Source: foo
 Maintainer: Foo Bar <jelmer@jelmer.uk>
 Section: net
@@ -789,6 +779,49 @@ Description: This is a description
             r#"Source: foo
 Maintainer: Foo Bar <jelmer@jelmer.uk>
 Foo: Bar
+"#
+        );
+    }
+
+    #[test]
+    fn test_set_field() {
+        let d: super::Deb822 = r#"Source: foo
+Maintainer: Foo Bar <joe@example.com>
+"#
+        .parse()
+        .unwrap();
+        let mut ps = d.paragraphs();
+        let mut p = ps.next().unwrap();
+        p.insert("Maintainer", "Somebody Else <jane@example.com>");
+        assert_eq!(
+            p.get("Maintainer").as_deref(),
+            Some("Somebody Else <jane@example.com>")
+        );
+        assert_eq!(
+            p.to_string(),
+            r#"Source: foo
+Maintainer: Somebody Else <jane@example.com>
+"#
+        );
+    }
+
+    #[test]
+    fn test_set_new_field() {
+        let d: super::Deb822 = r#"Source: foo
+"#
+        .parse()
+        .unwrap();
+        let mut ps = d.paragraphs();
+        let mut p = ps.next().unwrap();
+        p.insert("Maintainer", "Somebody <joe@example.com>");
+        assert_eq!(
+            p.get("Maintainer").as_deref(),
+            Some("Somebody <joe@example.com>")
+        );
+        assert_eq!(
+            p.to_string(),
+            r#"Source: foo
+Maintainer: Somebody <joe@example.com>
 "#
         );
     }
