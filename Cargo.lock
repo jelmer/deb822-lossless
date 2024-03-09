@@ -107,16 +107,16 @@ dependencies = [
 
 [[package]]
 name = "debversion"
-version = "0.2.2"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e65a0a572fa10f34b89addac251b7c8f40266606ee5847d769ab8db4d56ca11b"
+checksum = "6912a4e23e6853e2b09afbbe7ff88d42758cc878bc26ab17de584d9e77b381a7"
 dependencies = [
  "lazy-regex",
 ]
 
 [[package]]
 name = "dep3"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "deb822-lossless",
