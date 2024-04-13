@@ -221,7 +221,9 @@ fn parse(text: &str) -> Parse {
             self.builder.start_node(ROOT.into());
             while self.current().is_some() {
                 self.skip_ws_and_newlines();
-                self.parse_paragraph();
+                if self.current().is_some() {
+                    self.parse_paragraph();
+                }
             }
             // Don't forget to eat *trailing* whitespace
             self.skip_ws_and_newlines();
@@ -705,6 +707,51 @@ Description: This is a description
     );
 
     assert_eq!(node.text(), CONTROLV1);
+}
+
+#[test]
+fn test_with_trailing_whitespace() {
+    const CONTROLV1: &str = r#"Source: foo
+Maintainer: Foo Bar <foo@example.com>
+
+
+"#;
+    let parsed = parse(CONTROLV1);
+    let node = parsed.syntax();
+    assert_eq!(
+        format!("{:#?}", node),
+        r###"ROOT@0..52
+  PARAGRAPH@0..50
+    ENTRY@0..12
+      KEY@0..6 "Source"
+      COLON@6..7 ":"
+      WHITESPACE@7..8 " "
+      VALUE@8..11 "foo"
+      NEWLINE@11..12 "\n"
+    ENTRY@12..50
+      KEY@12..22 "Maintainer"
+      COLON@22..23 ":"
+      WHITESPACE@23..24 " "
+      VALUE@24..49 "Foo Bar <foo@example. ..."
+      NEWLINE@49..50 "\n"
+  EMPTY_LINE@50..51
+    NEWLINE@50..51 "\n"
+  EMPTY_LINE@51..52
+    NEWLINE@51..52 "\n"
+"###
+    );
+    assert_eq!(parsed.errors, Vec::<String>::new());
+
+    let root = parsed.root();
+    assert_eq!(root.paragraphs().count(), 1);
+    let source = root.paragraphs().next().unwrap();
+    assert_eq!(
+        source.items().collect::<Vec<_>>(),
+        vec![
+            ("Source".into(), "foo".into()),
+            ("Maintainer".into(), "Foo Bar <foo@example.com>".into()),
+        ]
+    );
 }
 
 #[cfg(test)]
