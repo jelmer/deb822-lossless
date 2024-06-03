@@ -534,8 +534,13 @@ impl Entry {
         builder.token(KEY.into(), key);
         builder.token(COLON.into(), ":");
         builder.token(WHITESPACE.into(), " ");
-        builder.token(VALUE.into(), value);
-        builder.token(NEWLINE.into(), "\n");
+        for (i, line) in value.split("\n").enumerate() {
+            if i > 0 {
+                builder.token(INDENT.into(), " ");
+            }
+            builder.token(VALUE.into(), line);
+            builder.token(NEWLINE.into(), "\n");
+        }
         builder.finish_node();
         Entry(SyntaxNode::new_root(builder.finish()))
     }
@@ -940,6 +945,38 @@ Maintainer: Somebody <joe@example.com>
 
 Foo: Blah
 "#
+        );
+    }
+
+    #[test]
+    fn test_multiline_entry() {
+        use super::SyntaxKind::*;
+        use rowan::ast::AstNode;
+
+        let entry = super::Entry::new("foo", "bar\nbaz");
+        let tokens: Vec<_> = entry.syntax()
+                                  .descendants_with_tokens()
+                                  .filter_map(|tok| tok.into_token())
+                                  .collect();
+
+        assert_eq!("foo: bar\n baz\n", entry.to_string());
+        assert_eq!("bar\nbaz", entry.value());
+
+        assert_eq!(
+            vec![
+                (KEY, "foo"),
+                (COLON, ":"),
+                (WHITESPACE, " "),
+                (VALUE, "bar"),
+                (NEWLINE, "\n"),
+                (INDENT, " "),
+                (VALUE, "baz"),
+                (NEWLINE, "\n"),
+            ],
+            tokens
+                .iter()
+                .map(|token| (token.kind(), token.text()))
+                .collect::<Vec<_>>()
         );
     }
 }
