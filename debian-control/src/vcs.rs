@@ -2,7 +2,7 @@ use regex::Regex;
 use std::borrow::Cow;
 use std::str::FromStr;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParsedVcs {
     pub repo_url: String,
     pub branch: Option<String>,
@@ -21,7 +21,7 @@ impl FromStr for ParsedVcs {
 
         if let Some(ref m) = re.find(s.as_ref()) {
             subpath = Some(m.as_str()[2..m.as_str().len() - 1].to_string());
-            s = Cow::Owned(vec![s[..m.start()].to_string(), s[m.end()..].to_string()].concat());
+            s = Cow::Owned([s[..m.start()].to_string(), s[m.end()..].to_string()].concat());
         }
 
         if let Some(index) = s.find(" -b ") {
@@ -111,5 +111,18 @@ mod test {
         assert_eq!(vcs_info.repo_url, "https://github.com/jelmer/example");
         assert_eq!(vcs_info.branch, Some("branch".to_string()));
         assert_eq!(vcs_info.subpath, Some("subpath".to_string()));
+    }
+
+    #[test]
+    fn test_eq() {
+        let vcs_info1 =
+            ParsedVcs::from_str("https://github.com/jelmer/example -b branch [subpath]").unwrap();
+        let vcs_info2 =
+            ParsedVcs::from_str("https://github.com/jelmer/example -b branch [subpath]").unwrap();
+        let vcs_info3 =
+            ParsedVcs::from_str("https://example.com/jelmer/example -b branch [subpath]").unwrap();
+
+        assert_eq!(vcs_info1, vcs_info2);
+        assert_ne!(vcs_info1, vcs_info3);
     }
 }
