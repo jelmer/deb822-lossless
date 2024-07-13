@@ -331,9 +331,9 @@ macro_rules! ast_node {
             }
         }
 
-        impl ToString for $ast {
-            fn to_string(&self) -> String {
-                self.0.text().to_string()
+        impl std::fmt::Display for $ast {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "{}", self.0.text())
             }
         }
     };
@@ -954,10 +954,11 @@ Foo: Blah
         use rowan::ast::AstNode;
 
         let entry = super::Entry::new("foo", "bar\nbaz");
-        let tokens: Vec<_> = entry.syntax()
-                                  .descendants_with_tokens()
-                                  .filter_map(|tok| tok.into_token())
-                                  .collect();
+        let tokens: Vec<_> = entry
+            .syntax()
+            .descendants_with_tokens()
+            .filter_map(|tok| tok.into_token())
+            .collect();
 
         assert_eq!("foo: bar\n baz\n", entry.to_string());
         assert_eq!("bar\nbaz", entry.value());
