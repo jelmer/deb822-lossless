@@ -544,15 +544,9 @@ impl pyo3::ToPyObject for Paragraph {
 impl pyo3::FromPyObject<'_> for Paragraph {
     fn extract_bound(obj: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
         use pyo3::prelude::*;
-        let d = obj.getattr("items")?.call0()?;
-        let mut p = Paragraph::new();
-        for item in d.iter()? {
-            let item = item?;
-            let key = item.get_item(0)?.extract::<String>()?;
-            let value = item.get_item(1)?.extract::<String>()?;
-            p.insert(&key, &value);
-        }
-        Ok(p)
+        let d = obj.call_method0("__str__")?.extract::<String>()?;
+        Ok(Paragraph::from_str(&d)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err((e.to_string(),)))?)
     }
 }
 
