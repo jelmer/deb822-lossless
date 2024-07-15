@@ -159,6 +159,7 @@ fn parse(text: &str) -> Parse {
     impl Parser {
         fn parse_entry(&mut self) {
             self.builder.start_node(ENTRY.into());
+            // First, parse the key and colon
             if self.current() == Some(KEY) {
                 self.bump();
                 self.skip_ws();
@@ -191,10 +192,10 @@ fn parse(text: &str) -> Parse {
                     Some(NEWLINE) => {
                         self.bump();
                     }
-                    Some(_) => {
+                    Some(g) => {
                         self.builder.start_node(ERROR.into());
                         self.bump();
-                        self.errors.push("expected newline".to_string());
+                        self.errors.push(format!("expected newline, got {:?}", g));
                         self.builder.finish_node();
                     }
                 }
@@ -1002,6 +1003,42 @@ Foo: Blah
                 .iter()
                 .map(|token| (token.kind(), token.text()))
                 .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_apt_entry() {
+        let text = r#"Package: cvsd
+Binary: cvsd
+Version: 1.0.24
+Maintainer: Arthur de Jong <adejong@debian.org>
+Build-Depends: debhelper (>= 9), po-debconf
+Architecture: any
+Standards-Version: 3.9.3
+Format: 3.0 (native)
+Files:
+ b7a7d67a02974c52c408fdb5e118406d 890 cvsd_1.0.24.dsc
+ b73ee40774c3086cb8490cdbb96ac883 258139 cvsd_1.0.24.tar.gz
+Vcs-Browser: http://arthurdejong.org/viewvc/cvsd/
+Vcs-Cvs: :pserver:anonymous@arthurdejong.org:/arthur/
+Checksums-Sha256:
+ a7bb7a3aacee19cd14ce5c26cb86e348b1608e6f1f6e97c6ea7c58efa440ac43 890 cvsd_1.0.24.dsc
+ 46bc517760c1070ae408693b89603986b53e6f068ae6bdc744e2e830e46b8cba 258139 cvsd_1.0.24.tar.gz
+Homepage: http://arthurdejong.org/cvsd/
+Package-List:
+ cvsd deb vcs optional
+Directory: pool/main/c/cvsd
+Priority: source
+Section: vcs
+
+"#;
+        let d: super::Deb822 = text.parse().unwrap();
+        let p = d.paragraphs().next().unwrap();
+        assert_eq!(p.get("Binary").as_deref(), Some("cvsd"));
+        assert_eq!(p.get("Version").as_deref(), Some("1.0.24"));
+        assert_eq!(
+            p.get("Maintainer").as_deref(),
+            Some("Arthur de Jong <adejong@debian.org>")
         );
     }
 }

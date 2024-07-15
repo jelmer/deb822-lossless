@@ -6,6 +6,7 @@ pub struct Lexer<'a> {
     input: Peekable<Chars<'a>>,
     start_of_line: bool,
     indent: usize,
+    colon_count: usize,
 }
 
 impl<'a> Lexer<'a> {
@@ -13,6 +14,7 @@ impl<'a> Lexer<'a> {
         Lexer {
             input: input.chars().peekable(),
             start_of_line: true,
+            colon_count: 0,
             indent: 0,
         }
     }
@@ -48,13 +50,15 @@ impl<'a> Lexer<'a> {
     fn next_token(&mut self) -> Option<(SyntaxKind, String)> {
         if let Some(&c) = self.input.peek() {
             match c {
-                ':' => {
+                ':' if self.colon_count == 0 => {
+                    self.colon_count += 1;
                     self.input.next();
                     Some((SyntaxKind::COLON, ":".to_owned()))
                 }
                 _ if Self::is_newline(c) => {
                     self.input.next();
                     self.start_of_line = true;
+                    self.colon_count = 0;
                     self.indent = 0;
                     Some((SyntaxKind::NEWLINE, c.to_string()))
                 }
@@ -71,6 +75,7 @@ impl<'a> Lexer<'a> {
                     self.input.next();
                     let comment = self.read_while(|c| c != '\n' && c != '\r');
                     self.start_of_line = true;
+                    self.colon_count = 0;
                     Some((SyntaxKind::COMMENT, format!("#{}", comment)))
                 }
                 _ if Self::is_valid_key_char(c) && self.start_of_line && self.indent == 0 => {
@@ -204,6 +209,59 @@ Description: a package
                 (INDENT, " "),
                 (VALUE, "description"),
                 (NEWLINE, "\n")
+            ]
+        );
+    }
+
+    #[test]
+    fn test_apt() {
+        let text = r#"Package: cvsd
+Binary: cvsd
+Version: 1.0.24
+Maintainer: Arthur de Jong <adejong@debian.org>
+Build-Depends: debhelper (>= 9), po-debconf
+Architecture: any
+Standards-Version: 3.9.3
+Format: 3.0 (native)
+Files:
+ b7a7d67a02974c52c408fdb5e118406d 890 cvsd_1.0.24.dsc
+ b73ee40774c3086cb8490cdbb96ac883 258139 cvsd_1.0.24.tar.gz
+Vcs-Browser: http://arthurdejong.org/viewvc/cvsd/
+Vcs-Cvs: :pserver:anonymous@arthurdejong.org:/arthur/
+Checksums-Sha256:
+ a7bb7a3aacee19cd14ce5c26cb86e348b1608e6f1f6e97c6ea7c58efa440ac43 890 cvsd_1.0.24.dsc
+ 46bc517760c1070ae408693b89603986b53e6f068ae6bdc744e2e830e46b8cba 258139 cvsd_1.0.24.tar.gz
+Homepage: http://arthurdejong.org/cvsd/
+Package-List:
+ cvsd deb vcs optional
+Directory: pool/main/c/cvsd
+Priority: source
+Section: vcs
+
+"#;
+        let tokens = super::lex(text);
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|(kind, text)| (*kind, text.as_str()))
+                .collect::<Vec<_>>(),
+            vec![
+                (KEY, "Package"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "cvsd"), (NEWLINE, "\n"),
+                (KEY, "Binary"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "cvsd"), (NEWLINE, "\n"),
+                (KEY, "Version"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "1.0.24"), (NEWLINE, "\n"),
+                (KEY, "Maintainer"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "Arthur de Jong <adejong@debian.org>"), (NEWLINE, "\n"),
+                (KEY, "Build-Depends"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "debhelper (>= 9), po-debconf"), (NEWLINE, "\n"),
+                (KEY, "Architecture"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "any"), (NEWLINE, "\n"),
+                (KEY, "Standards-Version"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "3.9.3"), (NEWLINE, "\n"),
+                (KEY, "Format"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "3.0 (native)"), (NEWLINE, "\n"),
+                (KEY, "Files"), (COLON, ":"), (NEWLINE, "\n"), (INDENT, " "), (VALUE, "b7a7d67a02974c52c408fdb5e118406d 890 cvsd_1.0.24.dsc"), (NEWLINE, "\n"), (INDENT, " "), (VALUE, "b73ee40774c3086cb8490cdbb96ac883 258139 cvsd_1.0.24.tar.gz"), (NEWLINE, "\n"), (KEY, "Vcs-Browser"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "http://arthurdejong.org/viewvc/cvsd/"), (NEWLINE, "\n"),
+                (KEY, "Vcs-Cvs"), (COLON, ":"), (WHITESPACE, " "), (VALUE, ":pserver:anonymous@arthurdejong.org:/arthur/"), (NEWLINE, "\n"),
+                (KEY, "Checksums-Sha256"), (COLON, ":"), (NEWLINE, "\n"), (INDENT, " "), (VALUE, "a7bb7a3aacee19cd14ce5c26cb86e348b1608e6f1f6e97c6ea7c58efa440ac43 890 cvsd_1.0.24.dsc"), (NEWLINE, "\n"), (INDENT, " "), (VALUE, "46bc517760c1070ae408693b89603986b53e6f068ae6bdc744e2e830e46b8cba 258139 cvsd_1.0.24.tar.gz"), (NEWLINE, "\n"),
+                (KEY, "Homepage"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "http://arthurdejong.org/cvsd/"), (NEWLINE, "\n"),
+                (KEY, "Package-List"), (COLON, ":"), (NEWLINE, "\n"), (INDENT, " "), (VALUE, "cvsd deb vcs optional"), (NEWLINE, "\n"),
+                (KEY, "Directory"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "pool/main/c/cvsd"), (NEWLINE, "\n"),
+                (KEY, "Priority"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "source"), (NEWLINE, "\n"),
+                (KEY, "Section"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "vcs"), (NEWLINE, "\n"), (NEWLINE, "\n")
             ]
         );
     }
