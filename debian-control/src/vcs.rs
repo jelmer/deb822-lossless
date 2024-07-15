@@ -41,19 +41,19 @@ impl FromStr for ParsedVcs {
     }
 }
 
-impl ToString for ParsedVcs {
-    fn to_string(&self) -> String {
-        let mut url = self.repo_url.clone();
+impl std::fmt::Display for ParsedVcs {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(&self.repo_url)?;
 
         if let Some(branch) = &self.branch {
-            url = format!("{} -b {}", url, branch);
+            write!(f, " -b {}", branch)?;
         }
 
         if let Some(subpath) = &self.subpath {
-            url = format!("{} [{}]", url, subpath);
+            write!(f, " [{}]", subpath)?;
         }
 
-        url
+        Ok(())
     }
 }
 

@@ -199,13 +199,43 @@ impl Source {
     }
 }
 
-impl ToString for Control {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+#[cfg(feature = "python-debian")]
+impl pyo3::ToPyObject for Source {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        self.0.to_object(py)
+    }
+}
+
+#[cfg(feature = "python-debian")]
+impl pyo3::FromPyObject<'_> for Source {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
+        Ok(Source(ob.extract()?))
+    }
+}
+
+impl std::fmt::Display for Control {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
 pub struct Binary(deb822_lossless::Paragraph);
+
+#[cfg(feature = "python-debian")]
+impl pyo3::ToPyObject for Binary {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        self.0.to_object(py)
+    }
+}
+
+#[cfg(feature = "python-debian")]
+impl pyo3::FromPyObject<'_> for Binary {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
+        Ok(Binary(ob.extract()?))
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Priority {
@@ -216,16 +246,15 @@ pub enum Priority {
     Extra,
 }
 
-impl ToString for Priority {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for Priority {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(match self {
             Priority::Required => "required",
             Priority::Important => "important",
             Priority::Standard => "standard",
             Priority::Optional => "optional",
             Priority::Extra => "extra",
-        }
-        .to_owned()
+        })
     }
 }
 

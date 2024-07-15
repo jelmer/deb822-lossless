@@ -202,9 +202,9 @@ impl std::str::FromStr for Copyright {
     }
 }
 
-impl ToString for Copyright {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+impl std::fmt::Display for Copyright {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(&self.0.to_string())
     }
 }
 

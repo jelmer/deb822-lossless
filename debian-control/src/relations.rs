@@ -65,14 +65,14 @@ impl std::str::FromStr for VersionConstraint {
     }
 }
 
-impl ToString for VersionConstraint {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for VersionConstraint {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            VersionConstraint::GreaterThanEqual => ">=".to_owned(),
-            VersionConstraint::LessThanEqual => "<=".to_owned(),
-            VersionConstraint::Equal => "=".to_owned(),
-            VersionConstraint::GreaterThan => ">>".to_owned(),
-            VersionConstraint::LessThan => "<<".to_owned(),
+            VersionConstraint::GreaterThanEqual => f.write_str(">="),
+            VersionConstraint::LessThanEqual => f.write_str("<="),
+            VersionConstraint::Equal => f.write_str("="),
+            VersionConstraint::GreaterThan => f.write_str(">>"),
+            VersionConstraint::LessThan => f.write_str("<<"),
         }
     }
 }
@@ -83,11 +83,11 @@ pub enum BuildProfile {
     Disabled(String),
 }
 
-impl ToString for BuildProfile {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for BuildProfile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            BuildProfile::Enabled(s) => s.clone(),
-            BuildProfile::Disabled(s) => format!("!{}", s),
+            BuildProfile::Enabled(s) => f.write_str(s),
+            BuildProfile::Disabled(s) => write!(f, "!{}", s),
         }
     }
 }
@@ -602,9 +602,9 @@ macro_rules! ast_node {
             }
         }
 
-        impl ToString for $ast {
-            fn to_string(&self) -> String {
-                self.0.text().to_string()
+        impl std::fmt::Display for $ast {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0.text().to_string())
             }
         }
     };
