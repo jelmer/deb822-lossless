@@ -28,12 +28,12 @@ pub enum Forwarded {
     Yes(String),
 }
 
-impl ToString for Forwarded {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for Forwarded {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Forwarded::No => "no".to_string(),
-            Forwarded::NotNeeded => "not-needed".to_string(),
-            Forwarded::Yes(s) => s.to_string(),
+            Forwarded::No => f.write_str("no"),
+            Forwarded::NotNeeded => f.write_str("not-needed"),
+            Forwarded::Yes(s) => f.write_str(s),
         }
     }
 }
@@ -61,13 +61,13 @@ pub enum OriginCategory {
     Other,
 }
 
-impl ToString for OriginCategory {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for OriginCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            OriginCategory::Backport => "backport".to_string(),
-            OriginCategory::Vendor => "vendor".to_string(),
-            OriginCategory::Upstream => "upstream".to_string(),
-            OriginCategory::Other => "other".to_string(),
+            OriginCategory::Backport => f.write_str("backport"),
+            OriginCategory::Vendor => f.write_str("vendor"),
+            OriginCategory::Upstream => f.write_str("upstream"),
+            OriginCategory::Other => f.write_str("other"),
         }
     }
 }
@@ -92,11 +92,11 @@ pub enum Origin {
     Other(String),
 }
 
-impl ToString for Origin {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for Origin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Origin::Commit(s) => format!("commit:{}", s),
-            Origin::Other(s) => s.to_string(),
+            Origin::Commit(s) => write!(f, "commit:{}", s),
+            Origin::Other(s) => f.write_str(&s.to_string()),
         }
     }
 }
@@ -119,11 +119,11 @@ pub enum AppliedUpstream {
     Other(String),
 }
 
-impl ToString for AppliedUpstream {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for AppliedUpstream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AppliedUpstream::Commit(s) => format!("commit:{}", s),
-            AppliedUpstream::Other(s) => s.to_string(),
+            AppliedUpstream::Commit(s) => write!(f, "commit:{}", s),
+            AppliedUpstream::Other(s) => f.write_str(&s.to_string()),
         }
     }
 }
@@ -326,9 +326,9 @@ impl PatchHeader {
     }
 }
 
-impl ToString for PatchHeader {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+impl std::fmt::Display for PatchHeader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0.to_string())
     }
 }
 
