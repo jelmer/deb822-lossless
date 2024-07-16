@@ -351,8 +351,16 @@ impl Binary {
         self.0.get("Built-Using").map(|s| s.parse().unwrap())
     }
 
-    pub fn multi_arch(&self) -> Option<String> {
-        self.0.get("Multi-Arch")
+    pub fn multi_arch(&self) -> Option<MultiArch> {
+        self.0.get("Multi-Arch").map(|s| s.parse().unwrap())
+    }
+
+    pub fn set_multi_arch(&mut self, multi_arch: Option<MultiArch>) {
+        if let Some(multi_arch) = multi_arch {
+            self.0.insert("Multi-Arch", multi_arch.to_string().as_str());
+        } else {
+            self.0.remove("Multi-Arch");
+        }
     }
 
     pub fn essential(&self) -> bool {
@@ -360,8 +368,11 @@ impl Binary {
     }
 
     pub fn set_essential(&mut self, essential: bool) {
-        self.0
-            .insert("Essential", if essential { "yes" } else { "no" });
+        if essential {
+            self.0.insert("Essential", "yes");
+        } else {
+            self.0.remove("Essential");
+        }
     }
 
     /// Binary package description
@@ -453,5 +464,38 @@ Description: this is the short description
                     .to_owned()
             )
         );
+    }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum MultiArch {
+    Same,
+    Foreign,
+    No,
+    Allowed,
+}
+
+impl std::str::FromStr for MultiArch {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "same" => Ok(MultiArch::Same),
+            "foreign" => Ok(MultiArch::Foreign),
+            "no" => Ok(MultiArch::No),
+            "allowed" => Ok(MultiArch::Allowed),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToString for MultiArch {
+    fn to_string(&self) -> String {
+        match self {
+            MultiArch::Same => "same".to_string(),
+            MultiArch::Foreign => "foreign".to_string(),
+            MultiArch::No => "no".to_string(),
+            MultiArch::Allowed => "allowed".to_string(),
+        }
     }
 }
