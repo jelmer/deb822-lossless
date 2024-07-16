@@ -28,6 +28,7 @@
 //! Description: Hello, world!
 //! "#);
 //! ```
+pub mod apt;
 pub mod control;
 pub use control::{Binary, Control, Priority, Source};
 pub mod relations;
