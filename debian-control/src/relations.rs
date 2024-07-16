@@ -588,7 +588,6 @@ impl Parse {
 
 macro_rules! ast_node {
     ($ast:ident, $kind:ident) => {
-        #[derive(PartialEq, Eq, Hash)]
         #[repr(transparent)]
         pub struct $ast(SyntaxNode);
         impl $ast {
@@ -615,21 +614,60 @@ ast_node!(Entry, ENTRY);
 ast_node!(Relation, RELATION);
 ast_node!(Substvar, SUBSTVAR);
 
+impl PartialEq for Relations {
+    fn eq(&self, other: &Self) -> bool {
+        self.entries().collect::<Vec<_>>() == other.entries().collect::<Vec<_>>()
+    }
+}
+
+impl PartialEq for Entry {
+    fn eq(&self, other: &Self) -> bool {
+        self.relations().collect::<Vec<_>>() == other.relations().collect::<Vec<_>>()
+    }
+}
+
+impl PartialEq for Relation {
+    fn eq(&self, other: &Self) -> bool {
+        self.name() == other.name() && self.version() == other.version()
+    }
+}
+
 impl std::fmt::Debug for Relations {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Relations").finish()
+        let mut s = f.debug_struct("Relations");
+
+        for entry in self.entries() {
+            s.field("entry", &entry);
+        }
+
+        s.finish()
     }
 }
 
 impl std::fmt::Debug for Entry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Entry").finish()
+        let mut s = f.debug_struct("Entry");
+
+        for relation in self.relations() {
+            s.field("relation", &relation);
+        }
+
+        s.finish()
     }
 }
 
 impl std::fmt::Debug for Relation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Relation").finish()
+        let mut s = f.debug_struct("Relation");
+
+        s.field("name", &self.name());
+
+        if let Some((vc, version)) = self.version() {
+            s.field("version", &vc);
+            s.field("version", &version);
+        }
+
+        s.finish()
     }
 }
 
@@ -639,7 +677,6 @@ impl Relations {
     }
 
     pub fn substvars(&self) -> impl Iterator<Item = String> + '_ {
-        eprintln!("children: {:#?}", self.0.children().collect::<Vec<_>>());
         self.0
             .children()
             .filter_map(Substvar::cast)
