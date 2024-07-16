@@ -176,6 +176,27 @@ impl std::str::FromStr for PackageListEntry {
 /// A source package in the APT package manager.
 pub struct Source(deb822_lossless::Paragraph);
 
+#[cfg(feature = "python-debian")]
+impl pyo3::ToPyObject for Source {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        use pyo3::prelude::*;
+        let d = self.0.to_object(py);
+
+        let m = py.import_bound("debian.deb822").unwrap();
+        let cls = m.getattr("Sources").unwrap();
+
+        cls.call1((d,)).unwrap().to_object(py)
+    }
+}
+
+#[cfg(feature = "python-debian")]
+impl pyo3::FromPyObject<'_> for Source {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
+        Ok(Source(ob.extract()?))
+    }
+}
+
 impl Source {
     pub fn new(paragraph: deb822_lossless::Paragraph) -> Self {
         Self(paragraph)
@@ -454,6 +475,27 @@ impl std::str::FromStr for Source {
 
 pub struct Package(deb822_lossless::Paragraph);
 
+#[cfg(feature = "python-debian")]
+impl pyo3::ToPyObject for Package {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        use pyo3::prelude::*;
+        let d = self.0.to_object(py);
+
+        let m = py.import_bound("debian.deb822").unwrap();
+        let cls = m.getattr("Packages").unwrap();
+
+        cls.call1((d,)).unwrap().to_object(py)
+    }
+}
+
+#[cfg(feature = "python-debian")]
+impl pyo3::FromPyObject<'_> for Package {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
+        Ok(Package(ob.extract()?))
+    }
+}
+
 impl Package {
     pub fn new(paragraph: deb822_lossless::Paragraph) -> Self {
         Self(paragraph)
@@ -600,7 +642,7 @@ impl Package {
     }
 
     pub fn set_homepage(&mut self, url: &url::Url) {
-        self.0.insert("Homepage", &url.to_string());
+        self.0.insert("Homepage", url.as_ref());
     }
 
     pub fn source(&self) -> Option<String> {
