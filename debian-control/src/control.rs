@@ -43,6 +43,17 @@ impl Control {
         let (control, errors) = deb822_lossless::Deb822::from_file_relaxed(path)?;
         Ok((Control(control), errors))
     }
+
+    pub fn read<R: std::io::Read>(mut r: R) -> Result<Self, deb822_lossless::Error> {
+        Ok(Control(deb822_lossless::Deb822::read(&mut r)?))
+    }
+
+    pub fn read_relaxed<R: std::io::Read>(
+        mut r: R,
+    ) -> Result<(Self, Vec<String>), deb822_lossless::Error> {
+        let (control, errors) = deb822_lossless::Deb822::read_relaxed(&mut r)?;
+        Ok((Control(control), errors))
+    }
 }
 
 impl Default for Control {
