@@ -393,11 +393,13 @@ impl Deb822 {
         paragraph
     }
 
+    /// Read a deb822 file from the given path.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self, Error> {
         let text = std::fs::read_to_string(path)?;
         Ok(Self::from_str(&text)?)
     }
 
+    /// Read a deb822 file from the given path, ignoring any syntax errors.
     pub fn from_file_relaxed(
         path: impl AsRef<Path>,
     ) -> Result<(Self, Vec<String>), std::io::Error> {
@@ -408,6 +410,18 @@ impl Deb822 {
     pub fn from_str_relaxed(s: &str) -> (Self, Vec<String>) {
         let parsed = parse(s);
         (parsed.root(), parsed.errors)
+    }
+
+    pub fn read<R: std::io::Read>(mut r: R) -> Result<Self, Error> {
+        let mut buf = String::new();
+        r.read_to_string(&mut buf)?;
+        Ok(Self::from_str(&buf)?)
+    }
+
+    pub fn read_relaxed<R: std::io::Read>(mut r: R) -> Result<(Self, Vec<String>), std::io::Error> {
+        let mut buf = String::new();
+        r.read_to_string(&mut buf)?;
+        Ok(Self::from_str_relaxed(&buf))
     }
 }
 
