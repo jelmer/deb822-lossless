@@ -8,9 +8,9 @@ pub struct File {
     pub filename: String,
 }
 
-impl ToString for File {
-    fn to_string(&self) -> String {
-        format!("{} {} {}", self.md5sum, self.size, self.filename)
+impl std::fmt::Display for File {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.md5sum, self.size, self.filename)
     }
 }
 
@@ -36,9 +36,9 @@ pub struct Sha1Checksum {
     pub filename: String,
 }
 
-impl ToString for Sha1Checksum {
-    fn to_string(&self) -> String {
-        format!("{} {} {}", self.sha1, self.size, self.filename)
+impl std::fmt::Display for Sha1Checksum {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.sha1, self.size, self.filename)
     }
 }
 
@@ -64,9 +64,9 @@ pub struct Sha256Checksum {
     pub filename: String,
 }
 
-impl ToString for Sha256Checksum {
-    fn to_string(&self) -> String {
-        format!("{} {} {}", self.sha256, self.size, self.filename)
+impl std::fmt::Display for Sha256Checksum {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.sha256, self.size, self.filename)
     }
 }
 
@@ -92,9 +92,9 @@ pub struct Sha512Checksum {
     pub filename: String,
 }
 
-impl ToString for Sha512Checksum {
-    fn to_string(&self) -> String {
-        format!("{} {} {}", self.sha512, self.size, self.filename)
+impl std::fmt::Display for Sha512Checksum {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.sha512, self.size, self.filename)
     }
 }
 
@@ -134,16 +134,17 @@ impl PackageListEntry {
     }
 }
 
-impl ToString for PackageListEntry {
-    fn to_string(&self) -> String {
-        let mut s = format!(
+impl std::fmt::Display for PackageListEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
             "{} {} {} {}",
             self.package, self.package_type, self.section, self.priority
-        );
+        )?;
         for (k, v) in &self.extra {
-            s.push_str(&format!(" {}={}", k, v));
+            write!(f, " {}={}", k, v)?;
         }
-        s
+        Ok(())
     }
 }
 
