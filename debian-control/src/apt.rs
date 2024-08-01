@@ -128,6 +128,62 @@ impl Source {
         self.0.insert("Vcs-Git", url);
     }
 
+    pub fn vcs_svn(&self) -> Option<String> {
+        self.0.get("Vcs-Svn").map(|s| s.to_string())
+    }
+
+    pub fn set_vcs_svn(&mut self, url: &str) {
+        self.0.insert("Vcs-Svn", url);
+    }
+
+    pub fn vcs_hg(&self) -> Option<String> {
+        self.0.get("Vcs-Hg").map(|s| s.to_string())
+    }
+
+    pub fn set_vcs_hg(&mut self, url: &str) {
+        self.0.insert("Vcs-Hg", url);
+    }
+
+    pub fn vcs_bzr(&self) -> Option<String> {
+        self.0.get("Vcs-Bzr").map(|s| s.to_string())
+    }
+
+    pub fn set_vcs_bzr(&mut self, url: &str) {
+        self.0.insert("Vcs-Bzr", url);
+    }
+
+    pub fn vcs_arch(&self) -> Option<String> {
+        self.0.get("Vcs-Arch").map(|s| s.to_string())
+    }
+
+    pub fn set_vcs_arch(&mut self, url: &str) {
+        self.0.insert("Vcs-Arch", url);
+    }
+
+    pub fn vcs_svk(&self) -> Option<String> {
+        self.0.get("Vcs-Svk").map(|s| s.to_string())
+    }
+
+    pub fn set_vcs_svk(&mut self, url: &str) {
+        self.0.insert("Vcs-Svk", url);
+    }
+
+    pub fn vcs_darcs(&self) -> Option<String> {
+        self.0.get("Vcs-Darcs").map(|s| s.to_string())
+    }
+
+    pub fn set_vcs_darcs(&mut self, url: &str) {
+        self.0.insert("Vcs-Darcs", url);
+    }
+
+    pub fn vcs_mtn(&self) -> Option<String> {
+        self.0.get("Vcs-Mtn").map(|s| s.to_string())
+    }
+
+    pub fn set_vcs_mtn(&mut self, url: &str) {
+        self.0.insert("Vcs-Mtn", url);
+    }
+
     pub fn build_depends(&self) -> Option<Relations> {
         self.0.get("Build-Depends").map(|s| s.parse().unwrap())
     }
@@ -232,6 +288,14 @@ impl Source {
 
     pub fn set_directory(&mut self, dir: &str) {
         self.0.insert("Directory", dir);
+    }
+
+    pub fn testsuite(&self) -> Option<String> {
+        self.0.get("Testsuite").map(|s| s.to_string())
+    }
+
+    pub fn set_testsuite(&mut self, testsuite: &str) {
+        self.0.insert("Testsuite", testsuite);
     }
 
     pub fn files(&self) -> Vec<File> {
