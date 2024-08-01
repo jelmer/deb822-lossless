@@ -184,6 +184,14 @@ impl Source {
         self.0.insert("Vcs-Mtn", url);
     }
 
+    pub fn vcs_cvs(&self) -> Option<String> {
+        self.0.get("Vcs-Cvs").map(|s| s.to_string())
+    }
+
+    pub fn set_vcs_cvs(&mut self, url: &str) {
+        self.0.insert("Vcs-Cvs", url);
+    }
+
     pub fn build_depends(&self) -> Option<Relations> {
         self.0.get("Build-Depends").map(|s| s.parse().unwrap())
     }
