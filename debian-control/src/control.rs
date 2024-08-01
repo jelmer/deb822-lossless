@@ -1,3 +1,4 @@
+use crate::fields::Priority;
 use crate::relations::Relations;
 
 pub struct Control(deb822_lossless::Deb822);
@@ -248,42 +249,6 @@ impl pyo3::FromPyObject<'_> for Binary {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum Priority {
-    Required,
-    Important,
-    Standard,
-    Optional,
-    Extra,
-}
-
-impl std::fmt::Display for Priority {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(match self {
-            Priority::Required => "required",
-            Priority::Important => "important",
-            Priority::Standard => "standard",
-            Priority::Optional => "optional",
-            Priority::Extra => "extra",
-        })
-    }
-}
-
-impl std::str::FromStr for Priority {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "required" => Ok(Priority::Required),
-            "important" => Ok(Priority::Important),
-            "standard" => Ok(Priority::Standard),
-            "optional" => Ok(Priority::Optional),
-            "extra" => Ok(Priority::Extra),
-            _ => Err(()),
-        }
-    }
-}
-
 impl Binary {
     /// The name of the package.
     pub fn name(&self) -> Option<String> {
@@ -500,13 +465,13 @@ impl std::str::FromStr for MultiArch {
     }
 }
 
-impl ToString for MultiArch {
-    fn to_string(&self) -> String {
-        match self {
-            MultiArch::Same => "same".to_string(),
-            MultiArch::Foreign => "foreign".to_string(),
-            MultiArch::No => "no".to_string(),
-            MultiArch::Allowed => "allowed".to_string(),
-        }
+impl std::fmt::Display for MultiArch {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(match self {
+            MultiArch::Same => "same",
+            MultiArch::Foreign => "foreign",
+            MultiArch::No => "no",
+            MultiArch::Allowed => "allowed",
+        })
     }
 }

@@ -29,8 +29,11 @@
 //! "#);
 //! ```
 pub mod apt;
+pub mod changes;
 pub mod control;
-pub use control::{Binary, Control, Priority, Source};
+pub use control::{Binary, Control, Source};
+pub mod fields;
+pub use fields::*;
 pub mod relations;
 pub mod vcs;
 
