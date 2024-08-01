@@ -25,6 +25,45 @@ impl From<deb822_lossless::Error> for ParseError {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct File {
+    pub md5sum: String,
+    pub size: usize,
+    pub section: String,
+    pub priority: crate::Priority,
+    pub filename: String,
+}
+
+impl std::fmt::Display for File {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {} {} {} {}",
+            self.md5sum, self.size, self.section, self.priority, self.filename
+        )
+    }
+}
+
+impl std::str::FromStr for File {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut parts = s.split_whitespace();
+        let md5sum = parts.next().ok_or(())?;
+        let size = parts.next().ok_or(())?.parse().map_err(|_| ())?;
+        let section = parts.next().ok_or(())?.to_string();
+        let priority = parts.next().ok_or(())?.parse().map_err(|_| ())?;
+        let filename = parts.next().ok_or(())?.to_string();
+        Ok(Self {
+            md5sum: md5sum.to_string(),
+            size,
+            section,
+            priority,
+            filename,
+        })
+    }
+}
+
 impl Changes {
     pub fn format(&self) -> Option<String> {
         self.0.get("Format").map(|s| s.to_string())
@@ -86,10 +125,34 @@ impl Changes {
             .map(|s| s.lines().map(|line| line.parse().unwrap()).collect())
     }
 
-    pub fn files(&self) -> Option<Vec<crate::fields::File>> {
+    /// Returns the list of files in the source package.
+    pub fn files(&self) -> Option<Vec<File>> {
         self.0
             .get("Files")
             .map(|s| s.lines().map(|line| line.parse().unwrap()).collect())
+    }
+
+    /// Returns the path to the pool directory for the source package.
+    pub fn get_pool_path(&self) -> Option<String> {
+        let files = self.files()?;
+
+        let section = &files.first().unwrap().section;
+
+        let section = if let Some((section, _subsection)) = section.split_once('/') {
+            section
+        } else {
+            "main"
+        };
+
+        let source = self.source()?;
+
+        let subdir = if source.starts_with("lib") {
+            "lib"
+        } else {
+            &source.chars().next().unwrap().to_string()
+        };
+
+        Some(format!("pool/{}/{}/{}", section, subdir, source))
     }
 
     pub fn new() -> Self {
@@ -158,6 +221,21 @@ impl Changes {
 impl Default for Changes {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(feature = "python-debian")]
+impl pyo3::ToPyObject for Changes {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        self.0.to_object(py)
+    }
+}
+
+#[cfg(feature = "python-debian")]
+impl pyo3::FromPyObject<'_> for Changes {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
+        Ok(Changes(ob.extract()?))
     }
 }
 
@@ -245,6 +323,11 @@ Files:
                 "aa83112b0f8774a573bcf0b7b5cc12cc 17153 python optional buildlog-consultant_0.0.34-1_amd64.buildinfo".parse().unwrap(),
                 "a55858b90fe0ca728c89c1a1132b45c5 2550812 python optional python3-buildlog-consultant_0.0.34-1_all.deb".parse().unwrap()
             ])
+        );
+
+        assert_eq!(
+            changes.get_pool_path(),
+            Some("pool/main/b/buildlog-consultant".to_string())
         );
     }
 }
