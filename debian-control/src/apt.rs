@@ -1,9 +1,38 @@
 use crate::control::MultiArch;
-use crate::fields::{File, Priority, Sha1Checksum, Sha256Checksum, Sha512Checksum};
+use crate::fields::{Priority, Sha1Checksum, Sha256Checksum, Sha512Checksum};
 use crate::relations::Relations;
 
 /// A source package in the APT package manager.
 pub struct Source(deb822_lossless::Paragraph);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
+pub struct File {
+    pub md5sum: String,
+    pub size: usize,
+    pub filename: String,
+}
+
+impl std::fmt::Display for File {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.md5sum, self.size, self.filename)
+    }
+}
+
+impl std::str::FromStr for File {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut parts = s.split_whitespace();
+        let md5sum = parts.next().ok_or(())?;
+        let size = parts.next().ok_or(())?.parse().map_err(|_| ())?;
+        let filename = parts.next().ok_or(())?.to_string();
+        Ok(Self {
+            md5sum: md5sum.to_string(),
+            size,
+            filename,
+        })
+    }
+}
 
 #[cfg(feature = "python-debian")]
 impl pyo3::ToPyObject for Source {
