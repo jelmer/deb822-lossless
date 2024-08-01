@@ -500,13 +500,13 @@ impl std::str::FromStr for MultiArch {
     }
 }
 
-impl ToString for MultiArch {
-    fn to_string(&self) -> String {
-        match self {
-            MultiArch::Same => "same".to_string(),
-            MultiArch::Foreign => "foreign".to_string(),
-            MultiArch::No => "no".to_string(),
-            MultiArch::Allowed => "allowed".to_string(),
-        }
+impl std::fmt::Display for MultiArch {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(match self {
+            MultiArch::Same => "same",
+            MultiArch::Foreign => "foreign",
+            MultiArch::No => "no",
+            MultiArch::Allowed => "allowed",
+        })
     }
 }
