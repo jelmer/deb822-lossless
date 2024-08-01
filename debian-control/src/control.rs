@@ -1,3 +1,4 @@
+use crate::fields::Priority;
 use crate::relations::Relations;
 
 pub struct Control(deb822_lossless::Deb822);
@@ -245,42 +246,6 @@ impl pyo3::FromPyObject<'_> for Binary {
     fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
         use pyo3::prelude::*;
         Ok(Binary(ob.extract()?))
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum Priority {
-    Required,
-    Important,
-    Standard,
-    Optional,
-    Extra,
-}
-
-impl std::fmt::Display for Priority {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(match self {
-            Priority::Required => "required",
-            Priority::Important => "important",
-            Priority::Standard => "standard",
-            Priority::Optional => "optional",
-            Priority::Extra => "extra",
-        })
-    }
-}
-
-impl std::str::FromStr for Priority {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "required" => Ok(Priority::Required),
-            "important" => Ok(Priority::Important),
-            "standard" => Ok(Priority::Standard),
-            "optional" => Ok(Priority::Optional),
-            "extra" => Ok(Priority::Extra),
-            _ => Err(()),
-        }
     }
 }
 
