@@ -1,16 +1,20 @@
 use crate::control::MultiArch;
-use crate::control::Priority;
+use crate::fields::{Priority, Sha1Checksum, Sha256Checksum, Sha512Checksum};
 use crate::relations::Relations;
 
+/// A source package in the APT package manager.
+pub struct Source(deb822_lossless::Paragraph);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
 pub struct File {
     pub md5sum: String,
     pub size: usize,
     pub filename: String,
 }
 
-impl ToString for File {
-    fn to_string(&self) -> String {
-        format!("{} {} {}", self.md5sum, self.size, self.filename)
+impl std::fmt::Display for File {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.md5sum, self.size, self.filename)
     }
 }
 
@@ -29,152 +33,6 @@ impl std::str::FromStr for File {
         })
     }
 }
-
-pub struct Sha1Checksum {
-    pub sha1: String,
-    pub size: usize,
-    pub filename: String,
-}
-
-impl ToString for Sha1Checksum {
-    fn to_string(&self) -> String {
-        format!("{} {} {}", self.sha1, self.size, self.filename)
-    }
-}
-
-impl std::str::FromStr for Sha1Checksum {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.split_whitespace();
-        let sha1 = parts.next().ok_or(())?;
-        let size = parts.next().ok_or(())?.parse().map_err(|_| ())?;
-        let filename = parts.next().ok_or(())?.to_string();
-        Ok(Self {
-            sha1: sha1.to_string(),
-            size,
-            filename,
-        })
-    }
-}
-
-pub struct Sha256Checksum {
-    pub sha256: String,
-    pub size: usize,
-    pub filename: String,
-}
-
-impl ToString for Sha256Checksum {
-    fn to_string(&self) -> String {
-        format!("{} {} {}", self.sha256, self.size, self.filename)
-    }
-}
-
-impl std::str::FromStr for Sha256Checksum {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.split_whitespace();
-        let sha256 = parts.next().ok_or(())?;
-        let size = parts.next().ok_or(())?.parse().map_err(|_| ())?;
-        let filename = parts.next().ok_or(())?.to_string();
-        Ok(Self {
-            sha256: sha256.to_string(),
-            size,
-            filename,
-        })
-    }
-}
-
-pub struct Sha512Checksum {
-    pub sha512: String,
-    pub size: usize,
-    pub filename: String,
-}
-
-impl ToString for Sha512Checksum {
-    fn to_string(&self) -> String {
-        format!("{} {} {}", self.sha512, self.size, self.filename)
-    }
-}
-
-impl std::str::FromStr for Sha512Checksum {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.split_whitespace();
-        let sha512 = parts.next().ok_or(())?;
-        let size = parts.next().ok_or(())?.parse().map_err(|_| ())?;
-        let filename = parts.next().ok_or(())?.to_string();
-        Ok(Self {
-            sha512: sha512.to_string(),
-            size,
-            filename,
-        })
-    }
-}
-
-pub struct PackageListEntry {
-    pub package: String,
-    pub package_type: String,
-    pub section: String,
-    pub priority: Priority,
-    pub extra: std::collections::HashMap<String, String>,
-}
-
-impl PackageListEntry {
-    pub fn new(package: &str, package_type: &str, section: &str, priority: Priority) -> Self {
-        Self {
-            package: package.to_string(),
-            package_type: package_type.to_string(),
-            section: section.to_string(),
-            priority,
-            extra: std::collections::HashMap::new(),
-        }
-    }
-}
-
-impl ToString for PackageListEntry {
-    fn to_string(&self) -> String {
-        let mut s = format!(
-            "{} {} {} {}",
-            self.package, self.package_type, self.section, self.priority
-        );
-        for (k, v) in &self.extra {
-            s.push_str(&format!(" {}={}", k, v));
-        }
-        s
-    }
-}
-
-impl std::str::FromStr for PackageListEntry {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.split_whitespace();
-        let package = parts.next().ok_or(())?.to_string();
-        let package_type = parts.next().ok_or(())?.to_string();
-        let section = parts.next().ok_or(())?.to_string();
-        let priority = parts.next().ok_or(())?.parse().map_err(|_| ())?;
-        let mut extra = std::collections::HashMap::new();
-        for part in parts {
-            let mut kv = part.split('=');
-            let k = kv.next().ok_or(())?.to_string();
-            let v = kv.next().ok_or(())?.to_string();
-            extra.insert(k, v);
-        }
-        Ok(Self {
-            package,
-            package_type,
-            section,
-            priority,
-            extra,
-        })
-    }
-}
-
-/// A source package in the APT package manager.
-pub struct Source(deb822_lossless::Paragraph);
 
 #[cfg(feature = "python-debian")]
 impl pyo3::ToPyObject for Source {
@@ -723,11 +581,12 @@ impl std::str::FromStr for Package {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fields::PackageListEntry;
 
     #[test]
     fn test_parse_package_list() {
         let s = "package1 binary section standard extra1=foo extra2=bar";
-        let p: super::PackageListEntry = s.parse().unwrap();
+        let p: PackageListEntry = s.parse().unwrap();
         assert_eq!(p.package, "package1");
         assert_eq!(p.package_type, "binary");
         assert_eq!(p.section, "section");
@@ -739,7 +598,7 @@ mod tests {
     #[test]
     fn test_parse_package_list_no_extra() {
         let s = "package1 binary section standard";
-        let p: super::PackageListEntry = s.parse().unwrap();
+        let p: PackageListEntry = s.parse().unwrap();
         assert_eq!(p.package, "package1");
         assert_eq!(p.package_type, "binary");
         assert_eq!(p.section, "section");
