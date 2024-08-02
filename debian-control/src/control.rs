@@ -273,6 +273,14 @@ impl Source {
                 _ => panic!("invalid Rules-Requires-Root value"),
             })
     }
+
+    pub fn testsuite(&self) -> Option<String> {
+        self.0.get("Testsuite")
+    }
+
+    pub fn set_testsuite(&mut self, testsuite: &str) {
+        self.0.insert("Testsuite", testsuite);
+    }
 }
 
 #[cfg(feature = "python-debian")]
