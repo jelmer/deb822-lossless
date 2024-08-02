@@ -147,9 +147,9 @@ impl Changes {
         let source = self.source()?;
 
         let subdir = if source.starts_with("lib") {
-            "lib"
+            "lib".to_string()
         } else {
-            &source.chars().next().unwrap().to_string()
+            source[..1].to_lowercase()
         };
 
         Some(format!("pool/{}/{}/{}", section, subdir, source))
