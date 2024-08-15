@@ -726,7 +726,27 @@ impl Relation {
         Relation(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
+    /// Create a new simple relation, without any version constraints.
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::relations::Relation;
+    /// let relation = Relation::simple("samba");
+    /// assert_eq!(relation.to_string(), "samba");
+    /// ```
+    pub fn simple(name: &str) -> Self {
+        Self::new(name, None)
+    }
+
     /// Remove the version constraint from the relation.
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::relations::{Relation, VersionConstraint};
+    /// let mut relation = Relation::new("samba", Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
+    /// relation.drop_constraint();
+    /// assert_eq!(relation.to_string(), "samba");
+    /// ```
     pub fn drop_constraint(&mut self) -> bool {
         let version_token = self.0.children().find(|n| n.kind() == VERSION);
         if let Some(version_token) = version_token {
@@ -745,6 +765,13 @@ impl Relation {
     }
 
     /// Return the name of the package in the relation.
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::relations::Relation;
+    /// let relation = Relation::simple("samba");
+    /// assert_eq!(relation.name(), "samba");
+    /// ```
     pub fn name(&self) -> String {
         self.0
             .children_with_tokens()
@@ -835,162 +862,176 @@ impl std::str::FromStr for Relations {
     }
 }
 
-#[test]
-fn test_parse() {
-    let input = "python3-dulwich";
-    let parsed: Relations = input.parse().unwrap();
-    assert_eq!(parsed.to_string(), input);
-    assert_eq!(parsed.entries().count(), 1);
-    let entry = parsed.entries().next().unwrap();
-    assert_eq!(entry.to_string(), "python3-dulwich");
-    assert_eq!(entry.relations().count(), 1);
-    let relation = entry.relations().next().unwrap();
-    assert_eq!(relation.to_string(), "python3-dulwich");
-    assert_eq!(relation.version(), None);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let input = "python3-dulwich (>= 0.20.21)";
-    let parsed: Relations = input.parse().unwrap();
-    assert_eq!(parsed.to_string(), input);
-    assert_eq!(parsed.entries().count(), 1);
-    let entry = parsed.entries().next().unwrap();
-    assert_eq!(entry.to_string(), "python3-dulwich (>= 0.20.21)");
-    assert_eq!(entry.relations().count(), 1);
-    let relation = entry.relations().next().unwrap();
-    assert_eq!(relation.to_string(), "python3-dulwich (>= 0.20.21)");
-    assert_eq!(
-        relation.version(),
-        Some((
-            VersionConstraint::GreaterThanEqual,
-            "0.20.21".parse().unwrap()
-        ))
-    );
-}
+    #[test]
+    fn test_parse() {
+        let input = "python3-dulwich";
+        let parsed: Relations = input.parse().unwrap();
+        assert_eq!(parsed.to_string(), input);
+        assert_eq!(parsed.entries().count(), 1);
+        let entry = parsed.entries().next().unwrap();
+        assert_eq!(entry.to_string(), "python3-dulwich");
+        assert_eq!(entry.relations().count(), 1);
+        let relation = entry.relations().next().unwrap();
+        assert_eq!(relation.to_string(), "python3-dulwich");
+        assert_eq!(relation.version(), None);
 
-#[test]
-fn test_multiple() {
-    let input = "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)";
-    let parsed: Relations = input.parse().unwrap();
-    assert_eq!(parsed.to_string(), input);
-    assert_eq!(parsed.entries().count(), 2);
-    let entry = parsed.entries().next().unwrap();
-    assert_eq!(entry.to_string(), "python3-dulwich (>= 0.20.21)");
-    assert_eq!(entry.relations().count(), 1);
-    let relation = entry.relations().next().unwrap();
-    assert_eq!(relation.to_string(), "python3-dulwich (>= 0.20.21)");
-    assert_eq!(
-        relation.version(),
-        Some((
-            VersionConstraint::GreaterThanEqual,
-            "0.20.21".parse().unwrap()
-        ))
-    );
-    let entry = parsed.entries().nth(1).unwrap();
-    assert_eq!(entry.to_string(), "python3-dulwich (<< 0.21)");
-    assert_eq!(entry.relations().count(), 1);
-    let relation = entry.relations().next().unwrap();
-    assert_eq!(relation.to_string(), "python3-dulwich (<< 0.21)");
-    assert_eq!(
-        relation.version(),
-        Some((VersionConstraint::LessThan, "0.21".parse().unwrap()))
-    );
-}
+        let input = "python3-dulwich (>= 0.20.21)";
+        let parsed: Relations = input.parse().unwrap();
+        assert_eq!(parsed.to_string(), input);
+        assert_eq!(parsed.entries().count(), 1);
+        let entry = parsed.entries().next().unwrap();
+        assert_eq!(entry.to_string(), "python3-dulwich (>= 0.20.21)");
+        assert_eq!(entry.relations().count(), 1);
+        let relation = entry.relations().next().unwrap();
+        assert_eq!(relation.to_string(), "python3-dulwich (>= 0.20.21)");
+        assert_eq!(
+            relation.version(),
+            Some((
+                VersionConstraint::GreaterThanEqual,
+                "0.20.21".parse().unwrap()
+            ))
+        );
+    }
 
-#[test]
-fn test_architectures() {
-    let input = "python3-dulwich [amd64 arm64 armhf i386 mips mips64el mipsel ppc64el s390x]";
-    let parsed: Relations = input.parse().unwrap();
-    assert_eq!(parsed.to_string(), input);
-    assert_eq!(parsed.entries().count(), 1);
-    let entry = parsed.entries().next().unwrap();
-    assert_eq!(
-        entry.to_string(),
-        "python3-dulwich [amd64 arm64 armhf i386 mips mips64el mipsel ppc64el s390x]"
-    );
-    assert_eq!(entry.relations().count(), 1);
-    let relation = entry.relations().next().unwrap();
-    assert_eq!(
-        relation.to_string(),
-        "python3-dulwich [amd64 arm64 armhf i386 mips mips64el mipsel ppc64el s390x]"
-    );
-    assert_eq!(relation.version(), None);
-    assert_eq!(
-        relation.architectures().collect::<Vec<_>>(),
-        vec!["amd64", "arm64", "armhf", "i386", "mips", "mips64el", "mipsel", "ppc64el", "s390x"]
+    #[test]
+    fn test_multiple() {
+        let input = "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)";
+        let parsed: Relations = input.parse().unwrap();
+        assert_eq!(parsed.to_string(), input);
+        assert_eq!(parsed.entries().count(), 2);
+        let entry = parsed.entries().next().unwrap();
+        assert_eq!(entry.to_string(), "python3-dulwich (>= 0.20.21)");
+        assert_eq!(entry.relations().count(), 1);
+        let relation = entry.relations().next().unwrap();
+        assert_eq!(relation.to_string(), "python3-dulwich (>= 0.20.21)");
+        assert_eq!(
+            relation.version(),
+            Some((
+                VersionConstraint::GreaterThanEqual,
+                "0.20.21".parse().unwrap()
+            ))
+        );
+        let entry = parsed.entries().nth(1).unwrap();
+        assert_eq!(entry.to_string(), "python3-dulwich (<< 0.21)");
+        assert_eq!(entry.relations().count(), 1);
+        let relation = entry.relations().next().unwrap();
+        assert_eq!(relation.to_string(), "python3-dulwich (<< 0.21)");
+        assert_eq!(
+            relation.version(),
+            Some((VersionConstraint::LessThan, "0.21".parse().unwrap()))
+        );
+    }
+
+    #[test]
+    fn test_architectures() {
+        let input = "python3-dulwich [amd64 arm64 armhf i386 mips mips64el mipsel ppc64el s390x]";
+        let parsed: Relations = input.parse().unwrap();
+        assert_eq!(parsed.to_string(), input);
+        assert_eq!(parsed.entries().count(), 1);
+        let entry = parsed.entries().next().unwrap();
+        assert_eq!(
+            entry.to_string(),
+            "python3-dulwich [amd64 arm64 armhf i386 mips mips64el mipsel ppc64el s390x]"
+        );
+        assert_eq!(entry.relations().count(), 1);
+        let relation = entry.relations().next().unwrap();
+        assert_eq!(
+            relation.to_string(),
+            "python3-dulwich [amd64 arm64 armhf i386 mips mips64el mipsel ppc64el s390x]"
+        );
+        assert_eq!(relation.version(), None);
+        assert_eq!(
+            relation.architectures().collect::<Vec<_>>(),
+            vec![
+                "amd64", "arm64", "armhf", "i386", "mips", "mips64el", "mipsel", "ppc64el", "s390x"
+            ]
             .into_iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
-    );
-}
+        );
+    }
 
-#[test]
-fn test_profiles() {
-    let input = "foo (>= 1.0) [i386 arm] <!nocheck> <!cross>, bar";
-    let parsed: Relations = input.parse().unwrap();
-    assert_eq!(parsed.to_string(), input);
-    assert_eq!(parsed.entries().count(), 2);
-    let entry = parsed.entries().next().unwrap();
-    assert_eq!(
-        entry.to_string(),
-        "foo (>= 1.0) [i386 arm] <!nocheck> <!cross>"
-    );
-    assert_eq!(entry.relations().count(), 1);
-    let relation = entry.relations().next().unwrap();
-    assert_eq!(
-        relation.to_string(),
-        "foo (>= 1.0) [i386 arm] <!nocheck> <!cross>"
-    );
-    assert_eq!(
-        relation.version(),
-        Some((VersionConstraint::GreaterThanEqual, "1.0".parse().unwrap()))
-    );
-    assert_eq!(
-        relation.architectures().collect::<Vec<_>>(),
-        vec!["i386", "arm"]
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<_>>()
-    );
-    assert_eq!(
-        relation.profiles().collect::<Vec<_>>(),
-        vec![
-            vec![BuildProfile::Disabled("nocheck".to_string())],
-            vec![BuildProfile::Disabled("cross".to_string())]
-        ]
-    );
-}
+    #[test]
+    fn test_profiles() {
+        let input = "foo (>= 1.0) [i386 arm] <!nocheck> <!cross>, bar";
+        let parsed: Relations = input.parse().unwrap();
+        assert_eq!(parsed.to_string(), input);
+        assert_eq!(parsed.entries().count(), 2);
+        let entry = parsed.entries().next().unwrap();
+        assert_eq!(
+            entry.to_string(),
+            "foo (>= 1.0) [i386 arm] <!nocheck> <!cross>"
+        );
+        assert_eq!(entry.relations().count(), 1);
+        let relation = entry.relations().next().unwrap();
+        assert_eq!(
+            relation.to_string(),
+            "foo (>= 1.0) [i386 arm] <!nocheck> <!cross>"
+        );
+        assert_eq!(
+            relation.version(),
+            Some((VersionConstraint::GreaterThanEqual, "1.0".parse().unwrap()))
+        );
+        assert_eq!(
+            relation.architectures().collect::<Vec<_>>(),
+            vec!["i386", "arm"]
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            relation.profiles().collect::<Vec<_>>(),
+            vec![
+                vec![BuildProfile::Disabled("nocheck".to_string())],
+                vec![BuildProfile::Disabled("cross".to_string())]
+            ]
+        );
+    }
 
-#[test]
-fn test_substvar() {
-    let input = "${shlibs:Depends}";
+    #[test]
+    fn test_substvar() {
+        let input = "${shlibs:Depends}";
 
-    let parsed: Relations = input.parse().unwrap();
-    assert_eq!(parsed.to_string(), input);
-    assert_eq!(parsed.entries().count(), 0);
+        let parsed: Relations = input.parse().unwrap();
+        assert_eq!(parsed.to_string(), input);
+        assert_eq!(parsed.entries().count(), 0);
 
-    assert_eq!(
-        parsed.substvars().collect::<Vec<_>>(),
-        vec!["${shlibs:Depends}"]
-    );
-}
+        assert_eq!(
+            parsed.substvars().collect::<Vec<_>>(),
+            vec!["${shlibs:Depends}"]
+        );
+    }
 
-#[test]
-fn test_new() {
-    let r = Relation::new(
-        "samba",
-        Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())),
-    );
+    #[test]
+    fn test_new() {
+        let r = Relation::new(
+            "samba",
+            Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())),
+        );
 
-    assert_eq!(r.to_string(), "samba (>= 2.0)");
-}
+        assert_eq!(r.to_string(), "samba (>= 2.0)");
+    }
 
-#[test]
-fn test_drop_constraint() {
-    let mut r = Relation::new(
-        "samba",
-        Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())),
-    );
+    #[test]
+    fn test_drop_constraint() {
+        let mut r = Relation::new(
+            "samba",
+            Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())),
+        );
 
-    r.drop_constraint();
+        r.drop_constraint();
 
-    assert_eq!(r.to_string(), "samba");
+        assert_eq!(r.to_string(), "samba");
+    }
+
+    #[test]
+    fn test_simple() {
+        let r = Relation::simple("samba");
+
+        assert_eq!(r.to_string(), "samba");
+    }
 }
