@@ -753,6 +753,11 @@ impl Relations {
             .filter_map(Substvar::cast)
             .map(|s| s.to_string())
     }
+
+    pub fn parse_relaxed(s: &str) -> (Relations, Vec<String>) {
+        let parse = parse(s);
+        (parse.root(), parse.errors)
+    }
 }
 
 impl From<Vec<Entry>> for Relations {
