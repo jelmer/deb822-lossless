@@ -1,5 +1,5 @@
 use debversion::Version;
-use rowan::Direction;
+use rowan::{Direction, NodeOrToken};
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -281,7 +281,7 @@ impl rowan::Language for Lang {
 
 /// GreenNode is an immutable tree, which is cheap to change,
 /// but doesn't contain offsets and parent pointers.
-use rowan::GreenNode;
+use rowan::{GreenNode, GreenToken};
 
 /// You can construct GreenNodes by hand, but a builder
 /// is helpful for top-down parsers: it maintains a stack
@@ -695,6 +695,58 @@ impl Relations {
         self.get_entry(idx).unwrap().remove();
     }
 
+    /// Insert a new entry at the given index
+    pub fn insert(&mut self, idx: usize, entry: Entry) {
+        let is_empty = !self.entries().any(|_| true);
+        let (position, new_children) = if let Some(current_entry) = self.entries().nth(idx) {
+            let to_insert: Vec<NodeOrToken<GreenNode, GreenToken>> = if idx == 0 && is_empty {
+                vec![entry.0.green().into()]
+            } else {
+                vec![
+                    entry.0.green().into(),
+                    NodeOrToken::Token(GreenToken::new(COMMA.into(), ",")),
+                    NodeOrToken::Token(GreenToken::new(WHITESPACE.into(), " ")),
+                ]
+            };
+
+            (current_entry.0.index(), to_insert)
+        } else {
+            let child_count = self.0.children().count();
+            (
+                child_count,
+                if idx == 0 {
+                    vec![entry.0.green().into()]
+                } else {
+                    vec![
+                        NodeOrToken::Token(GreenToken::new(COMMA.into(), ",")),
+                        NodeOrToken::Token(GreenToken::new(WHITESPACE.into(), " ")),
+                        entry.0.green().into(),
+                    ]
+                },
+            )
+        };
+        self.0 = SyntaxNode::new_root(
+            self.0.replace_with(
+                self.0
+                    .green()
+                    .splice_children(position..position, new_children),
+            ),
+        );
+    }
+
+    pub fn replace(&mut self, idx: usize, entry: Entry) {
+        let current_entry = self.get_entry(idx).unwrap();
+        self.0.splice_children(
+            current_entry.0.index()..current_entry.0.index() + 1,
+            vec![entry.0.into()],
+        );
+    }
+
+    pub fn push(&mut self, entry: Entry) {
+        let pos = self.entries().count();
+        self.insert(pos, entry);
+    }
+
     pub fn substvars(&self) -> impl Iterator<Item = String> + '_ {
         self.0
             .children()
@@ -704,6 +756,13 @@ impl Relations {
 }
 
 impl Entry {
+    pub fn new() -> Self {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(SyntaxKind::ENTRY.into());
+        builder.finish_node();
+        Entry(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+
     pub fn relations(&self) -> impl Iterator<Item = Relation> + '_ {
         self.0.children().filter_map(Relation::cast)
     }
@@ -748,6 +807,47 @@ impl Entry {
             }
         }
         self.0.detach();
+    }
+}
+
+fn inject(builder: &mut GreenNodeBuilder, node: SyntaxNode) {
+    for child in node.children_with_tokens() {
+        match child {
+            rowan::NodeOrToken::Node(child) => {
+                builder.start_node(child.kind().into());
+                inject(builder, child);
+                builder.finish_node();
+            }
+            rowan::NodeOrToken::Token(token) => {
+                builder.token(token.kind().into(), token.text());
+            }
+        }
+    }
+}
+
+impl From<Vec<Relation>> for Entry {
+    fn from(relations: Vec<Relation>) -> Self {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(SyntaxKind::ENTRY.into());
+        for (i, relation) in relations.into_iter().enumerate() {
+            if i > 0 {
+                builder.token(COMMA.into(), ",");
+                builder.token(WHITESPACE.into(), " ");
+            }
+            inject(&mut builder, relation.0);
+        }
+        builder.finish_node();
+        Entry(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+}
+
+impl From<Relation> for Entry {
+    fn from(relation: Relation) -> Self {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(SyntaxKind::ENTRY.into());
+        inject(&mut builder, relation.0);
+        builder.finish_node();
+        Entry(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 }
 
@@ -1125,6 +1225,64 @@ mod tests {
         assert_eq!(
             rels.to_string(),
             "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.22)"
+        );
+    }
+
+    #[test]
+    fn test_push() {
+        let mut rels: Relations = r#"python3-dulwich (>= 0.20.21)"#.parse().unwrap();
+        let entry = Entry::from(vec![Relation::simple("python3-dulwich")]);
+        rels.push(entry);
+        assert_eq!(
+            rels.to_string(),
+            "python3-dulwich (>= 0.20.21), python3-dulwich"
+        );
+    }
+
+    #[test]
+    fn test_push_from_empty() {
+        let mut rels: Relations = "".parse().unwrap();
+        let entry = Entry::from(vec![Relation::simple("python3-dulwich")]);
+        rels.push(entry);
+        assert_eq!(rels.to_string(), "python3-dulwich");
+    }
+
+    #[test]
+    fn test_insert() {
+        let mut rels: Relations = r#"python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"#
+            .parse()
+            .unwrap();
+        let entry = Entry::from(vec![Relation::simple("python3-dulwich")]);
+        rels.insert(1, entry);
+        assert_eq!(
+            rels.to_string(),
+            "python3-dulwich (>= 0.20.21), python3-dulwich, python3-dulwich (<< 0.21)"
+        );
+    }
+
+    #[test]
+    fn test_insert_at_start() {
+        let mut rels: Relations = r#"python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"#
+            .parse()
+            .unwrap();
+        let entry = Entry::from(vec![Relation::simple("python3-dulwich")]);
+        rels.insert(0, entry);
+        assert_eq!(
+            rels.to_string(),
+            "python3-dulwich, python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"
+        );
+    }
+
+    #[test]
+    fn test_replace() {
+        let mut rels: Relations = r#"python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"#
+            .parse()
+            .unwrap();
+        let entry = Entry::from(vec![Relation::simple("python3-dulwich")]);
+        rels.replace(1, entry);
+        assert_eq!(
+            rels.to_string(),
+            "python3-dulwich (>= 0.20.21), python3-dulwich"
         );
     }
 }
