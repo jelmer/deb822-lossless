@@ -755,6 +755,28 @@ impl Relations {
     }
 }
 
+impl From<Vec<Entry>> for Relations {
+    fn from(entries: Vec<Entry>) -> Self {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(ROOT.into());
+        for (i, entry) in entries.into_iter().enumerate() {
+            if i > 0 {
+                builder.token(COMMA.into(), ",");
+                builder.token(WHITESPACE.into(), " ");
+            }
+            inject(&mut builder, entry.0);
+        }
+        builder.finish_node();
+        Relations(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+}
+
+impl From<Entry> for Relations {
+    fn from(entry: Entry) -> Self {
+        Self::from(vec![entry])
+    }
+}
+
 impl Entry {
     pub fn new() -> Self {
         let mut builder = GreenNodeBuilder::new();
@@ -831,7 +853,8 @@ impl From<Vec<Relation>> for Entry {
         builder.start_node(SyntaxKind::ENTRY.into());
         for (i, relation) in relations.into_iter().enumerate() {
             if i > 0 {
-                builder.token(COMMA.into(), ",");
+                builder.token(WHITESPACE.into(), " ");
+                builder.token(COMMA.into(), "|");
                 builder.token(WHITESPACE.into(), " ");
             }
             inject(&mut builder, relation.0);
@@ -843,11 +866,7 @@ impl From<Vec<Relation>> for Entry {
 
 impl From<Relation> for Entry {
     fn from(relation: Relation) -> Self {
-        let mut builder = GreenNodeBuilder::new();
-        builder.start_node(SyntaxKind::ENTRY.into());
-        inject(&mut builder, relation.0);
-        builder.finish_node();
-        Entry(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Self::from(vec![relation])
     }
 }
 
@@ -1284,5 +1303,25 @@ mod tests {
             rels.to_string(),
             "python3-dulwich (>= 0.20.21), python3-dulwich"
         );
+    }
+
+    #[test]
+    fn test_relation_from_entries() {
+        let entries = vec![
+            Entry::from(vec![Relation::simple("python3-dulwich")]),
+            Entry::from(vec![Relation::simple("python3-breezy")]),
+        ];
+        let rels: Relations = entries.into();
+        assert_eq!(rels.to_string(), "python3-dulwich, python3-breezy");
+    }
+
+    #[test]
+    fn test_entry_from_relations() {
+        let relations = vec![
+            Relation::simple("python3-dulwich"),
+            Relation::simple("python3-breezy"),
+        ];
+        let entry: Entry = relations.into();
+        assert_eq!(entry.to_string(), "python3-dulwich | python3-breezy");
     }
 }
