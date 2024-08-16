@@ -1,4 +1,5 @@
 use debversion::Version;
+use rowan::Direction;
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -684,49 +685,14 @@ impl Relations {
         self.0.children().filter_map(Entry::cast)
     }
 
-    pub fn get_mut_entry(&mut self, idx: usize) -> Option<Entry> {
-        self.0.children().filter_map(Entry::cast).nth(idx)
-    }
-
+    /// Remove the entry at the given index
     pub fn get_entry(&self, idx: usize) -> Option<Entry> {
-        self.0.children().filter_map(Entry::cast).nth(idx)
+        self.entries().nth(idx)
     }
 
+    /// Remove the entry at the given index
     pub fn remove(&mut self, idx: usize) {
-        let entry = self.get_mut_entry(idx).unwrap();
-        let mut removed_comma = false;
-        while let Some(n) = entry.0.next_sibling_or_token() {
-            if n.kind() == WHITESPACE || n.kind() == COMMENT || n.kind() == NEWLINE {
-                n.detach();
-            } else if n.kind() == COMMA {
-                n.detach();
-                removed_comma = true;
-                break;
-            } else {
-                panic!("Unexpected node: {:?}", n);
-            }
-        }
-        if idx > 0 {
-            while let Some(n) = entry.0.prev_sibling_or_token() {
-                if n.kind() == WHITESPACE || n.kind() == NEWLINE {
-                    n.detach();
-                } else if !removed_comma && n.kind() == COMMA {
-                    n.detach();
-                    break;
-                } else {
-                    break;
-                }
-            }
-        } else {
-            while let Some(n) = entry.0.next_sibling_or_token() {
-                if n.kind() == WHITESPACE || n.kind() == NEWLINE {
-                    n.detach();
-                } else {
-                    break;
-                }
-            }
-        }
-        entry.0.detach();
+        self.get_entry(idx).unwrap().remove();
     }
 
     pub fn substvars(&self) -> impl Iterator<Item = String> + '_ {
@@ -740,6 +706,48 @@ impl Relations {
 impl Entry {
     pub fn relations(&self) -> impl Iterator<Item = Relation> + '_ {
         self.0.children().filter_map(Relation::cast)
+    }
+
+    /// Remove this entry
+    pub fn remove(&mut self) {
+        let mut removed_comma = false;
+        let is_first = !self
+            .0
+            .siblings(Direction::Prev)
+            .skip(1)
+            .any(|n| n.kind() == ENTRY);
+        while let Some(n) = self.0.next_sibling_or_token() {
+            if n.kind() == WHITESPACE || n.kind() == COMMENT || n.kind() == NEWLINE {
+                n.detach();
+            } else if n.kind() == COMMA {
+                n.detach();
+                removed_comma = true;
+                break;
+            } else {
+                panic!("Unexpected node: {:?}", n);
+            }
+        }
+        if !is_first {
+            while let Some(n) = self.0.prev_sibling_or_token() {
+                if n.kind() == WHITESPACE || n.kind() == NEWLINE {
+                    n.detach();
+                } else if !removed_comma && n.kind() == COMMA {
+                    n.detach();
+                    break;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            while let Some(n) = self.0.next_sibling_or_token() {
+                if n.kind() == WHITESPACE || n.kind() == NEWLINE {
+                    n.detach();
+                } else {
+                    break;
+                }
+            }
+        }
+        self.0.detach();
     }
 }
 
