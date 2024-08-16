@@ -833,18 +833,18 @@ impl Entry {
 }
 
 fn inject(builder: &mut GreenNodeBuilder, node: SyntaxNode) {
+    builder.start_node(node.kind().into());
     for child in node.children_with_tokens() {
         match child {
             rowan::NodeOrToken::Node(child) => {
-                builder.start_node(child.kind().into());
                 inject(builder, child);
-                builder.finish_node();
             }
             rowan::NodeOrToken::Token(token) => {
                 builder.token(token.kind().into(), token.text());
             }
         }
     }
+    builder.finish_node();
 }
 
 impl From<Vec<Relation>> for Entry {
@@ -1312,6 +1312,7 @@ mod tests {
             Entry::from(vec![Relation::simple("python3-breezy")]),
         ];
         let rels: Relations = entries.into();
+        assert_eq!(rels.entries().count(), 2);
         assert_eq!(rels.to_string(), "python3-dulwich, python3-breezy");
     }
 
@@ -1322,6 +1323,7 @@ mod tests {
             Relation::simple("python3-breezy"),
         ];
         let entry: Entry = relations.into();
+        assert_eq!(entry.relations().count(), 2);
         assert_eq!(entry.to_string(), "python3-dulwich | python3-breezy");
     }
 }
