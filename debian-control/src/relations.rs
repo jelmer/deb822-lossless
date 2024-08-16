@@ -1,4 +1,5 @@
 use debversion::Version;
+use rowan::Direction;
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -21,6 +22,7 @@ pub enum SyntaxKind {
     R_ANGLE,    // >
     EQUAL,      // =
     WHITESPACE, // whitespace
+    NEWLINE,    // newline
     COMMENT,    // comments
     DOLLAR,     // $
     L_CURLY,
@@ -125,7 +127,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_whitespace(c: char) -> bool {
-        c == ' ' || c == '\t' || c == '\r' || c == '\n'
+        c == ' ' || c == '\t' || c == '\r'
     }
 
     fn is_valid_key_char(c: char) -> bool {
@@ -206,6 +208,10 @@ impl<'a> Lexer<'a> {
                 '=' => {
                     self.input.next();
                     Some((SyntaxKind::EQUAL, "=".to_owned()))
+                }
+                '\n' => {
+                    self.input.next();
+                    Some((SyntaxKind::NEWLINE, "\n".to_owned()))
                 }
                 _ if Self::is_whitespace(c) => {
                     let whitespace = self.read_while(Self::is_whitespace);
@@ -548,7 +554,10 @@ fn parse(text: &str) -> Parse {
             self.tokens.last().map(|(kind, _)| *kind)
         }
         fn skip_ws(&mut self) {
-            while self.current() == Some(WHITESPACE) || self.current() == Some(COMMENT) {
+            while self.current() == Some(WHITESPACE)
+                || self.current() == Some(COMMENT)
+                || self.current() == Some(NEWLINE)
+            {
                 self.bump()
             }
         }
@@ -578,7 +587,7 @@ type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
 
 impl Parse {
     fn syntax(&self) -> SyntaxNode {
-        SyntaxNode::new_root(self.green_node.clone())
+        SyntaxNode::new_root(self.green_node.clone()).clone_for_update()
     }
 
     fn root(&self) -> Relations {
@@ -676,6 +685,16 @@ impl Relations {
         self.0.children().filter_map(Entry::cast)
     }
 
+    /// Remove the entry at the given index
+    pub fn get_entry(&self, idx: usize) -> Option<Entry> {
+        self.entries().nth(idx)
+    }
+
+    /// Remove the entry at the given index
+    pub fn remove(&mut self, idx: usize) {
+        self.get_entry(idx).unwrap().remove();
+    }
+
     pub fn substvars(&self) -> impl Iterator<Item = String> + '_ {
         self.0
             .children()
@@ -687,6 +706,48 @@ impl Relations {
 impl Entry {
     pub fn relations(&self) -> impl Iterator<Item = Relation> + '_ {
         self.0.children().filter_map(Relation::cast)
+    }
+
+    /// Remove this entry
+    pub fn remove(&mut self) {
+        let mut removed_comma = false;
+        let is_first = !self
+            .0
+            .siblings(Direction::Prev)
+            .skip(1)
+            .any(|n| n.kind() == ENTRY);
+        while let Some(n) = self.0.next_sibling_or_token() {
+            if n.kind() == WHITESPACE || n.kind() == COMMENT || n.kind() == NEWLINE {
+                n.detach();
+            } else if n.kind() == COMMA {
+                n.detach();
+                removed_comma = true;
+                break;
+            } else {
+                panic!("Unexpected node: {:?}", n);
+            }
+        }
+        if !is_first {
+            while let Some(n) = self.0.prev_sibling_or_token() {
+                if n.kind() == WHITESPACE || n.kind() == NEWLINE {
+                    n.detach();
+                } else if !removed_comma && n.kind() == COMMA {
+                    n.detach();
+                    break;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            while let Some(n) = self.0.next_sibling_or_token() {
+                if n.kind() == WHITESPACE || n.kind() == NEWLINE {
+                    n.detach();
+                } else {
+                    break;
+                }
+            }
+        }
+        self.0.detach();
     }
 }
 
@@ -751,10 +812,11 @@ impl Relation {
         let version_token = self.0.children().find(|n| n.kind() == VERSION);
         if let Some(version_token) = version_token {
             // Remove any whitespace before the version token
-            let prev = version_token.prev_sibling_or_token();
-            if let Some(prev) = prev {
-                if prev.kind() == WHITESPACE {
+            while let Some(prev) = version_token.prev_sibling_or_token() {
+                if prev.kind() == WHITESPACE || prev.kind() == NEWLINE {
                     prev.detach();
+                } else {
+                    break;
                 }
             }
             version_token.detach();
@@ -829,7 +891,7 @@ impl Relation {
             let mut current = vec![];
             for token in profile.children_with_tokens() {
                 match token.kind() {
-                    WHITESPACE => {
+                    WHITESPACE | NEWLINE => {
                         if !current.is_empty() {
                             ret.push(current.join("").parse::<BuildProfile>().unwrap());
                             current = vec![];
@@ -1033,5 +1095,36 @@ mod tests {
         let r = Relation::simple("samba");
 
         assert_eq!(r.to_string(), "samba");
+    }
+
+    #[test]
+    fn test_remove_first_entry() {
+        let mut rels: Relations = r#"python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"#
+            .parse()
+            .unwrap();
+        rels.remove(0);
+        assert_eq!(rels.to_string(), "python3-dulwich (<< 0.21)");
+    }
+
+    #[test]
+    fn test_remove_last_entry() {
+        let mut rels: Relations = r#"python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"#
+            .parse()
+            .unwrap();
+        rels.remove(1);
+        assert_eq!(rels.to_string(), "python3-dulwich (>= 0.20.21)");
+    }
+
+    #[test]
+    fn test_remove_middle() {
+        let mut rels: Relations =
+            r#"python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21), python3-dulwich (<< 0.22)"#
+                .parse()
+                .unwrap();
+        rels.remove(1);
+        assert_eq!(
+            rels.to_string(),
+            "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.22)"
+        );
     }
 }
