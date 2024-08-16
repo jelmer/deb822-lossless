@@ -8,6 +8,10 @@ impl Control {
         Control(deb822_lossless::Deb822::new())
     }
 
+    pub fn as_mut_deb822(&mut self) -> &mut deb822_lossless::Deb822 {
+        &mut self.0
+    }
+
     pub fn source(&self) -> Option<Source> {
         self.0
             .paragraphs()
@@ -77,6 +81,10 @@ impl Source {
     /// The name of the source package.
     pub fn name(&self) -> Option<String> {
         self.0.get("Source")
+    }
+
+    pub fn as_mut_deb822(&mut self) -> &mut deb822_lossless::Paragraph {
+        &mut self.0
     }
 
     pub fn get(&self, key: &str) -> Option<String> {
@@ -322,6 +330,10 @@ impl pyo3::FromPyObject<'_> for Binary {
 }
 
 impl Binary {
+    pub fn as_mut_deb822(&mut self) -> &mut deb822_lossless::Paragraph {
+        &mut self.0
+    }
+
     /// The name of the package.
     pub fn name(&self) -> Option<String> {
         self.0.get("Package")
@@ -512,6 +524,15 @@ Description: this is the short description
                     .to_owned()
             )
         );
+    }
+
+    #[test]
+    fn test_as_mut_deb822() {
+        let mut control = Control::new();
+        let deb822 = control.as_mut_deb822();
+        let mut p = deb822.add_paragraph();
+        p.insert("Source", "foo");
+        assert_eq!(control.source().unwrap().name(), Some("foo".to_owned()));
     }
 }
 
