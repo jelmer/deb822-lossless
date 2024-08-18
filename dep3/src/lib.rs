@@ -174,7 +174,7 @@ impl PatchHeader {
             format!(
                 "{}{}",
                 category.map(|c| c.to_string() + ", ").unwrap_or_default(),
-                origin.to_string()
+                origin
             )
             .as_str(),
         );
@@ -430,7 +430,7 @@ Last-Update: 2006-12-21
         assert_eq!(header.reviewed_by(), Vec::<&str>::new());
         assert_eq!(
             header.last_update(),
-            Some(chrono::NaiveDate::from_ymd(2006, 12, 21))
+            Some(chrono::NaiveDate::from_ymd_opt(2006, 12, 21).unwrap())
         );
         assert_eq!(header.applied_upstream(), None);
         assert_eq!(header.bugs().collect::<Vec<_>>(), vec![]);
@@ -509,7 +509,7 @@ Last-Update: 2010-03-29
         assert_eq!(header.reviewed_by(), Vec::<&str>::new());
         assert_eq!(
             header.last_update(),
-            Some(chrono::NaiveDate::from_ymd(2010, 3, 29))
+            Some(chrono::NaiveDate::from_ymd_opt(2010, 3, 29).unwrap())
         );
         assert_eq!(
             header.applied_upstream(),

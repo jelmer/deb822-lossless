@@ -10,5 +10,5 @@ pub fn main() {
     binary.set_priority(Priority::Optional);
     binary.set_description("Hello, world!");
 
-    println!("{}", control.to_string());
+    println!("{}", control);
 }
