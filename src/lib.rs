@@ -387,7 +387,8 @@ impl Deb822 {
         indentation: Indentation,
         immediate_empty_line: bool,
         max_line_length_one_liner: Option<usize>,
-        sort_paragraphs: Option<&impl Fn(&Paragraph, &Paragraph) -> std::cmp::Ordering>,
+        sort_paragraphs: Option<&dyn Fn(&Paragraph, &Paragraph) -> std::cmp::Ordering>,
+        sort_entries: Option<&dyn Fn(&Entry, &Entry) -> std::cmp::Ordering>,
     ) -> Deb822 {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(ROOT.into());
@@ -437,7 +438,12 @@ impl Deb822 {
                 &mut builder,
                 paragraph
                     .1
-                    .wrap_and_sort(indentation, immediate_empty_line, max_line_length_one_liner)
+                    .wrap_and_sort(
+                        indentation,
+                        immediate_empty_line,
+                        max_line_length_one_liner,
+                        sort_entries,
+                    )
                     .0,
             );
         }
@@ -540,31 +546,52 @@ impl Paragraph {
         indentation: Indentation,
         immediate_empty_line: bool,
         max_line_length_one_liner: Option<usize>,
+        sort_entries: Option<&dyn Fn(&Entry, &Entry) -> std::cmp::Ordering>,
     ) -> Paragraph {
         let mut builder = GreenNodeBuilder::new();
+
+        let mut current = vec![];
+        let mut entries = vec![];
 
         builder.start_node(PARAGRAPH.into());
         for c in self.0.children_with_tokens() {
             match c.kind() {
                 ENTRY => {
-                    let mut entry = Entry::cast(c.as_node().unwrap().clone().clone()).unwrap();
-                    inject(
-                        &mut builder,
-                        entry
-                            .wrap_and_sort(
-                                indentation,
-                                immediate_empty_line,
-                                max_line_length_one_liner,
-                            )
-                            .0,
-                    );
+                    entries.push((current, Entry::cast(c.as_node().unwrap().clone()).unwrap()));
+                    current = vec![];
                 }
-                ERROR | COMMENT | EMPTY_LINE => {
-                    builder.token(c.kind().into(), c.as_token().unwrap().text());
+                ERROR | COMMENT => {
+                    current.push(c);
                 }
                 _ => {}
             }
         }
+
+        if let Some(sort_entry) = sort_entries {
+            entries.sort_by(|a, b| {
+                let a_key = &a.1;
+                let b_key = &b.1;
+                sort_entry(a_key, b_key)
+            });
+        }
+
+        for (pre, mut entry) in entries.into_iter() {
+            for c in pre.into_iter() {
+                builder.token(c.kind().into(), c.as_token().unwrap().text());
+            }
+
+            inject(
+                &mut builder,
+                entry
+                    .wrap_and_sort(indentation, immediate_empty_line, max_line_length_one_liner)
+                    .0,
+            );
+        }
+
+        for c in current {
+            builder.token(c.kind().into(), c.as_token().unwrap().text());
+        }
+
         builder.finish_node();
         Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
@@ -1314,7 +1341,12 @@ Multi-Line:
         .unwrap();
         let mut ps = d.paragraphs();
         let mut p = ps.next().unwrap();
-        let result = p.wrap_and_sort(super::Indentation::FieldNameLength, false, None);
+        let result = p.wrap_and_sort(
+            super::Indentation::FieldNameLength,
+            false,
+            None,
+            None::<&dyn Fn(&super::Entry, &super::Entry) -> std::cmp::Ordering>,
+        );
         assert_eq!(
             result.to_string(),
             r#"Source: foo
@@ -1346,6 +1378,7 @@ Maintainer: Bar Foo <bar@example.com>
             Some(&|a: &super::Paragraph, b: &super::Paragraph| {
                 a.get("Source").cmp(&b.get("Source"))
             }),
+            None,
         );
         assert_eq!(
             result.to_string(),
@@ -1356,6 +1389,33 @@ Maintainer: Bar Foo <bar@example.com>
 Source: foo
 Maintainer: Foo Bar <foo@example.com>
 "#,
+        );
+    }
+
+    #[test]
+    fn test_format_sort_fields() {
+        let d: super::Deb822 = r#"Source: foo
+Maintainer: Foo Bar <foo@example.com>
+Build-Depends: debhelper (>= 9), po-debconf
+Homepage: https://example.com/
+
+"#
+        .parse()
+        .unwrap();
+        let result = d.wrap_and_sort(
+            super::Indentation::FieldNameLength,
+            false,
+            None,
+            None,
+            Some(&|a: &super::Entry, b: &super::Entry| a.key().cmp(&b.key())),
+        );
+        assert_eq!(
+            result.to_string(),
+            r#"Build-Depends: debhelper (>= 9), po-debconf
+Homepage: https://example.com/
+Maintainer: Foo Bar <foo@example.com>
+Source: foo
+"#
         );
     }
 }
