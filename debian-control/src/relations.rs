@@ -793,6 +793,12 @@ impl From<Entry> for Relations {
     }
 }
 
+impl Default for Entry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Entry {
     pub fn new() -> Self {
         let mut builder = GreenNodeBuilder::new();
