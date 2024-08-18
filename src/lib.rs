@@ -1,3 +1,4 @@
+#![allow(clippy::type_complexity)]
 //! Lossless parser for deb822 style files.
 //!
 //! This parser can be used to parse files in the deb822 format, while preserving
@@ -377,10 +378,9 @@ impl Deb822 {
     ///                        if it is crammed into a "one-liner" value. If the value(s) fit into
     ///                        one line, this parameter will overrule immediate_empty_line.
     /// * `sort_paragraphs` - If set, then this function will sort the paragraphs according to the
-    ///                given function. The function should return an Ordering, where Less means
-    ///                that the first paragraph should come before the second, Equal means that
-    ///                the order should be preserved, and Greater means that the first paragraph
-    ///                should come after the second.
+    ///                given function.
+    /// * `sort_entries` - If set, then this function will sort the entries according to the
+    ///               given function.
     #[must_use]
     pub fn wrap_and_sort(
         self: &Deb822,
