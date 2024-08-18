@@ -707,7 +707,7 @@ impl Relations {
 
     /// Insert a new entry at the given index
     pub fn insert(&mut self, idx: usize, entry: Entry) {
-        let is_empty = !self.entries().any(|_| true);
+        let is_empty = !self.0.children_with_tokens().any(|n| n.kind() == COMMA);
         let (position, new_children) = if let Some(current_entry) = self.entries().nth(idx) {
             let to_insert: Vec<NodeOrToken<GreenNode, GreenToken>> = if idx == 0 && is_empty {
                 vec![entry.0.green().into()]
@@ -721,7 +721,7 @@ impl Relations {
 
             (current_entry.0.index(), to_insert)
         } else {
-            let child_count = self.0.children().count();
+            let child_count = self.0.children_with_tokens().count();
             (
                 child_count,
                 if idx == 0 {
@@ -1306,6 +1306,38 @@ mod tests {
             rels.to_string(),
             "python3-dulwich, python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"
         );
+    }
+
+    #[test]
+    fn test_insert_after_error() {
+        let (mut rels, errors) = Relations::parse_relaxed("@foo@, debhelper (>= 1.0)", false);
+        assert_eq!(
+            errors,
+            vec![
+                "expected $ or identifier but got ERROR",
+                "expected comma or end of file but got Some(IDENT)",
+                "expected $ or identifier but got ERROR"
+            ]
+        );
+        let entry = Entry::from(vec![Relation::simple("bar")]);
+        rels.push(entry);
+        assert_eq!(rels.to_string(), "@foo@, debhelper (>= 1.0), bar");
+    }
+
+    #[test]
+    fn test_insert_before_error() {
+        let (mut rels, errors) = Relations::parse_relaxed("debhelper (>= 1.0), @foo@, bla", false);
+        assert_eq!(
+            errors,
+            vec![
+                "expected $ or identifier but got ERROR",
+                "expected comma or end of file but got Some(IDENT)",
+                "expected $ or identifier but got ERROR"
+            ]
+        );
+        let entry = Entry::from(vec![Relation::simple("bar")]);
+        rels.insert(0, entry);
+        assert_eq!(rels.to_string(), "bar, debhelper (>= 1.0), @foo@, bla");
     }
 
     #[test]
