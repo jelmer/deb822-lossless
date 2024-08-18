@@ -365,6 +365,51 @@ impl Deb822 {
         Deb822(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
+    /// Provide a formatter that can handle indentation and trailing separators
+    ///
+    /// # Arguments
+    /// * `control` - The control file to format
+    /// * `indentation` - The indentation to use
+    /// * `immediate_empty_line` - Whether the value should always start with an empty line. If true,
+    ///                  then the result becomes something like "Field:\n value". This parameter
+    ///                  only applies to the values that will be formatted over more than one line.
+    /// * `max_line_length_one_liner` - If set, then this is the max length of the value
+    ///                        if it is crammed into a "one-liner" value. If the value(s) fit into
+    ///                        one line, this parameter will overrule immediate_empty_line.
+    #[must_use]
+    pub fn wrap_and_sort(
+        control: &mut Deb822,
+        indentation: Indentation,
+        immediate_empty_line: bool,
+        max_line_length_one_liner: Option<usize>,
+    ) -> Deb822 {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(ROOT.into());
+        for c in control.0.children_with_tokens() {
+            match c.kind() {
+                PARAGRAPH => {
+                    let mut paragraph = Paragraph::cast(c.as_node().unwrap().clone()).unwrap();
+                    inject(
+                        &mut builder,
+                        paragraph
+                            .wrap_and_sort(
+                                indentation,
+                                immediate_empty_line,
+                                max_line_length_one_liner,
+                            )
+                            .0,
+                    );
+                }
+                ERROR | COMMENT | EMPTY_LINE => {
+                    builder.token(c.kind().into(), c.as_token().unwrap().text());
+                }
+                _ => {}
+            }
+        }
+        builder.finish_node();
+        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+
     /// Returns an iterator over all paragraphs in the file.
     pub fn paragraphs(&self) -> impl Iterator<Item = Paragraph> {
         self.0.children().filter_map(Paragraph::cast)
@@ -425,6 +470,21 @@ impl Deb822 {
     }
 }
 
+fn inject(builder: &mut GreenNodeBuilder, node: SyntaxNode) {
+    builder.start_node(node.kind().into());
+    for child in node.children_with_tokens() {
+        match child {
+            rowan::NodeOrToken::Node(child) => {
+                inject(builder, child);
+            }
+            rowan::NodeOrToken::Token(token) => {
+                builder.token(token.kind().into(), token.text());
+            }
+        }
+    }
+    builder.finish_node();
+}
+
 impl Paragraph {
     pub fn new() -> Paragraph {
         let mut builder = GreenNodeBuilder::new();
@@ -432,6 +492,41 @@ impl Paragraph {
         builder.start_node(PARAGRAPH.into());
         builder.finish_node();
         Paragraph(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+
+    #[must_use]
+    pub fn wrap_and_sort(
+        &mut self,
+        indentation: Indentation,
+        immediate_empty_line: bool,
+        max_line_length_one_liner: Option<usize>,
+    ) -> Paragraph {
+        let mut builder = GreenNodeBuilder::new();
+
+        builder.start_node(PARAGRAPH.into());
+        for c in self.0.children_with_tokens() {
+            match c.kind() {
+                ENTRY => {
+                    let mut entry = Entry::cast(c.as_node().unwrap().clone().clone()).unwrap();
+                    inject(
+                        &mut builder,
+                        entry
+                            .wrap_and_sort(
+                                indentation,
+                                immediate_empty_line,
+                                max_line_length_one_liner,
+                            )
+                            .0,
+                    );
+                }
+                ERROR | COMMENT | EMPTY_LINE => {
+                    builder.token(c.kind().into(), c.as_token().unwrap().text());
+                }
+                _ => {}
+            }
+        }
+        builder.finish_node();
+        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
     /// Returns the value of the given key in the paragraph.
@@ -565,6 +660,15 @@ impl pyo3::FromPyObject<'_> for Paragraph {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Indentation {
+    /// Use the same indentation as the original line for the value.
+    FieldNameLength,
+
+    /// The number of spaces to use for indentation.
+    FixedIndentation(u32),
+}
+
 impl Entry {
     pub fn new(key: &str, value: &str) -> Entry {
         let mut builder = GreenNodeBuilder::new();
@@ -582,6 +686,103 @@ impl Entry {
         }
         builder.finish_node();
         Entry(SyntaxNode::new_root(builder.finish()))
+    }
+
+    #[must_use]
+    pub fn wrap_and_sort(
+        &mut self,
+        mut indentation: Indentation,
+        immediate_empty_line: bool,
+        max_line_length_one_liner: Option<usize>,
+    ) -> Entry {
+        let mut builder = GreenNodeBuilder::new();
+
+        let mut content = vec![];
+        builder.start_node(ENTRY.into());
+        for c in self.0.children_with_tokens() {
+            let text = c.as_token().map(|t| t.text());
+            match c.kind() {
+                KEY => {
+                    builder.token(KEY.into(), text.unwrap());
+                    if indentation == Indentation::FieldNameLength {
+                        indentation = Indentation::FixedIndentation(text.unwrap().len() as u32);
+                    }
+                }
+                COLON => {
+                    builder.token(COLON.into(), ":");
+                }
+                INDENT => {
+                    // Discard original whitespace
+                }
+                ERROR | COMMENT | VALUE | WHITESPACE | NEWLINE => {
+                    content.push(c);
+                }
+                EMPTY_LINE | ENTRY | ROOT | PARAGRAPH => unreachable!(),
+            }
+        }
+
+        let indentation = if let Indentation::FixedIndentation(i) = indentation {
+            i
+        } else {
+            1
+        };
+
+        assert!(indentation > 0);
+
+        // Strip trailing whitespace and newlines
+        while let Some(c) = content.last() {
+            if c.kind() == NEWLINE || c.kind() == WHITESPACE {
+                content.pop();
+            } else {
+                break;
+            }
+        }
+
+        let content_len = content
+            .iter()
+            .map(|c| c.as_token().unwrap().text().len())
+            .sum::<usize>();
+
+        let mut last_was_newline = false;
+        if let Some(max_line_length_one_liner) = max_line_length_one_liner {
+            if self.key().map_or(0, |k| k.len()) + 2 /* ": " */ + content_len
+                <= max_line_length_one_liner
+                && !content.iter().any(|c| c.kind() == NEWLINE)
+            {
+                for c in content {
+                    builder.token(c.kind().into(), c.as_token().unwrap().text());
+                }
+            }
+        } else {
+            if immediate_empty_line {
+                builder.token(NEWLINE.into(), "\n");
+                last_was_newline = true;
+            } else {
+                builder.token(WHITESPACE.into(), " ");
+            }
+            // Strip leading whitespace and newlines
+            while let Some(c) = content.first() {
+                if c.kind() == NEWLINE || c.kind() == WHITESPACE {
+                    content.remove(0);
+                } else {
+                    break;
+                }
+            }
+            for c in content {
+                if last_was_newline {
+                    builder.token(INDENT.into(), &" ".repeat(indentation as usize));
+                }
+                builder.token(c.kind().into(), c.as_token().unwrap().text());
+                last_was_newline = c.kind() == NEWLINE;
+            }
+        }
+
+        if !last_was_newline {
+            builder.token(NEWLINE.into(), "\n");
+        }
+
+        builder.finish_node();
+        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
     pub fn key(&self) -> Option<String> {
@@ -1053,6 +1254,34 @@ Section: vcs
         assert_eq!(
             p.get("Maintainer").as_deref(),
             Some("Arthur de Jong <adejong@debian.org>")
+        );
+    }
+
+    #[test]
+    fn test_format() {
+        let mut d: super::Deb822 = r#"Source: foo
+Maintainer: Foo Bar <foo@example.com>
+Section:      net
+Blah: blah  # comment
+Multi-Line:
+  Ahoi!
+     Matey!
+
+"#
+        .parse()
+        .unwrap();
+        let mut ps = d.paragraphs();
+        let mut p = ps.next().unwrap();
+        let result = p.wrap_and_sort(super::Indentation::FieldNameLength, false, None);
+        assert_eq!(
+            result.to_string(),
+            r#"Source: foo
+Maintainer: Foo Bar <foo@example.com>
+Section: net
+Blah: blah  # comment
+Multi-Line: Ahoi!
+          Matey!
+"#
         );
     }
 }
