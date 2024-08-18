@@ -741,7 +741,8 @@ impl Relations {
                     .green()
                     .splice_children(position..position, new_children),
             ),
-        );
+        )
+        .clone_for_update();
     }
 
     pub fn replace(&mut self, idx: usize, entry: Entry) {
@@ -1303,6 +1304,15 @@ mod tests {
             rels.to_string(),
             "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.22)"
         );
+    }
+
+    #[test]
+    fn test_remove_added() {
+        let mut rels: Relations = r#"python3-dulwich (>= 0.20.21)"#.parse().unwrap();
+        let entry = Entry::from(vec![Relation::simple("python3-dulwich")]);
+        rels.push(entry);
+        rels.remove(1);
+        assert_eq!(rels.to_string(), "python3-dulwich (>= 0.20.21)");
     }
 
     #[test]
