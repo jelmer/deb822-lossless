@@ -1058,6 +1058,48 @@ impl std::str::FromStr for Relations {
     }
 }
 
+impl std::str::FromStr for Entry {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let root: Relations = s.parse()?;
+
+        let mut entries = root.entries();
+        let entry = if let Some(entry) = entries.next() {
+            entry
+        } else {
+            return Err("No entry found".to_string());
+        };
+
+        if entries.next().is_some() {
+            return Err("Multiple entries found".to_string());
+        }
+
+        Ok(entry)
+    }
+}
+
+impl std::str::FromStr for Relation {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let entry: Entry = s.parse()?;
+
+        let mut relations = entry.relations();
+        let relation = if let Some(relation) = relations.next() {
+            relation
+        } else {
+            return Err("No relation found".to_string());
+        };
+
+        if relations.next().is_some() {
+            return Err("Multiple relations found".to_string());
+        }
+
+        Ok(relation)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1373,5 +1415,36 @@ mod tests {
         let entry: Entry = relations.into();
         assert_eq!(entry.relations().count(), 2);
         assert_eq!(entry.to_string(), "python3-dulwich | python3-breezy");
+    }
+
+    #[test]
+    fn test_parse_entry() {
+        let parsed: Entry = "python3-dulwich (>= 0.20.21) | bar".parse().unwrap();
+        assert_eq!(parsed.to_string(), "python3-dulwich (>= 0.20.21) | bar");
+        assert_eq!(parsed.relations().count(), 2);
+
+        assert_eq!(
+            "foo, bar".parse::<Entry>().unwrap_err(),
+            "Multiple entries found"
+        );
+        assert_eq!("".parse::<Entry>().unwrap_err(), "No entry found");
+    }
+
+    #[test]
+    fn test_parse_relation() {
+        let parsed: Relation = "python3-dulwich (>= 0.20.21)".parse().unwrap();
+        assert_eq!(parsed.to_string(), "python3-dulwich (>= 0.20.21)");
+        assert_eq!(
+            parsed.version(),
+            Some((
+                VersionConstraint::GreaterThanEqual,
+                "0.20.21".parse().unwrap()
+            ))
+        );
+        assert_eq!(
+            "foo | bar".parse::<Relation>().unwrap_err(),
+            "Multiple relations found"
+        );
+        assert_eq!("".parse::<Relation>().unwrap_err(), "No entry found");
     }
 }
