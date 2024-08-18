@@ -12,7 +12,7 @@ homepage = { workspace = true }
 members = ["debian-control", "debian-copyright", "dep3"]
 
 [workspace.package]
-version = "0.1.20"
+version = "0.1.21"
 repository = "https://github.com/jelmer/deb822-lossless"
 homepage = "https://github.com/jelmer/deb822-lossless"
 
