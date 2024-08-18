@@ -296,7 +296,7 @@ struct Parse {
     errors: Vec<String>,
 }
 
-fn parse(text: &str) -> Parse {
+fn parse(text: &str, allow_substvar: bool) -> Parse {
     struct Parser {
         /// input tokens, including whitespace,
         /// in *reverse* order.
@@ -306,6 +306,8 @@ fn parse(text: &str) -> Parse {
         /// the list of syntax errors we've accumulated
         /// so far.
         errors: Vec<String>,
+        /// whether to allow substvars
+        allow_substvar: bool,
     }
 
     impl Parser {
@@ -313,7 +315,7 @@ fn parse(text: &str) -> Parse {
             self.builder.start_node(SyntaxKind::SUBSTVAR.into());
             self.bump();
             if self.current() != Some(L_CURLY) {
-                self.error("expected {");
+                self.error(format!("expected {{ but got {:?}", self.current()).to_string());
             } else {
                 self.bump();
             }
@@ -326,12 +328,12 @@ fn parse(text: &str) -> Parse {
                         break;
                     }
                     e => {
-                        self.error(format!("unexpected identifier: {:?}", e).as_str());
+                        self.error(format!("expected identifier or : but got {:?}", e).to_string());
                     }
                 }
             }
             if self.current() != Some(R_CURLY) {
-                self.error("expected }");
+                self.error(format!("expected }} but got {:?}", self.current()).to_string());
             } else {
                 self.bump();
             }
@@ -369,8 +371,8 @@ fn parse(text: &str) -> Parse {
             self.builder.finish_node();
         }
 
-        fn error(&mut self, error: &str) {
-            self.errors.push(error.to_owned());
+        fn error(&mut self, error: String) {
+            self.errors.push(error);
             self.builder.start_node(SyntaxKind::ERROR.into());
             if self.current().is_some() {
                 self.bump();
@@ -383,7 +385,7 @@ fn parse(text: &str) -> Parse {
             if self.current() == Some(IDENT) {
                 self.bump();
             } else {
-                self.error("Expected package name");
+                self.error("Expected package name".to_string());
             }
             self.skip_ws();
             match self.current() {
@@ -393,15 +395,13 @@ fn parse(text: &str) -> Parse {
                     if self.current() == Some(IDENT) {
                         self.bump();
                     } else {
-                        self.error("Expected architecture name");
+                        self.error("Expected architecture name".to_string());
                     }
                     self.skip_ws();
                 }
                 None | Some(L_PARENS) | Some(L_BRACKET) | Some(PIPE) | Some(COMMA) => {}
                 e => {
-                    self.error(
-                        format!("Expected ':' or '|' or '[' or ',' but got {:?}", e).as_str(),
-                    );
+                    self.error(format!("Expected ':' or '|' or '[' or ',' but got {:?}", e));
                 }
             }
 
@@ -428,13 +428,13 @@ fn parse(text: &str) -> Parse {
                 if self.current() == Some(IDENT) {
                     self.bump();
                 } else {
-                    self.error("Expected version");
+                    self.error("Expected version".to_string());
                 }
 
                 if self.current() == Some(R_PARENS) {
                     self.bump();
                 } else {
-                    self.error("Expected ')'");
+                    self.error("Expected ')'".to_string());
                 }
 
                 self.builder.finish_node();
@@ -459,7 +459,7 @@ fn parse(text: &str) -> Parse {
                             break;
                         }
                         _ => {
-                            self.error("Expected architecture name or '!' or ']'");
+                            self.error("Expected architecture name or '!' or ']'".to_string());
                         }
                     }
                 }
@@ -483,7 +483,7 @@ fn parse(text: &str) -> Parse {
                             if self.current() == Some(IDENT) {
                                 self.bump();
                             } else {
-                                self.error("Expected profile");
+                                self.error("Expected profile".to_string());
                             }
                         }
                         Some(R_ANGLE) => {
@@ -491,11 +491,11 @@ fn parse(text: &str) -> Parse {
                             break;
                         }
                         None => {
-                            self.error("Expected profile or '>'");
+                            self.error("Expected profile or '>'".to_string());
                             break;
                         }
                         _ => {
-                            self.error("Expected profile or '!' or '>'");
+                            self.error("Expected profile or '!' or '>'".to_string());
                         }
                     }
                 }
@@ -516,9 +516,18 @@ fn parse(text: &str) -> Parse {
             while self.current().is_some() {
                 match self.current() {
                     Some(IDENT) => self.parse_entry(),
-                    Some(DOLLAR) => self.parse_substvar(),
-                    _ => {
-                        self.error("expected $ or identifier");
+                    Some(DOLLAR) => {
+                        if self.allow_substvar {
+                            self.parse_substvar()
+                        } else {
+                            self.error("Substvars are not allowed".to_string());
+                        }
+                    }
+                    Some(c) => {
+                        self.error(format!("expected $ or identifier but got {:?}", c));
+                    }
+                    None => {
+                        self.error("expected identifier but got end of file".to_string());
                     }
                 }
 
@@ -530,8 +539,8 @@ fn parse(text: &str) -> Parse {
                     None => {
                         break;
                     }
-                    _ => {
-                        self.error("Expected comma");
+                    c => {
+                        self.error(format!("expected comma or end of file but got {:?}", c));
                     }
                 }
                 self.skip_ws();
@@ -569,6 +578,7 @@ fn parse(text: &str) -> Parse {
         tokens,
         builder: GreenNodeBuilder::new(),
         errors: Vec::new(),
+        allow_substvar,
     }
     .parse()
 }
@@ -754,8 +764,8 @@ impl Relations {
             .map(|s| s.to_string())
     }
 
-    pub fn parse_relaxed(s: &str) -> (Relations, Vec<String>) {
-        let parse = parse(s);
+    pub fn parse_relaxed(s: &str, allow_substvar: bool) -> (Relations, Vec<String>) {
+        let parse = parse(s, allow_substvar);
         (parse.root(), parse.errors)
     }
 }
@@ -1039,7 +1049,7 @@ impl std::str::FromStr for Relations {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parse = parse(s);
+        let parse = parse(s, false);
         if parse.errors.is_empty() {
             Ok(parse.root())
         } else {
@@ -1182,7 +1192,8 @@ mod tests {
     fn test_substvar() {
         let input = "${shlibs:Depends}";
 
-        let parsed: Relations = input.parse().unwrap();
+        let (parsed, errors) = Relations::parse_relaxed(input, true);
+        assert_eq!(errors, Vec::<String>::new());
         assert_eq!(parsed.to_string(), input);
         assert_eq!(parsed.entries().count(), 0);
 
