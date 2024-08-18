@@ -376,36 +376,76 @@ impl Deb822 {
     /// * `max_line_length_one_liner` - If set, then this is the max length of the value
     ///                        if it is crammed into a "one-liner" value. If the value(s) fit into
     ///                        one line, this parameter will overrule immediate_empty_line.
+    /// * `sort_paragraphs` - If set, then this function will sort the paragraphs according to the
+    ///                given function. The function should return an Ordering, where Less means
+    ///                that the first paragraph should come before the second, Equal means that
+    ///                the order should be preserved, and Greater means that the first paragraph
+    ///                should come after the second.
     #[must_use]
     pub fn wrap_and_sort(
-        control: &mut Deb822,
+        self: &Deb822,
         indentation: Indentation,
         immediate_empty_line: bool,
         max_line_length_one_liner: Option<usize>,
+        sort_paragraphs: Option<&impl Fn(&Paragraph, &Paragraph) -> std::cmp::Ordering>,
     ) -> Deb822 {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(ROOT.into());
-        for c in control.0.children_with_tokens() {
+        let mut current = vec![];
+        let mut paragraphs = vec![];
+        for c in self.0.children_with_tokens() {
             match c.kind() {
                 PARAGRAPH => {
-                    let mut paragraph = Paragraph::cast(c.as_node().unwrap().clone()).unwrap();
-                    inject(
-                        &mut builder,
-                        paragraph
-                            .wrap_and_sort(
-                                indentation,
-                                immediate_empty_line,
-                                max_line_length_one_liner,
-                            )
-                            .0,
-                    );
+                    paragraphs.push((
+                        current,
+                        Paragraph::cast(c.as_node().unwrap().clone()).unwrap(),
+                    ));
+                    current = vec![];
                 }
-                ERROR | COMMENT | EMPTY_LINE => {
-                    builder.token(c.kind().into(), c.as_token().unwrap().text());
+                COMMENT | ERROR => {
+                    current.push(c);
+                }
+                EMPTY_LINE => {
+                    current.extend(
+                        c.as_node()
+                            .unwrap()
+                            .children_with_tokens()
+                            .skip_while(|c| matches!(c.kind(), EMPTY_LINE | NEWLINE | WHITESPACE)),
+                    );
                 }
                 _ => {}
             }
         }
+        if let Some(sort_paragraph) = sort_paragraphs {
+            paragraphs.sort_by(|a, b| {
+                let a_key = &a.1;
+                let b_key = &b.1;
+                sort_paragraph(a_key, b_key)
+            });
+        }
+
+        for (i, mut paragraph) in paragraphs.into_iter().enumerate() {
+            if i > 0 {
+                builder.start_node(EMPTY_LINE.into());
+                builder.token(NEWLINE.into(), "\n");
+                builder.finish_node();
+            }
+            for c in paragraph.0.into_iter() {
+                builder.token(c.kind().into(), c.as_token().unwrap().text());
+            }
+            inject(
+                &mut builder,
+                paragraph
+                    .1
+                    .wrap_and_sort(indentation, immediate_empty_line, max_line_length_one_liner)
+                    .0,
+            );
+        }
+
+        for c in current {
+            builder.token(c.kind().into(), c.as_token().unwrap().text());
+        }
+
         builder.finish_node();
         Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
@@ -738,23 +778,25 @@ impl Entry {
             }
         }
 
-        let content_len = content
+        let first_line_len = content
             .iter()
+            .take_while(|c| c.kind() != NEWLINE)
             .map(|c| c.as_token().unwrap().text().len())
-            .sum::<usize>();
+            .sum::<usize>() + self.key().map_or(0, |k| k.len()) + 2 /* ": " */;
+
+        let has_newline = content.iter().any(|c| c.kind() == NEWLINE);
 
         let mut last_was_newline = false;
-        if let Some(max_line_length_one_liner) = max_line_length_one_liner {
-            if self.key().map_or(0, |k| k.len()) + 2 /* ": " */ + content_len
-                <= max_line_length_one_liner
-                && !content.iter().any(|c| c.kind() == NEWLINE)
-            {
-                for c in content {
-                    builder.token(c.kind().into(), c.as_token().unwrap().text());
-                }
+        if max_line_length_one_liner
+            .map(|mll| first_line_len <= mll)
+            .unwrap_or(false)
+            && !has_newline
+        {
+            for c in content {
+                builder.token(c.kind().into(), c.as_token().unwrap().text());
             }
         } else {
-            if immediate_empty_line {
+            if immediate_empty_line && has_newline {
                 builder.token(NEWLINE.into(), "\n");
                 last_was_newline = true;
             } else {
@@ -1259,7 +1301,7 @@ Section: vcs
 
     #[test]
     fn test_format() {
-        let mut d: super::Deb822 = r#"Source: foo
+        let d: super::Deb822 = r#"Source: foo
 Maintainer: Foo Bar <foo@example.com>
 Section:      net
 Blah: blah  # comment
@@ -1282,6 +1324,38 @@ Blah: blah  # comment
 Multi-Line: Ahoi!
           Matey!
 "#
+        );
+    }
+
+    #[test]
+    fn test_format_sort_paragraphs() {
+        let d: super::Deb822 = r#"Source: foo
+Maintainer: Foo Bar <foo@example.com>
+
+# This is a comment
+Source: bar
+Maintainer: Bar Foo <bar@example.com>
+
+"#
+        .parse()
+        .unwrap();
+        let result = d.wrap_and_sort(
+            super::Indentation::FieldNameLength,
+            false,
+            None,
+            Some(&|a: &super::Paragraph, b: &super::Paragraph| {
+                a.get("Source").cmp(&b.get("Source"))
+            }),
+        );
+        assert_eq!(
+            result.to_string(),
+            r#"# This is a comment
+Source: bar
+Maintainer: Bar Foo <bar@example.com>
+
+Source: foo
+Maintainer: Foo Bar <foo@example.com>
+"#,
         );
     }
 }
