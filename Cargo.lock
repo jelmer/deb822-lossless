@@ -81,7 +81,7 @@ checksum = "7704b5fdd17b18ae31c4c1da5a2e0305a2bf17b5249300a9ee9ed7b72114c636"
 
 [[package]]
 name = "deb822-lossless"
-version = "0.1.22"
+version = "0.1.23"
 dependencies = [
  "pyo3",
  "regex",
@@ -91,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.22"
+version = "0.1.23"
 dependencies = [
  "deb822-lossless",
  "debversion",
@@ -103,7 +103,7 @@ dependencies = [
 
 [[package]]
 name = "debian-copyright"
-version = "0.1.22"
+version = "0.1.23"
 dependencies = [
  "deb822-lossless",
  "debversion",
@@ -121,7 +121,7 @@ dependencies = [
 
 [[package]]
 name = "dep3"
-version = "0.1.22"
+version = "0.1.23"
 dependencies = [
  "chrono",
  "deb822-lossless",
@@ -221,9 +221,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.157"
+version = "0.2.158"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "374af5f94e54fa97cf75e945cce8a6b201e88a1a07e688b47dfd2a59c66dbd86"
+checksum = "d8adc4bb1803a324070e64a98ae98f38934d91957a99cfb3a43dcbc01bc56439"
 
 [[package]]
 name = "log"
