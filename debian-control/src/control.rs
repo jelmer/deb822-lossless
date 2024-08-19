@@ -12,6 +12,10 @@ impl Control {
         &mut self.0
     }
 
+    pub fn as_deb822(&self) -> &deb822_lossless::Deb822 {
+        &self.0
+    }
+
     pub fn source(&self) -> Option<Source> {
         self.0
             .paragraphs()
@@ -85,6 +89,10 @@ impl Source {
 
     pub fn as_mut_deb822(&mut self) -> &mut deb822_lossless::Paragraph {
         &mut self.0
+    }
+
+    pub fn as_deb822(&self) -> &deb822_lossless::Paragraph {
+        &self.0
     }
 
     pub fn get(&self, key: &str) -> Option<String> {
@@ -334,6 +342,10 @@ impl Binary {
         &mut self.0
     }
 
+    pub fn as_deb822(&self) -> &deb822_lossless::Paragraph {
+        &self.0
+    }
+
     /// The name of the package.
     pub fn name(&self) -> Option<String> {
         self.0.get("Package")
@@ -533,6 +545,12 @@ Description: this is the short description
         let mut p = deb822.add_paragraph();
         p.insert("Source", "foo");
         assert_eq!(control.source().unwrap().name(), Some("foo".to_owned()));
+    }
+
+    #[test]
+    fn test_as_deb822() {
+        let control = Control::new();
+        let _deb822: &deb822_lossless::Deb822 = control.as_deb822();
     }
 }
 
