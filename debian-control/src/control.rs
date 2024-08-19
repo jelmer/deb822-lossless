@@ -134,8 +134,12 @@ impl Source {
         self.0.get("Section")
     }
 
-    pub fn set_section(&mut self, section: &str) {
-        self.0.insert("Section", section);
+    pub fn set_section(&mut self, section: Option<&str>) {
+        if let Some(section) = section {
+            self.0.insert("Section", section);
+        } else {
+            self.0.remove("Section");
+        }
     }
 
     /// The default priority of the packages built from this source package.
@@ -143,8 +147,12 @@ impl Source {
         self.0.get("Priority").and_then(|v| v.parse().ok())
     }
 
-    pub fn set_priority(&mut self, priority: Priority) {
-        self.0.insert("Priority", priority.to_string().as_str());
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        if let Some(priority) = priority {
+            self.0.insert("Priority", priority.to_string().as_str());
+        } else {
+            self.0.remove("Priority");
+        }
     }
 
     /// The maintainer of the package.
@@ -390,8 +398,12 @@ impl Binary {
         self.0.get("Section")
     }
 
-    pub fn set_section(&mut self, section: &str) {
-        self.0.insert("Section", section);
+    pub fn set_section(&mut self, section: Option<&str>) {
+        if let Some(section) = section {
+            self.0.insert("Section", section);
+        } else {
+            self.0.remove("Section");
+        }
     }
 
     /// The priority of the package.
@@ -399,8 +411,12 @@ impl Binary {
         self.0.get("Priority").and_then(|v| v.parse().ok())
     }
 
-    pub fn set_priority(&mut self, priority: Priority) {
-        self.0.insert("Priority", priority.to_string().as_str());
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        if let Some(priority) = priority {
+            self.0.insert("Priority", priority.to_string().as_str());
+        } else {
+            self.0.remove("Priority");
+        }
     }
 
     /// The architecture of the package.
@@ -568,8 +584,12 @@ impl Binary {
         self.0.get("Description")
     }
 
-    pub fn set_description(&mut self, description: &str) {
-        self.0.insert("Description", description);
+    pub fn set_description(&mut self, description: Option<&str>) {
+        if let Some(description) = description {
+            self.0.insert("Description", description);
+        } else {
+            self.0.remove("Description");
+        }
     }
 
     pub fn homepage(&self) -> Option<url::Url> {
