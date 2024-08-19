@@ -500,7 +500,7 @@ impl Deb822 {
 
     pub fn from_str_relaxed(s: &str) -> (Self, Vec<String>) {
         let parsed = parse(s);
-        (parsed.root(), parsed.errors)
+        (parsed.root().clone_for_update(), parsed.errors)
     }
 
     pub fn read<R: std::io::Read>(mut r: R) -> Result<Self, Error> {

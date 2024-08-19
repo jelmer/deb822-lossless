@@ -30,12 +30,42 @@ impl Control {
             .map(Binary)
     }
 
+    /// Add a new source package
+    ///
+    /// # Arguments
+    /// * `name` - The name of the source package
+    ///
+    /// # Returns
+    /// The newly created source package
+    ///
+    /// # Example
+    /// ```rust
+    /// use debian_control::control::Control;
+    /// let mut control = Control::new();
+    /// let source = control.add_source("foo");
+    /// assert_eq!(source.name(), Some("foo".to_owned()));
+    /// ```
     pub fn add_source(&mut self, name: &str) -> Source {
         let mut p = self.0.add_paragraph();
         p.insert("Source", name);
         self.source().unwrap()
     }
 
+    /// Add new binary package
+    ///
+    /// # Arguments
+    /// * `name` - The name of the binary package
+    ///
+    /// # Returns
+    /// The newly created binary package
+    ///
+    /// # Example
+    /// ```rust
+    /// use debian_control::control::Control;
+    /// let mut control = Control::new();
+    /// let binary = control.add_binary("foo");
+    /// assert_eq!(binary.name(), Some("foo".to_owned()));
+    /// ```
     pub fn add_binary(&mut self, name: &str) -> Binary {
         let mut p = self.0.add_paragraph();
         p.insert("Package", name);
@@ -61,7 +91,7 @@ impl Control {
         mut r: R,
     ) -> Result<(Self, Vec<String>), deb822_lossless::Error> {
         let (control, errors) = deb822_lossless::Deb822::read_relaxed(&mut r)?;
-        Ok((Control(control), errors))
+        Ok((Self(control), errors))
     }
 }
 
