@@ -125,10 +125,6 @@ impl Source {
         &self.0
     }
 
-    pub fn get(&self, key: &str) -> Option<String> {
-        self.0.get(key)
-    }
-
     pub fn set_name(&mut self, name: &str) {
         self.0.insert("Source", name);
     }
@@ -138,8 +134,12 @@ impl Source {
         self.0.get("Section")
     }
 
-    pub fn set_section(&mut self, section: &str) {
-        self.0.insert("Section", section);
+    pub fn set_section(&mut self, section: Option<&str>) {
+        if let Some(section) = section {
+            self.0.insert("Section", section);
+        } else {
+            self.0.remove("Section");
+        }
     }
 
     /// The default priority of the packages built from this source package.
@@ -147,8 +147,12 @@ impl Source {
         self.0.get("Priority").and_then(|v| v.parse().ok())
     }
 
-    pub fn set_priority(&mut self, priority: Priority) {
-        self.0.insert("Priority", priority.to_string().as_str());
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        if let Some(priority) = priority {
+            self.0.insert("Priority", priority.to_string().as_str());
+        } else {
+            self.0.remove("Priority");
+        }
     }
 
     /// The maintainer of the package.
@@ -306,8 +310,12 @@ impl Source {
         self.0.get("Architecture")
     }
 
-    pub fn set_architecture(&mut self, arch: &str) {
-        self.0.insert("Architecture", arch);
+    pub fn set_architecture(&mut self, arch: Option<&str>) {
+        if let Some(arch) = arch {
+            self.0.insert("Architecture", arch);
+        } else {
+            self.0.remove("Architecture");
+        }
     }
 
     pub fn rules_requires_root(&self) -> Option<bool> {
@@ -390,8 +398,12 @@ impl Binary {
         self.0.get("Section")
     }
 
-    pub fn set_section(&mut self, section: &str) {
-        self.0.insert("Section", section);
+    pub fn set_section(&mut self, section: Option<&str>) {
+        if let Some(section) = section {
+            self.0.insert("Section", section);
+        } else {
+            self.0.remove("Section");
+        }
     }
 
     /// The priority of the package.
@@ -399,8 +411,12 @@ impl Binary {
         self.0.get("Priority").and_then(|v| v.parse().ok())
     }
 
-    pub fn set_priority(&mut self, priority: Priority) {
-        self.0.insert("Priority", priority.to_string().as_str());
+    pub fn set_priority(&mut self, priority: Option<Priority>) {
+        if let Some(priority) = priority {
+            self.0.insert("Priority", priority.to_string().as_str());
+        } else {
+            self.0.remove("Priority");
+        }
     }
 
     /// The architecture of the package.
@@ -408,8 +424,12 @@ impl Binary {
         self.0.get("Architecture")
     }
 
-    pub fn set_architecture(&mut self, arch: &str) {
-        self.0.insert("Architecture", arch);
+    pub fn set_architecture(&mut self, arch: Option<&str>) {
+        if let Some(arch) = arch {
+            self.0.insert("Architecture", arch);
+        } else {
+            self.0.remove("Architecture");
+        }
     }
 
     /// The dependencies of the package.
@@ -417,40 +437,122 @@ impl Binary {
         self.0.get("Depends").map(|s| s.parse().unwrap())
     }
 
+    pub fn set_depends(&mut self, depends: Option<&Relations>) {
+        if let Some(depends) = depends {
+            self.0.insert("Depends", depends.to_string().as_str());
+        } else {
+            self.0.remove("Depends");
+        }
+    }
+
     pub fn recommends(&self) -> Option<Relations> {
         self.0.get("Recommends").map(|s| s.parse().unwrap())
+    }
+
+    pub fn set_recommends(&mut self, recommends: Option<&Relations>) {
+        if let Some(recommends) = recommends {
+            self.0.insert("Recommends", recommends.to_string().as_str());
+        } else {
+            self.0.remove("Recommends");
+        }
     }
 
     pub fn suggests(&self) -> Option<Relations> {
         self.0.get("Suggests").map(|s| s.parse().unwrap())
     }
 
+    pub fn set_suggests(&mut self, suggests: Option<&Relations>) {
+        if let Some(suggests) = suggests {
+            self.0.insert("Suggests", suggests.to_string().as_str());
+        } else {
+            self.0.remove("Suggests");
+        }
+    }
+
     pub fn enhances(&self) -> Option<Relations> {
         self.0.get("Enhances").map(|s| s.parse().unwrap())
+    }
+
+    pub fn set_enhances(&mut self, enhances: Option<&Relations>) {
+        if let Some(enhances) = enhances {
+            self.0.insert("Enhances", enhances.to_string().as_str());
+        } else {
+            self.0.remove("Enhances");
+        }
     }
 
     pub fn pre_depends(&self) -> Option<Relations> {
         self.0.get("Pre-Depends").map(|s| s.parse().unwrap())
     }
 
+    pub fn set_pre_depends(&mut self, pre_depends: Option<&Relations>) {
+        if let Some(pre_depends) = pre_depends {
+            self.0
+                .insert("Pre-Depends", pre_depends.to_string().as_str());
+        } else {
+            self.0.remove("Pre-Depends");
+        }
+    }
+
     pub fn breaks(&self) -> Option<Relations> {
         self.0.get("Breaks").map(|s| s.parse().unwrap())
+    }
+
+    pub fn set_breaks(&mut self, breaks: Option<&Relations>) {
+        if let Some(breaks) = breaks {
+            self.0.insert("Breaks", breaks.to_string().as_str());
+        } else {
+            self.0.remove("Breaks");
+        }
     }
 
     pub fn conflicts(&self) -> Option<Relations> {
         self.0.get("Conflicts").map(|s| s.parse().unwrap())
     }
 
+    pub fn set_conflicts(&mut self, conflicts: Option<&Relations>) {
+        if let Some(conflicts) = conflicts {
+            self.0.insert("Conflicts", conflicts.to_string().as_str());
+        } else {
+            self.0.remove("Conflicts");
+        }
+    }
+
     pub fn replaces(&self) -> Option<Relations> {
         self.0.get("Replaces").map(|s| s.parse().unwrap())
+    }
+
+    pub fn set_replaces(&mut self, replaces: Option<&Relations>) {
+        if let Some(replaces) = replaces {
+            self.0.insert("Replaces", replaces.to_string().as_str());
+        } else {
+            self.0.remove("Replaces");
+        }
     }
 
     pub fn provides(&self) -> Option<Relations> {
         self.0.get("Provides").map(|s| s.parse().unwrap())
     }
 
+    pub fn set_provides(&mut self, provides: Option<&Relations>) {
+        if let Some(provides) = provides {
+            self.0.insert("Provides", provides.to_string().as_str());
+        } else {
+            self.0.remove("Provides");
+        }
+    }
+
     pub fn built_using(&self) -> Option<Relations> {
         self.0.get("Built-Using").map(|s| s.parse().unwrap())
+    }
+
+    pub fn set_built_using(&mut self, built_using: Option<&Relations>) {
+        if let Some(built_using) = built_using {
+            self.0
+                .insert("Built-Using", built_using.to_string().as_str());
+        } else {
+            self.0.remove("Built-Using");
+        }
     }
 
     pub fn multi_arch(&self) -> Option<MultiArch> {
@@ -482,8 +584,12 @@ impl Binary {
         self.0.get("Description")
     }
 
-    pub fn set_description(&mut self, description: &str) {
-        self.0.insert("Description", description);
+    pub fn set_description(&mut self, description: Option<&str>) {
+        if let Some(description) = description {
+            self.0.insert("Description", description);
+        } else {
+            self.0.remove("Description");
+        }
     }
 
     pub fn homepage(&self) -> Option<url::Url> {
@@ -492,10 +598,6 @@ impl Binary {
 
     pub fn set_homepage(&mut self, url: &url::Url) {
         self.0.insert("Homepage", url.as_str());
-    }
-
-    pub fn get(&self, key: &str) -> Option<String> {
-        self.0.get(key)
     }
 }
 
@@ -581,6 +683,14 @@ Description: this is the short description
     fn test_as_deb822() {
         let control = Control::new();
         let _deb822: &deb822_lossless::Deb822 = control.as_deb822();
+    }
+
+    #[test]
+    fn test_set_depends() {
+        let mut control = Control::new();
+        let mut binary = control.add_binary("foo");
+        let relations: Relations = "bar (>= 1.0.0)".parse().unwrap();
+        binary.set_depends(Some(&relations));
     }
 }
 
