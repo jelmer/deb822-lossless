@@ -6,7 +6,7 @@ pub fn main() {
     source.set_section("rust");
 
     let mut binary = control.add_binary("hello");
-    binary.set_architecture("amd64");
+    binary.set_architecture(Some("amd64"));
     binary.set_priority(Priority::Optional);
     binary.set_description("Hello, world!");
 
