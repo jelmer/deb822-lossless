@@ -33,6 +33,7 @@ pub enum SyntaxKind {
     ROOT,       // The entire file
     ENTRY,      // A single entry
     RELATION,   // An alternative in a dependency
+    ARCHQUAL,   // An architecture qualifier
     VERSION,    // A version constraint
     CONSTRAINT, // (">=", "<=", "=", ">>", "<<")
     ARCHITECTURES,
@@ -390,6 +391,7 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
             self.skip_ws();
             match self.current() {
                 Some(COLON) => {
+                    self.builder.start_node(ARCHQUAL.into());
                     self.bump();
                     self.skip_ws();
                     if self.current() == Some(IDENT) {
@@ -397,6 +399,7 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
                     } else {
                         self.error("Expected architecture name".to_string());
                     }
+                    self.builder.finish_node();
                     self.skip_ws();
                 }
                 None | Some(L_PARENS) | Some(L_BRACKET) | Some(PIPE) | Some(COMMA) => {}
@@ -985,6 +988,63 @@ impl Relation {
             .unwrap()
             .text()
             .to_string()
+    }
+
+    /// Return the archqual
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::relations::Relation;
+    /// let relation: Relation = "samba:any".parse().unwrap();
+    /// assert_eq!(relation.archqual(), Some("any".to_string()));
+    /// ```
+    pub fn archqual(&self) -> Option<String> {
+        let archqual = self.0.children().find(|n| n.kind() == ARCHQUAL);
+        let node = if let Some(archqual) = archqual {
+            archqual.children_with_tokens().find_map(|it| match it {
+                SyntaxElement::Token(token) if token.kind() == IDENT => Some(token),
+                _ => None,
+            })
+        } else {
+            None
+        };
+        node.map(|n| n.text().to_string())
+    }
+
+    /// Set the architecture qualifier for this relation.
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::relations::Relation;
+    /// let mut relation = Relation::simple("samba");
+    /// relation.set_archqual("any");
+    /// assert_eq!(relation.to_string(), "samba:any");
+    /// ```
+    pub fn set_archqual(&mut self, archqual: &str) {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(ARCHQUAL.into());
+        builder.token(COLON.into(), ":");
+        builder.token(IDENT.into(), archqual);
+        builder.finish_node();
+
+        let node_archqual = self.0.children().find(|n| n.kind() == ARCHQUAL);
+        if let Some(node_archqual) = node_archqual {
+            self.0 = SyntaxNode::new_root(node_archqual.replace_with(builder.finish()))
+                .clone_for_update();
+        } else {
+            let name_node = self.0.children_with_tokens().find(|n| n.kind() == IDENT);
+            let idx = if let Some(name_node) = name_node {
+                name_node.index() + 1
+            } else {
+                0
+            };
+            self.0.splice_children(
+                idx..idx,
+                vec![SyntaxNode::new_root(builder.finish())
+                    .clone_for_update()
+                    .into()],
+            );
+        }
     }
 
     /// Return the version constraint and the version it is constrained to.
