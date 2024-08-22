@@ -131,8 +131,8 @@ impl<'a> Lexer<'a> {
         c == ' ' || c == '\t' || c == '\r'
     }
 
-    fn is_valid_key_char(c: char) -> bool {
-        c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '+' || c == '*'
+    fn is_valid_ident_char(c: char) -> bool {
+        c.is_ascii_alphanumeric() || c == '-' || c == '.' || c == '+' || c == '~'
     }
 
     fn read_while<F>(&mut self, predicate: F) -> String
@@ -223,8 +223,9 @@ impl<'a> Lexer<'a> {
                     let comment = self.read_while(|c| c != '\n' && c != '\r');
                     Some((SyntaxKind::COMMENT, format!("#{}", comment)))
                 }
-                _ if Self::is_valid_key_char(c) => {
-                    let key = self.read_while(Self::is_valid_key_char);
+                // TODO: separate handling for package names and versions?
+                _ if Self::is_valid_ident_char(c) => {
+                    let key = self.read_while(Self::is_valid_ident_char);
                     Some((SyntaxKind::IDENT, key))
                 }
                 _ => {
@@ -360,11 +361,17 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
                     }
                     e => {
                         self.builder.start_node(SyntaxKind::ERROR.into());
-                        if self.current().is_some() {
-                            self.bump();
+                        match self.tokens.pop() {
+                            Some((k, t)) => {
+                                self.builder.token(k.into(), t.as_str());
+                                self.errors
+                                    .push(format!("Expected comma or pipe, not {:?}", (k, t)));
+                            }
+                            None => {
+                                self.errors
+                                    .push("Expected comma or pipe, got end of file".to_string());
+                            }
                         }
-                        self.errors
-                            .push(format!("Expected comma or pipe, not {:?}", e));
                         self.builder.finish_node();
                     }
                 }
@@ -1522,5 +1529,25 @@ mod tests {
             "Multiple relations found"
         );
         assert_eq!("".parse::<Relation>().unwrap_err(), "No entry found");
+    }
+
+    #[test]
+    fn test_special() {
+        let parsed: Relation = "librust-breezyshim+dirty-tracker-dev:amd64 (>= 0.1.138-~~)"
+            .parse()
+            .unwrap();
+        assert_eq!(
+            parsed.to_string(),
+            "librust-breezyshim+dirty-tracker-dev:amd64 (>= 0.1.138-~~)"
+        );
+        assert_eq!(
+            parsed.version(),
+            Some((
+                VersionConstraint::GreaterThanEqual,
+                "0.1.138-~~".parse().unwrap()
+            ))
+        );
+        assert_eq!(parsed.archqual(), Some("amd64".to_string()));
+        assert_eq!(parsed.name(), "librust-breezyshim+dirty-tracker-dev");
     }
 }
