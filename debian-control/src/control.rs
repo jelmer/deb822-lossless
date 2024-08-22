@@ -1,5 +1,6 @@
 use crate::fields::Priority;
 use crate::relations::Relations;
+use crate::vcs::Vcs;
 
 pub struct Control(deb822_lossless::Deb822);
 
@@ -220,6 +221,10 @@ impl Source {
         self.0.get("Vcs-Git")
     }
 
+    pub fn set_vcs_git(&mut self, url: &str) {
+        self.0.insert("Vcs-Git", url);
+    }
+
     pub fn vcs_svn(&self) -> Option<String> {
         self.0.get("Vcs-Svn").map(|s| s.to_string())
     }
@@ -286,6 +291,14 @@ impl Source {
 
     pub fn vcs_browser(&self) -> Option<String> {
         self.0.get("Vcs-Browser")
+    }
+
+    pub fn set_vcs_browser(&mut self, url: Option<&str>) {
+        if let Some(url) = url {
+            self.0.insert("Vcs-Browser", url);
+        } else {
+            self.0.remove("Vcs-Browser");
+        }
     }
 
     pub fn uploaders(&self) -> Option<Vec<String>> {

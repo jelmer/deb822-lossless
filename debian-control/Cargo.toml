@@ -1,8 +1,8 @@
 [package]
 name = "debian-control"
 authors = ["Jelmer Vernooĳ <jelmer@debian.org>"]
-version = { workspace = true }
 edition = "2021"
+version = "0.1.24"
 license = "Apache-2.0"
 description = "A parser for Debian copyright files"
 repository = { workspace = true }
