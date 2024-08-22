@@ -1,18 +1,17 @@
 [package]
 name = "deb822-lossless"
 authors = ["Jelmer Vernooĳ <jelmer@debian.org>"]
-version = { workspace = true }
 edition = "2021"
 license = "Apache-2.0"
 description = "A lossless parser for deb822 files"
 repository = { workspace = true }
 homepage = { workspace = true }
+version = "0.1.24"
 
 [workspace]
 members = ["debian-control", "debian-copyright", "dep3"]
 
 [workspace.package]
-version = "0.1.24"
 repository = "https://github.com/jelmer/deb822-lossless"
 homepage = "https://github.com/jelmer/deb822-lossless"
 
