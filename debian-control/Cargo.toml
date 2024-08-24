@@ -15,6 +15,9 @@ regex = "1"
 deb822-lossless = { version = ">=0.1.20", path = ".." }
 url = "2"
 pyo3 = { workspace = true, optional = true }
+chrono = { version = "0.4", optional = true }
 
 [features]
+default = ["chrono"]
 python-debian = ["dep:pyo3", "deb822-lossless/python-debian"]
+chrono = ["dep:chrono"]
