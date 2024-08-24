@@ -36,11 +36,27 @@ impl std::str::FromStr for Priority {
     }
 }
 
+pub trait Checksum {
+    fn filename(&self) -> String;
+
+    fn size(&self) -> usize;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
 pub struct Sha1Checksum {
     pub sha1: String,
     pub size: usize,
     pub filename: String,
+}
+
+impl Checksum for Sha1Checksum {
+    fn filename(&self) -> String {
+        self.filename.clone()
+    }
+
+    fn size(&self) -> usize {
+        self.size
+    }
 }
 
 impl std::fmt::Display for Sha1Checksum {
@@ -72,6 +88,16 @@ pub struct Sha256Checksum {
     pub filename: String,
 }
 
+impl Checksum for Sha256Checksum {
+    fn filename(&self) -> String {
+        self.filename.clone()
+    }
+
+    fn size(&self) -> usize {
+        self.size
+    }
+}
+
 impl std::fmt::Display for Sha256Checksum {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} {} {}", self.sha256, self.size, self.filename)
@@ -99,6 +125,16 @@ pub struct Sha512Checksum {
     pub sha512: String,
     pub size: usize,
     pub filename: String,
+}
+
+impl Checksum for Sha512Checksum {
+    fn filename(&self) -> String {
+        self.filename.clone()
+    }
+
+    fn size(&self) -> usize {
+        self.size
+    }
 }
 
 impl std::fmt::Display for Sha512Checksum {
