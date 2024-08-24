@@ -1,7 +1,7 @@
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     MissingPgpSignature,
-    MissingContent,
+    MissingPayload,
     TruncatedPgpSignature,
     JunkAfterPgpSignature,
 }
@@ -12,13 +12,47 @@ impl std::fmt::Display for Error {
             Error::MissingPgpSignature => write!(f, "missing PGP signature"),
             Error::TruncatedPgpSignature => write!(f, "truncated PGP signature"),
             Error::JunkAfterPgpSignature => write!(f, "junk after PGP signature"),
-            Error::MissingContent => write!(f, "missing content"),
+            Error::MissingPayload => write!(f, "missing payload"),
         }
     }
 }
 
 impl std::error::Error for Error {}
 
+/// Strip a PGP signature from a signed message.
+///
+/// This function takes a signed message and returns the payload and the PGP signature.
+/// If the input is not a signed message, the function returns the input as the payload and `None`
+/// as the signature.
+///
+/// # Arguments
+/// * `input` - The signed message.
+///
+/// # Errors
+/// This function returns an error if the input is a signed message but the payload, PGP signature,
+/// or the PGP signature metadata is missing, or if there is junk after the PGP signature.
+/// The error indicates the reason for the failure.
+///
+/// # Returns
+/// A tuple containing the payload and the PGP signature, if present.
+///
+/// # Examples
+/// ```
+/// let input = "-----BEGIN PGP SIGNED MESSAGE-----
+/// Hash: SHA256
+///
+/// Hello, world!
+/// -----BEGIN PGP SIGNATURE-----
+/// iQIzBAEBCAAdFiEEpyNohvPMyq0Uiif4DphATThvodkFAmbJ6swACgkQDphATThv
+/// odkUiw//VDVOwHGRVxpvyIjSvH0AMQmANOvolJ5EoCu1I5UG2x98UPiMV5oTNv1r
+/// ...
+/// =olY7
+/// -----END PGP SIGNATURE-----
+/// ";
+/// let (output, signature) = debian_control::pgp::strip_pgp_signature(input).unwrap();
+/// assert_eq!(output, "Hello, world!\n");
+/// assert_eq!(signature.unwrap().len(), 136);
+/// ```
 pub fn strip_pgp_signature(input: &str) -> Result<(String, Option<String>), Error> {
     let mut lines = input.lines();
     let first_line = if let Some(line) = lines.next() {
@@ -36,7 +70,7 @@ pub fn strip_pgp_signature(input: &str) -> Result<(String, Option<String>), Erro
         let line = if let Some(line) = lines.next() {
             line
         } else {
-            return Err(Error::MissingContent);
+            return Err(Error::MissingPayload);
         };
         if line.is_empty() {
             break;
@@ -45,7 +79,7 @@ pub fn strip_pgp_signature(input: &str) -> Result<(String, Option<String>), Erro
         metadata.push('\n');
     }
 
-    let mut content = String::new();
+    let mut payload = String::new();
     loop {
         let line = if let Some(line) = lines.next() {
             line
@@ -55,8 +89,8 @@ pub fn strip_pgp_signature(input: &str) -> Result<(String, Option<String>), Erro
         if line == "-----BEGIN PGP SIGNATURE-----" {
             break;
         }
-        content.push_str(line);
-        content.push('\n');
+        payload.push_str(line);
+        payload.push('\n');
     }
 
     let mut signature = String::new();
@@ -76,7 +110,7 @@ pub fn strip_pgp_signature(input: &str) -> Result<(String, Option<String>), Erro
         return Err(Error::JunkAfterPgpSignature);
     }
 
-    Ok((content, Some(signature)))
+    Ok((payload, Some(signature)))
 }
 
 #[cfg(test)]
@@ -139,12 +173,12 @@ KYQwHDLf3TLHWF9z0lvGFYSAq1H8gOwchDISGA==
     }
 
     #[test]
-    fn test_strip_pgp_missing_content() {
+    fn test_strip_pgp_missing_payload() {
         let input = r###"-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA256
 "###;
         let err = super::strip_pgp_signature(input).unwrap_err();
-        assert_eq!(err, super::Error::MissingContent);
+        assert_eq!(err, super::Error::MissingPayload);
     }
 
     #[test]
