@@ -93,6 +93,7 @@ dependencies = [
 name = "debian-control"
 version = "0.1.19"
 dependencies = [
+ "chrono",
  "deb822-lossless",
  "debversion",
  "pyo3",

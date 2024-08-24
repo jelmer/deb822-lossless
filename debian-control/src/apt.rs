@@ -6,19 +6,19 @@ use crate::relations::Relations;
 pub struct Source(deb822_lossless::Paragraph);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
-pub struct File {
+pub struct MD5Checksum {
     pub md5sum: String,
     pub size: usize,
     pub filename: String,
 }
 
-impl std::fmt::Display for File {
+impl std::fmt::Display for MD5Checksum {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} {} {}", self.md5sum, self.size, self.filename)
     }
 }
 
-impl std::str::FromStr for File {
+impl std::str::FromStr for MD5Checksum {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -306,18 +306,18 @@ impl Source {
         self.0.insert("Testsuite", testsuite);
     }
 
-    pub fn files(&self) -> Vec<File> {
+    pub fn files(&self) -> Vec<MD5Checksum> {
         self.0
             .get("Files")
             .map(|s| {
                 s.lines()
                     .map(|line| line.parse().unwrap())
-                    .collect::<Vec<File>>()
+                    .collect::<Vec<MD5Checksum>>()
             })
             .unwrap_or_default()
     }
 
-    pub fn set_files(&mut self, files: Vec<File>) {
+    pub fn set_files(&mut self, files: Vec<MD5Checksum>) {
         self.0.insert(
             "Files",
             &files
@@ -650,6 +650,245 @@ impl std::str::FromStr for Package {
     }
 }
 
+pub struct Release(deb822_lossless::Paragraph);
+
+#[cfg(feature = "python-debian")]
+impl pyo3::ToPyObject for Release {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        use pyo3::prelude::*;
+        let d = self.0.to_object(py);
+
+        let m = py.import_bound("debian.deb822").unwrap();
+        let cls = m.getattr("Release").unwrap();
+
+        cls.call1((d,)).unwrap().to_object(py)
+    }
+}
+
+#[cfg(feature = "python-debian")]
+impl pyo3::FromPyObject<'_> for Release {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
+        Ok(Release(ob.extract()?))
+    }
+}
+
+impl Release{
+    pub fn new(paragraph: deb822_lossless::Paragraph) -> Self {
+        Self(paragraph)
+    }
+
+    pub fn origin(&self) -> Option<String> {
+        self.0.get("Origin").map(|s| s.to_string())
+    }
+
+    pub fn set_origin(&mut self, origin: &str) {
+        self.0.insert("Origin", origin);
+    }
+
+    pub fn label(&self) -> Option<String> {
+        self.0.get("Label").map(|s| s.to_string())
+    }
+
+    pub fn set_label(&mut self, label: &str) {
+        self.0.insert("Label", label);
+    }
+
+    pub fn suite(&self) -> Option<String> {
+        self.0.get("Suite").map(|s| s.to_string())
+    }
+
+    pub fn set_suite(&mut self, suite: &str) {
+        self.0.insert("Suite", suite);
+    }
+
+    pub fn codename(&self) -> Option<String> {
+        self.0.get("Codename").map(|s| s.to_string())
+    }
+
+    pub fn set_codename(&mut self, codename: &str) {
+        self.0.insert("Codename", codename);
+    }
+
+    pub fn changelogs(&self) -> Option<Vec<String>> {
+        self.0.get("Changelogs").map(|s| {
+            s.split(',')
+                .map(|s| s.trim().to_string())
+                .collect::<Vec<String>>()
+        })
+    }
+
+    pub fn set_changelogs(&mut self, changelogs: Vec<String>) {
+        self.0.insert("Changelogs", &changelogs.join(", "));
+    }
+
+    #[cfg(feature = "chrono")]
+    pub fn date(&self) -> Option<chrono::DateTime<chrono::FixedOffset>> {
+        self.0.get("Date").as_ref().map(|s| chrono::DateTime::parse_from_rfc2822(s).unwrap())
+    }
+
+    #[cfg(feature = "chrono")]
+    pub fn set_date(&mut self, date: chrono::DateTime<chrono::FixedOffset>) {
+        self.0.insert("Date", date.to_rfc2822().as_str());
+    }
+
+    #[cfg(feature = "chrono")]
+    pub fn valid_until(&self) -> Option<chrono::DateTime<chrono::FixedOffset>> {
+        self.0.get("Valid-Until").as_ref().map(|s| chrono::DateTime::parse_from_rfc2822(s).unwrap())
+    }
+
+    #[cfg(feature = "chrono")]
+    pub fn set_valid_until(&mut self, date: chrono::DateTime<chrono::FixedOffset>) {
+        self.0.insert("Valid-Until", date.to_rfc2822().as_str());
+    }
+
+    pub fn acquire_by_hash(&self) -> bool {
+        self.0.get("Acquire-By-Hash").map(|s| s == "yes").unwrap_or(false)
+    }
+
+    pub fn set_acquire_by_hash(&mut self, acquire_by_hash: bool) {
+        self.0.insert("Acquire-By-Hash", if acquire_by_hash { "yes" } else { "no" });
+    }
+
+    pub fn no_support_for_architecture_all(&self) -> bool {
+        self.0.get("No-Support-For-Architecture-All").map(|s| s == "yes").unwrap_or(false)
+    }
+
+    pub fn set_no_support_for_architecture_all(&mut self, no_support_for_architecture_all: bool) {
+        self.0.insert("No-Support-For-Architecture-All", if no_support_for_architecture_all { "yes" } else { "no" });
+    }
+
+    pub fn architectures(&self) -> Option<Vec<String>> {
+        self.0.get("Architectures").map(|s| {
+            s.split_whitespace()
+                .map(|s| s.trim().to_string())
+                .collect::<Vec<String>>()
+        })
+    }
+
+    pub fn set_architectures(&mut self, architectures: Vec<String>) {
+        self.0.insert("Architectures", &architectures.join(" "));
+    }
+
+    pub fn components(&self) -> Option<Vec<String>> {
+        self.0.get("Components").map(|s| {
+            s.split_whitespace()
+                .map(|s| s.trim().to_string())
+                .collect::<Vec<String>>()
+        })
+    }
+
+    pub fn set_components(&mut self, components: Vec<String>) {
+        self.0.insert("Components", &components.join(" "));
+    }
+
+    pub fn description(&self) -> Option<String> {
+        self.0.get("Description").map(|s| s.to_string())
+    }
+
+    pub fn set_description(&mut self, description: &str) {
+        self.0.insert("Description", description);
+    }
+
+    pub fn checksums_md5(&self) -> Vec<MD5Checksum> {
+        self.0
+            .get("MD5Sum")
+            .map(|s| {
+                s.lines()
+                    .map(|line| line.parse().unwrap())
+                    .collect::<Vec<MD5Checksum>>()
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn set_checksums_md5(&mut self, files: Vec<MD5Checksum>) {
+        self.0.insert(
+            "MD5Sum",
+            &files
+                .iter()
+                .map(|f| f.to_string())
+                .collect::<Vec<String>>()
+                .join("\n"),
+        );
+    }
+
+    pub fn checksums_sha1(&self) -> Vec<Sha1Checksum> {
+        self.0
+            .get("SHA1")
+            .map(|s| {
+                s.lines()
+                    .map(|line| line.parse().unwrap())
+                    .collect::<Vec<Sha1Checksum>>()
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn set_checksums_sha1(&mut self, checksums: Vec<Sha1Checksum>) {
+        self.0.insert(
+            "SHA1",
+            &checksums
+                .iter()
+                .map(|c| c.to_string())
+                .collect::<Vec<String>>()
+                .join("\n"),
+        );
+    }
+
+    pub fn checksums_sha256(&self) -> Vec<Sha256Checksum> {
+        self.0
+            .get("SHA256")
+            .map(|s| {
+                s.lines()
+                    .map(|line| line.parse().unwrap())
+                    .collect::<Vec<Sha256Checksum>>()
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn set_checksums_sha256(&mut self, checksums: Vec<Sha256Checksum>) {
+        self.0.insert(
+            "SHA256",
+            &checksums
+                .iter()
+                .map(|c| c.to_string())
+                .collect::<Vec<String>>()
+                .join("\n"),
+        );
+    }
+
+    pub fn checksums_sha512(&self) -> Vec<Sha512Checksum> {
+        self.0
+            .get("SHA512")
+            .map(|s| {
+                s.lines()
+                    .map(|line| line.parse().unwrap())
+                    .collect::<Vec<Sha512Checksum>>()
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn set_checksums_sha512(&mut self, checksums: Vec<Sha512Checksum>) {
+        self.0.insert(
+            "SHA512",
+            &checksums
+                .iter()
+                .map(|c| c.to_string())
+                .collect::<Vec<String>>()
+                .join("\n"),
+        );
+    }
+
+
+}
+
+impl std::str::FromStr for Release {
+    type Err = deb822_lossless::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(s.parse()?))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -681,7 +920,7 @@ mod tests {
     #[test]
     fn test_files() {
         let s = "md5sum 1234 filename";
-        let f: super::File = s.parse().unwrap();
+        let f: super::MD5Checksum= s.parse().unwrap();
         assert_eq!(f.md5sum, "md5sum");
         assert_eq!(f.size, 1234);
         assert_eq!(f.filename, "filename");
@@ -853,5 +1092,19 @@ Multi-Arch: same
         assert_eq!(p.md5sum(), Some("1234".to_string()));
         assert_eq!(p.sha256(), Some("1234".to_string()));
         assert_eq!(p.multi_arch(), Some(MultiArch::Same));
+    }
+
+    #[test]
+    fn test_release() {
+        let s = include_str!("testdata/Release");
+        let release: super::Release = s.parse().unwrap();
+
+        assert_eq!(release.origin(), Some("Debian".to_string()));
+        assert_eq!(release.label(), Some("Debian".to_string()));
+        assert_eq!(release.suite(), Some("testing".to_string()));
+        assert_eq!(release.architectures(), vec!["all".to_string(), "amd64".to_string(), "arm64".to_string(), "armel".to_string(), "armhf".to_string()].into());
+        assert_eq!(release.components(), vec!["main".to_string(), "contrib".to_string(), "non-free-firmware".to_string(), "non-free".to_string()].into());
+        assert_eq!(release.description(), Some("Debian x.y Testing distribution - Not Released".to_string()));
+        assert_eq!(318, release.checksums_md5().len());
     }
 }
