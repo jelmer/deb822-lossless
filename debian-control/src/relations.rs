@@ -720,6 +720,10 @@ impl std::fmt::Debug for Relation {
 }
 
 impl Relations {
+    pub fn new() -> Self {
+        Self::from(vec![])
+    }
+
     pub fn entries(&self) -> impl Iterator<Item = Entry> + '_ {
         self.0.children().filter_map(Entry::cast)
     }
@@ -848,6 +852,21 @@ impl Entry {
         self.relations().nth(idx)
     }
 
+    /// Check if this entry is satisfied by the given package versions.
+    ///
+    /// # Arguments
+    /// * `package_version` - A function that returns the version of a package.
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::relations::Entry;
+    /// let entry = Entry::from(vec!["samba (>= 2.0)".parse().unwrap()]);
+    /// assert!(entry.satisfied_by(&mut |name| {
+    ///    match name {
+    ///    "samba" => Some("2.0".parse().unwrap()),
+    ///    _ => None
+    /// }}));
+    /// ```
     pub fn satisfied_by(&self, package_version: &mut dyn FnMut(&str) -> Option<debversion::Version>) -> bool {
         self.relations().any(|r| {
             let actual = package_version(r.name().as_str());
