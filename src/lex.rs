@@ -28,7 +28,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_valid_key_char(c: char) -> bool {
-        c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.'
+        c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '@'
     }
 
     fn read_while<F>(&mut self, predicate: F) -> String
