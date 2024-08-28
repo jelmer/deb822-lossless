@@ -1,0 +1,12 @@
+[package]
+name = "r-description"
+description = "Rust library for parsing and generating R DESCRIPTION files"
+edition = "2021"
+version = "0.1.0"
+repository.workspace = true
+homepage.workspace = true
+license = "Apache-2.0"
+
+[dependencies]
+deb822-lossless = { version = ">=0.1.22", path = ".." }
+url = "2"
