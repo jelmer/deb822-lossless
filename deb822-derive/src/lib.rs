@@ -3,7 +3,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
 use syn::spanned::Spanned;
-use syn::{Data, Type, TypePath};
+use syn::{Type, TypePath};
 
 fn is_option(ty: &syn::Type) -> bool {
     if let Type::Path(TypePath { path, .. }) = ty {
@@ -17,7 +17,7 @@ fn is_option(ty: &syn::Type) -> bool {
 // Generate `from_paragraph`, ``to_paragraph`` methods for the annotated struct, i.e.:
 //
 // ```rust
-// #[derive(Deb822)]
+// #[derive(FromDeb822)]
 // struct X {
 //    a: i32,
 //    b: i32,
@@ -43,16 +43,33 @@ fn is_option(ty: &syn::Type) -> bool {
 //     })
 // }
 //
+// And:
+//
+//// ```rust
+// #[derive(ToDeb822)]
+// struct X {
+//    a: i32,
+//    b: i32,
+//    c: Option<String>,
+//    d: Vec<String>,
+//    #[deb822(field = "E")]
+//    e: bool,
+// }
+// ```
+//
+// will generate:
+//
+// ```rust
 // impl ToDeb822Paragraph for X {
 //     fn to_paragraph(&self) -> deb822_lossless::Paragraph {
-//         let mut fields = Vec::new();
-//         fields.insert("a", &self.a.to_string());
-//         fields.insert("b", &self.b.to_string());
+//         let mut fields = Vec::<(String, String)>::new();
+//         fields.insert("a", self.a.to_string());
+//         fields.insert("b", self.b.to_string());
 //         if let Some(v) = &self.c {
-//             fields.insert("c", &v.to_string());
+//             fields.insert("c", v.to_string());
 //         }
-//         fields.insert("d", &self.d.join(" "));
-//         fields.insert("E", &self.e.to_string());
+//         fields.insert("d", self.d.join(" "));
+//         fields.insert("E", self.e.to_string());
 //         deb822_lossless::Paragraph::from(fields)
 //     }
 //
@@ -70,105 +87,90 @@ fn is_option(ty: &syn::Type) -> bool {
 // }
 // ```
 
-// Extract the `#[deb822]` attributes from a field
-fn deb822_attrs(f: &syn::Field) -> impl Iterator<Item = &syn::Attribute> {
-    f.attrs.iter().filter(|a| a.path().is_ident("deb822"))
+struct FieldAttributes {
+    field: Option<String>,
+    serialize_with: Option<syn::ExprPath>,
+    deserialize_with: Option<syn::ExprPath>,
 }
 
-// Extract the `field` attribute from a `#[deb822]` attribute
-fn deb822_field_name(attr: &syn::Attribute) -> Result<Option<String>, syn::Error> {
-    let list = attr.meta.require_list()?;
-    // Extract each entry from the list
-    while let Ok(l) = list.parse_args::<syn::MetaNameValue>() {
-        if l.path.is_ident("field") {
-            if let syn::Expr::Lit(syn::ExprLit{lit: syn::Lit::Str(s), ..}) = l.value {
-                return Ok(Some(s.value()));
+fn extract_field_attributes(attrs: &[syn::Attribute]) -> Result<FieldAttributes, syn::Error> {
+    let mut field = None;
+    let mut serialize_with = None;
+    let mut deserialize_with = None;
+    for attr in attrs {
+        if !attr.path().is_ident("deb822") {
+            continue;
+        }
+        let name_values: syn::punctuated::Punctuated<syn::MetaNameValue, syn::Token![,]> = attr.parse_args_with(syn::punctuated::Punctuated::parse_terminated)?;
+        for nv in name_values {
+            if nv.path.is_ident("field") {
+                if let syn::Expr::Lit(syn::ExprLit{lit: syn::Lit::Str(s), ..}) = nv.value {
+                    field = Some(s.value());
+                } else {
+                    return Err(syn::Error::new(nv.value.span(), "expected string literal in deb822 attribute"));
+                }
+            } else if nv.path.is_ident("serialize_with") {
+                if let syn::Expr::Path(s) = nv.value {
+                    serialize_with = Some(s);
+                } else {
+                    return Err(syn::Error::new(nv.value.span(), "expected path in deb822 attribute"));
+                }
+            } else if nv.path.is_ident("deserialize_with") {
+                if let syn::Expr::Path(s) = nv.value {
+                    deserialize_with = Some(s);
+                } else {
+                    return Err(syn::Error::new(nv.value.span(), "expected path in deb822 attribute"));
+                }
             } else {
-                return Err(syn::Error::new(l.value.span(), "expected string literal in deb822 attribute"));
+                return Err(syn::Error::new(nv.span(), format!("unsupported attribute: {}", nv.path.get_ident().unwrap())));
             }
-        } else {
-            return Err(syn::Error::new(l.span(), format!("unsupported attribute: {}", l.path.get_ident().unwrap())));
         }
     }
-    Ok(None)
+    Ok(FieldAttributes {
+        field,
+        serialize_with,
+        deserialize_with,
+    })
 }
 
-#[proc_macro_derive(Deb822, attributes(deb822))]
-pub fn derive_deb822(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(FromDeb822, attributes(deb822))]
+pub fn derive_from_deb822(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
 
     let s = if let syn::Data::Struct(s) = &input.data {
         s
     } else {
-        panic!("Deb822 can only be derived for structs")
+        panic!("FromDeb822 can only be derived for structs")
     };
 
     let from_fields = s.fields.iter().map(|f| {
+        let attrs = extract_field_attributes(&f.attrs).unwrap();
             let ident = &f.ident;
             // Get key either from the #[deb822(field = "foo")] attribute, or derive it from the
             // field name
-            let mut key = ident.as_ref().unwrap().to_string();
-            for attr in deb822_attrs(f) {
-                if let Some(overridden_key) = deb822_field_name(attr).unwrap() {
-                    key = overridden_key;
-                }
-            }
+            let key = attrs.field.unwrap_or_else(||ident.as_ref().unwrap().to_string());
+            let deserialize_with = if let Some(deserialize_with) = attrs.deserialize_with {
+                quote! { #deserialize_with }
+            } else {
+                quote! { std::str::FromStr::from_str }
+            };
             // Check if the field is optional or not
             let ty = &f.ty;
             let is_option = is_option(ty);
+
             if is_option {
                 // Allow the field to be missing
                 quote! {
-                    #ident: para.get(#key).map(|v| v.parse().map_err(|e| format!("parsing field {}: {}", #key, e))).transpose()?
+                    #ident: para.get(#key).map(|v| #deserialize_with(&v).map_err(|e| format!("parsing field {}: {}", #key, e))).transpose()?
                 }
             } else {
                 // The field is required
                 quote! {
-                    #ident: para.get(#key).ok_or_else(|| format!("missing field: {}", #key))?.parse().map_err(|e| format!("parsing field {}: {}", #key, e))?
+                    #ident: #deserialize_with(&para.get(#key).ok_or_else(|| format!("missing field: {}", #key))?).map_err(|e| format!("parsing field {}: {}", #key, e))?
                 }
             }
         }).collect::<Vec<_>>();
-
-    let to_fields = s.fields.iter().map(|f| {
-        let ident = &f.ident;
-        let key = ident.as_ref().unwrap().to_string();
-        let ty = &f.ty;
-        let is_option = is_option(ty);
-
-        if is_option {
-            quote! {
-                if let Some(v) = &self.#ident {
-                    fields.push((#key.to_string(), v.to_string()));
-                }
-            }
-        } else {
-            quote! {
-                fields.push((#key.to_string(), self.#ident.to_string()));
-            }
-        }
-    }).collect::<Vec<_>>();
-
-    let update_fields = s.fields.iter().map(|f| {
-        let ident = &f.ident;
-        let key = ident.as_ref().unwrap().to_string();
-        let ty = &f.ty;
-        let is_option = is_option(ty);
-
-        if is_option {
-            quote! {
-                if let Some(v) = &self.#ident {
-                    para.insert(#key, &v.to_string());
-                } else {
-                    para.remove(#key);
-                }
-            }
-        } else {
-            quote! {
-                para.insert(#key, &self.#ident.to_string());
-            }
-        }
-    }).collect::<Vec<_>>();
 
     let gen = quote! {
         impl deb822_lossless::FromDeb822Paragraph for #name {
@@ -178,10 +180,68 @@ pub fn derive_deb822(input: TokenStream) -> TokenStream {
                 })
             }
         }
+    };
+    gen.into()
+}
 
+#[proc_macro_derive(ToDeb822, attributes(deb822))]
+pub fn derive_to_deb822(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+
+    let s = if let syn::Data::Struct(s) = &input.data {
+        s
+    } else {
+        panic!("Deb822 can only be derived for structs")
+    };
+
+    let mut to_fields = vec![];
+    let mut update_fields = vec![];
+
+    for f in s.fields.iter() {
+        let attrs = extract_field_attributes(&f.attrs).unwrap();
+        let ident = &f.ident;
+        let key = attrs.field.unwrap_or_else(|| ident.as_ref().unwrap().to_string());
+        let serialize_with = if let Some(serialize_with) = attrs.serialize_with {
+            quote! { #serialize_with }
+        } else {
+            quote! { ToString::to_string }
+        };
+
+        let ty = &f.ty;
+        let is_option = is_option(ty);
+
+        to_fields.push(if is_option {
+            quote! {
+                if let Some(v) = &self.#ident {
+                    fields.push((#key.to_string(), #serialize_with(&v)));
+                }
+            }
+        } else {
+            quote! {
+                fields.push((#key.to_string(), #serialize_with(&self.#ident)));
+            }
+        });
+
+        update_fields.push(if is_option {
+            quote! {
+                if let Some(v) = &self.#ident {
+                    para.insert(#key, #serialize_with(&v).as_str());
+                } else {
+                    para.remove(#key);
+                }
+            }
+        } else {
+            quote! {
+                para.insert(#key, #serialize_with(&self.#ident).as_str());
+            }
+        });
+    }
+
+    let gen = quote! {
         impl deb822_lossless::ToDeb822Paragraph for #name {
             fn to_paragraph(&self) -> deb822_lossless::Paragraph {
-                let mut fields = Vec::new();
+                let mut fields = Vec::<(String, String)>::new();
                 #(#to_fields)*
                 deb822_lossless::Paragraph::from(fields)
             }
