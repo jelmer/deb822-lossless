@@ -34,15 +34,25 @@
 //! let license = c.find_license_for_file(Path::new("debian/foo")).unwrap();
 //! assert_eq!(license.name(), Some("GPL-3+"));
 //! ```
+//!
+//! See the ``lossless`` module (behind the ``lossless`` feature) for a more forgiving parser that
+//! allows partial parsing, parsing files with errors and unknown fields and editing while
+//! preserving formatting.
 
-use deb822_lossless::{Deb822, Paragraph};
+use deb822_lossless::{FromDeb822, ToDeb822, FromDeb822Paragraph, ToDeb822Paragraph};
 use std::path::Path;
+
+#[cfg(feature = "lossless")]
+pub mod lossless;
+
+mod glob;
 
 pub const CURRENT_FORMAT: &str =
     "https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/";
 
 pub const KNOWN_FORMATS: &[&str] = &[CURRENT_FORMAT];
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum License {
     Name(String),
     Text(String),
@@ -67,307 +77,200 @@ impl License {
     }
 }
 
-#[derive(Debug)]
-pub struct Copyright(Deb822);
-
-impl Copyright {
-    pub fn new() -> Self {
-        let mut deb822 = Deb822::new();
-        let mut header = deb822.add_paragraph();
-        header.insert("Format", CURRENT_FORMAT);
-        Copyright(deb822)
-    }
-
-    pub fn empty() -> Self {
-        Self(Deb822::new())
-    }
-
-    pub fn header(&self) -> Option<Header> {
-        self.0.paragraphs().next().map(Header)
-    }
-
-    pub fn iter_files(&self) -> impl Iterator<Item = FilesParagraph> {
-        self.0
-            .paragraphs()
-            .filter(|x| x.contains_key("Files"))
-            .map(FilesParagraph)
-    }
-
-    pub fn iter_licenses(&self) -> impl Iterator<Item = LicenseParagraph> {
-        self.0
-            .paragraphs()
-            .filter(|x| !x.contains_key("Files") && x.contains_key("License"))
-            .map(LicenseParagraph)
-    }
-
-    /// Returns the Files paragraph for the given filename.
-    ///
-    /// Consistent with the specification, this returns the last paragraph
-    /// that matches (which should be the most specific)
-    pub fn find_files(&self, filename: &Path) -> Option<FilesParagraph> {
-        self.iter_files().filter(|p| p.matches(filename)).last()
-    }
-
-    pub fn find_license_by_name(&self, name: &str) -> Option<License> {
-        self.iter_licenses()
-            .find(|p| p.name().as_deref() == Some(name))
-            .map(|x| x.into())
-    }
-
-    /// Returns the license for the given file.
-    pub fn find_license_for_file(&self, filename: &Path) -> Option<License> {
-        let files = self.find_files(filename)?;
-        let license = files.license()?;
-        if license.text().is_some() {
-            return Some(license);
+fn deserialize_license(text: &str) -> Result<License, String> {
+    if let Some((name, rest)) = text.split_once('\n') {
+        if name.is_empty() {
+            Ok(License::Text(rest.to_string()))
+        } else {
+            Ok(License::Named(name.to_string(), rest.to_string()))
         }
-        self.find_license_by_name(license.name()?)
-    }
-
-    pub fn from_str_relaxed(s: &str) -> Result<(Self, Vec<String>), Error> {
-        if !s.starts_with("Format:") {
-            return Err(Error::NotMachineReadable);
-        }
-
-        let (deb822, errors) = Deb822::from_str_relaxed(s);
-        Ok((Self(deb822), errors))
-    }
-
-    pub fn from_file_relaxed<P: AsRef<Path>>(path: P) -> Result<(Self, Vec<String>), Error> {
-        let text = std::fs::read_to_string(path)?;
-        Self::from_str_relaxed(&text)
-    }
-
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
-        let text = std::fs::read_to_string(path)?;
-        use std::str::FromStr;
-        Self::from_str(&text)
+    } else {
+        Ok(License::Name(text.to_string()))
     }
 }
 
-#[derive(Debug)]
-pub enum Error {
-    ParseError(deb822_lossless::ParseError),
-    IoError(std::io::Error),
-    NotMachineReadable,
-}
-
-impl From<deb822_lossless::Error> for Error {
-    fn from(e: deb822_lossless::Error) -> Self {
-        match e {
-            deb822_lossless::Error::ParseError(e) => Error::ParseError(e),
-            deb822_lossless::Error::IoError(e) => Error::IoError(e),
-        }
+fn serialize_license(license: &License) -> String {
+    match license {
+        License::Name(name) => name.to_string(),
+        License::Text(text) => format!("\n{}", text),
+        License::Named(name, text) => format!("{}\n{}", name, text)
     }
 }
 
-impl From<std::io::Error> for Error {
-    fn from(e: std::io::Error) -> Self {
-        Error::IoError(e)
-    }
+fn deserialize_file_list(text: &str) -> Result<Vec<String>, String> {
+    Ok(text.split('\n').map(|x| x.to_string()).collect())
 }
 
-impl From<deb822_lossless::ParseError> for Error {
-    fn from(e: deb822_lossless::ParseError) -> Self {
-        Error::ParseError(e)
-    }
+fn serialize_file_list(files: &Vec<String>) -> String {
+    files.join("\n")
 }
 
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match &self {
-            Error::ParseError(e) => write!(f, "parse error: {}", e),
-            Error::NotMachineReadable => write!(f, "not machine readable"),
-            Error::IoError(e) => write!(f, "io error: {}", e),
-        }
-    }
+#[derive(FromDeb822, ToDeb822, Clone, PartialEq, Eq, Debug)]
+pub struct Header {
+    #[deb822(field = "Format")]
+    format: String,
+
+    #[deb822(field = "Files-Excluded", deserialize_with = deserialize_file_list, serialize_with = serialize_file_list)]
+    files_excluded: Option<Vec<String>>,
+
+    #[deb822(field = "Source")]
+    source: Option<String>,
+
+    #[deb822(field = "Upstream-Contact")]
+    upstream_contact: Option<String>,
 }
 
-impl std::error::Error for Error {}
-
-impl Default for Copyright {
+impl Default for Header {
     fn default() -> Self {
-        Copyright(Deb822::new())
+        Header {
+            format: CURRENT_FORMAT.to_string(),
+            files_excluded: None,
+            source: None,
+            upstream_contact: None
+        }
     }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Copyright {
+    pub header: Header,
+    pub files: Vec<FilesParagraph>,
+    pub licenses: Vec<LicenseParagraph>,
 }
 
 impl std::str::FromStr for Copyright {
-    type Err = Error;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if !s.starts_with("Format:") {
-            return Err(Error::NotMachineReadable);
-        }
-        Ok(Self(Deb822::from_str(s)?))
-    }
-}
-
-impl std::fmt::Display for Copyright {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(&self.0.to_string())
-    }
-}
-
-pub struct Header(Paragraph);
-
-impl Header {
-    /// Returns the format string for this file.
-    pub fn format_string(&self) -> Option<String> {
-        self.0
-            .get("Format")
-            .or_else(|| self.0.get("Format-Specification"))
-    }
-
-    pub fn get(&self, key: &str) -> Option<String> {
-        self.0.get(key)
-    }
-
-    pub fn upstream_name(&self) -> Option<String> {
-        self.0.get("Upstream-Name")
-    }
-
-    pub fn upstream_contact(&self) -> Option<String> {
-        self.0.get("Upstream-Contact")
-    }
-
-    pub fn source(&self) -> Option<String> {
-        self.0.get("Source")
-    }
-
-    pub fn files_excluded(&self) -> Option<Vec<String>> {
-        self.0
-            .get("Files-Excluded")
-            .map(|x| x.split('\n').map(|x| x.to_string()).collect::<Vec<_>>())
-    }
-
-    pub fn fix(&mut self) {
-        if self.0.contains_key("Format-Specification") {
-            self.0.rename("Format-Specification", "Format");
+            return Err("Not machine readable".to_string());
         }
 
-        if let Some(mut format) = self.0.get("Format") {
-            if !format.ends_with('/') {
-                format.push('/');
-            }
+        let deb822: deb822_lossless::Deb822 = s.parse()
+            .map_err(|e: deb822_lossless::ParseError| e.to_string())?;
 
-            if let Some(rest) = format.strip_prefix("http:") {
-                format = format!("https:{}", rest);
-            }
+        let mut paragraphs = deb822.paragraphs();
 
-            if KNOWN_FORMATS.contains(&format.as_str()) {
-                format = CURRENT_FORMAT.to_string();
-            }
+        let first_para = if let Some(para) = paragraphs.next() {
+            para
+        } else {
+            return Err("No paragraphs".to_string());
+        };
 
-            self.0.insert("Format", format.as_str());
+        let header: Header = Header::from_paragraph(&first_para)?;
+
+        let mut files_paras = vec![];
+        let mut license_paras = vec![];
+
+        while let Some(para) = paragraphs.next() {
+            if para.get("Files").is_some() {
+                files_paras.push(FilesParagraph::from_paragraph(&para)?);
+            } else if para.get("License").is_some() {
+                license_paras.push(LicenseParagraph::from_paragraph(&para)?);
+            } else {
+                return Err("Paragraph is neither License nor Files".to_string());
+            }
         }
-    }
-}
 
-pub struct FilesParagraph(Paragraph);
-
-impl FilesParagraph {
-    pub fn files(&self) -> Vec<String> {
-        self.0
-            .get("Files")
-            .unwrap()
-            .split_whitespace()
-            .map(|v| v.to_string())
-            .collect::<Vec<_>>()
-    }
-
-    pub fn matches(&self, filename: &std::path::Path) -> bool {
-        self.files()
-            .iter()
-            .any(|f| glob_to_regex(f).is_match(filename.to_str().unwrap()))
-    }
-
-    pub fn copyright(&self) -> Vec<String> {
-        self.0
-            .get("Copyright")
-            .unwrap_or_default()
-            .split('\n')
-            .map(|x| x.to_string())
-            .collect::<Vec<_>>()
-    }
-
-    pub fn comment(&self) -> Option<String> {
-        self.0.get("Comment")
-    }
-
-    pub fn license(&self) -> Option<License> {
-        self.0.get("License").map(|x| {
-            x.split_once('\n').map_or_else(
-                || License::Name(x.to_string()),
-                |(name, text)| {
-                    if name.is_empty() {
-                        License::Text(text.to_string())
-                    } else {
-                        License::Named(name.to_string(), text.to_string())
-                    }
-                },
-            )
+        Ok(Copyright {
+            header,
+            files: files_paras,
+            licenses: license_paras,
         })
     }
 }
 
-pub struct LicenseParagraph(Paragraph);
+#[derive(FromDeb822, ToDeb822, Clone, PartialEq, Eq, Debug)]
+pub struct LicenseParagraph {
+    #[deb822(field="License", deserialize_with = deserialize_license, serialize_with = serialize_license)]
+    license: License,
+    #[deb822(field="Comment")]
+    comment: Option<String>
+}
 
-impl From<LicenseParagraph> for License {
-    fn from(p: LicenseParagraph) -> Self {
-        let x = p.0.get("License").unwrap();
-        x.split_once('\n').map_or_else(
-            || License::Name(x.to_string()),
-            |(name, text)| {
-                if name.is_empty() {
-                    License::Text(text.to_string())
-                } else {
-                    License::Named(name.to_string(), text.to_string())
-                }
-            },
-        )
+fn deserialize_copyrights(text: &str) -> Result<Vec<String>, String> {
+    Ok(text.split('\n').map(ToString::to_string).collect())
+}
+
+fn serialize_copyrights(copyrights: &Vec<String>) -> String {
+    copyrights.join("\n")
+}
+
+impl std::fmt::Display for LicenseParagraph {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.to_paragraph().to_string())
     }
 }
 
-impl LicenseParagraph {
-    pub fn comment(&self) -> Option<String> {
-        self.0.get("Comment")
-    }
+#[derive(FromDeb822, ToDeb822, Clone, PartialEq, Eq, Debug)]
+pub struct FilesParagraph {
+    #[deb822(field="Files", deserialize_with = deserialize_file_list, serialize_with = serialize_file_list)]
+    files: Vec<String>,
+    #[deb822(field="License", deserialize_with = deserialize_license, serialize_with = serialize_license)]
+    license: License,
+    #[deb822(field="Copyright", deserialize_with = deserialize_copyrights, serialize_with = serialize_copyrights)]
+    copyright: Vec<String>,
+    #[deb822(field="Comment")]
+    comment: Option<String>
+}
 
-    pub fn name(&self) -> Option<String> {
-        self.0
-            .get("License")
-            .and_then(|x| x.split_once('\n').map(|(name, _)| name.to_string()))
-    }
-
-    pub fn text(&self) -> Option<String> {
-        self.0
-            .get("License")
-            .and_then(|x| x.split_once('\n').map(|(_, text)| text.to_string()))
+impl FilesParagraph {
+    pub fn matches(&self, filename: &std::path::Path) -> bool {
+        self.files
+            .iter()
+            .any(|f| crate::glob::glob_to_regex(f).is_match(filename.to_str().unwrap()))
     }
 }
 
-fn glob_to_regex(glob: &str) -> regex::Regex {
-    let mut it = glob.chars();
-    let mut r = String::new();
+impl std::fmt::Display for FilesParagraph {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.to_paragraph().to_string())
+    }
+}
 
-    while let Some(c) = it.next() {
-        r.push_str(
-            match c {
-                '*' => ".*".to_string(),
-                '?' => ".".to_string(),
-                '\\' => match it.next().unwrap() {
-                    '?' | '*' | '\\' => regex::escape(c.to_string().as_str()),
-                    x => {
-                        panic!("invalid escape sequence: \\{}", x);
-                    }
-                },
-                c => regex::escape(c.to_string().as_str()),
-            }
-            .as_str(),
-        )
+impl Copyright {
+    pub fn new() -> Self {
+        Self {
+            header: Header::default(),
+            licenses: Vec::new(),
+            files: Vec::new()
+        }
     }
 
-    regex::Regex::new(r.as_str()).unwrap()
+    pub fn find_files(&self, path: &std::path::Path) -> Option<&FilesParagraph> {
+        self.files.iter().filter(|f| f.matches(path)).last()
+    }
+
+    /// Returns the license for the given file.
+    pub fn find_license_for_file(&self, filename: &Path) -> Option<&License> {
+        let files = self.find_files(filename)?;
+        if files.license.text().is_some() {
+            return Some(&files.license);
+        }
+        self.find_license_by_name(files.license.name().unwrap())
+    }
+
+    pub fn find_license_by_name(&self, name: &str) -> Option<&License> {
+        self.licenses
+            .iter()
+            .find(|p| p.license.name() == Some(name))
+            .map(|p| &p.license)
+    }
+}
+
+impl std::fmt::Display for Copyright {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.header.to_paragraph())?;
+        for files in &self.files {
+            write!(f, "\n")?;
+            write!(f, "{}", files.to_paragraph())?;
+        }
+        for license in &self.licenses {
+            write!(f, "\n")?;
+            write!(f, "{}", license.to_paragraph())?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -379,7 +282,7 @@ This copyright file is not machine readable.
 "#;
         let ret = s.parse::<super::Copyright>();
         assert!(ret.is_err());
-        assert!(matches!(ret.unwrap_err(), super::Error::NotMachineReadable));
+        assert_eq!(ret.unwrap_err(), "Not machine readable".to_string());
     }
 
     #[test]
@@ -418,51 +321,50 @@ License: GPL-3+
 
         assert_eq!(
             "https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/",
-            copyright.header().unwrap().format_string().unwrap()
+            copyright.header.format
         );
-        assert_eq!("foo", copyright.header().unwrap().upstream_name().unwrap());
         assert_eq!(
             "Joe Bloggs <joe@example.com>",
-            copyright.header().unwrap().upstream_contact().unwrap()
+            copyright.header.upstream_contact.as_ref().unwrap()
         );
         assert_eq!(
             "https://example.com/foo",
-            copyright.header().unwrap().source().unwrap()
+            copyright.header.source.as_ref().unwrap()
         );
 
-        let files = copyright.iter_files().collect::<Vec<_>>();
+        let files = &copyright.files;
         assert_eq!(2, files.len());
-        assert_eq!("*", files[0].files().join(" "));
-        assert_eq!("debian/*", files[1].files().join(" "));
+        assert_eq!("*", files[0].files.join(" "));
+        assert_eq!("debian/*", files[1].files.join(" "));
         assert_eq!(
             "Debian packaging is licensed under the GPL-3+.",
-            files[1].comment().unwrap()
+            files[1].comment.as_ref().unwrap()
         );
         assert_eq!(
             vec!["2023 Jelmer Vernooij".to_string()],
-            files[1].copyright()
+            files[1].copyright
         );
-        assert_eq!("GPL-3+", files[1].license().unwrap().name().unwrap());
-        assert_eq!(files[1].license().unwrap().text(), None);
+        assert_eq!("GPL-3+", files[1].license.name().unwrap());
+        assert_eq!(files[1].license.text(), None);
 
-        let licenses = copyright.iter_licenses().collect::<Vec<_>>();
+        let licenses = &copyright.licenses;
         assert_eq!(1, licenses.len());
-        assert_eq!("GPL-3+", licenses[0].name().unwrap());
+        assert_eq!("GPL-3+", licenses[0].license.name().unwrap());
         assert_eq!(
             "This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.",
-            licenses[0].text().unwrap()
+            licenses[0].license.text().unwrap()
         );
 
         let upstream_files = copyright.find_files(std::path::Path::new("foo.c")).unwrap();
-        assert_eq!(vec!["*"], upstream_files.files());
+        assert_eq!(vec!["*"], upstream_files.files);
 
         let debian_files = copyright
             .find_files(std::path::Path::new("debian/foo.c"))
             .unwrap();
-        assert_eq!(vec!["debian/*"], debian_files.files());
+        assert_eq!(vec!["debian/*"], debian_files.files);
 
         let gpl = copyright.find_license_by_name("GPL-3+");
         assert!(gpl.is_some());
