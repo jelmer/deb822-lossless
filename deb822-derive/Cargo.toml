@@ -1,0 +1,17 @@
+[package]
+name = "deb822-derive"
+description = "Derive macro for deb822 style paragraphs"
+authors = ["Jelmer Vernooĳ <jelmer@debian.org>"]
+license = "Apache-2.0"
+version = "0.1.0"
+edition = "2021"
+repository.workspace = true
+homepage.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0.86"
+quote = "1.0.37"
+syn = "2.0.76"

@@ -80,9 +80,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7704b5fdd17b18ae31c4c1da5a2e0305a2bf17b5249300a9ee9ed7b72114c636"
 
 [[package]]
+name = "deb822-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "deb822-lossless"
 version = "0.1.24"
 dependencies = [
+ "deb822-derive",
  "pyo3",
  "regex",
  "rowan",
