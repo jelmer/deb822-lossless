@@ -396,12 +396,9 @@ impl Deb822 {
     ///               given function.
     #[must_use]
     pub fn wrap_and_sort(
-        self: &Deb822,
-        indentation: Indentation,
-        immediate_empty_line: bool,
-        max_line_length_one_liner: Option<usize>,
+        &self,
         sort_paragraphs: Option<&dyn Fn(&Paragraph, &Paragraph) -> std::cmp::Ordering>,
-        sort_entries: Option<&dyn Fn(&Entry, &Entry) -> std::cmp::Ordering>,
+        wrap_and_sort_paragraph: Option<&dyn Fn(&Paragraph) -> Paragraph>,
     ) -> Deb822 {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(ROOT.into());
@@ -438,7 +435,7 @@ impl Deb822 {
             });
         }
 
-        for (i, mut paragraph) in paragraphs.into_iter().enumerate() {
+        for (i, paragraph) in paragraphs.into_iter().enumerate() {
             if i > 0 {
                 builder.start_node(EMPTY_LINE.into());
                 builder.token(NEWLINE.into(), "\n");
@@ -447,18 +444,12 @@ impl Deb822 {
             for c in paragraph.0.into_iter() {
                 builder.token(c.kind().into(), c.as_token().unwrap().text());
             }
-            inject(
-                &mut builder,
-                paragraph
-                    .1
-                    .wrap_and_sort(
-                        indentation,
-                        immediate_empty_line,
-                        max_line_length_one_liner,
-                        sort_entries,
-                    )
-                    .0,
-            );
+            let new_paragraph = if let Some(ref ws) = wrap_and_sort_paragraph {
+                ws(&paragraph.1)
+            } else {
+                paragraph.1
+            };
+            inject(&mut builder, new_paragraph.0);
         }
 
         for c in current {
@@ -628,13 +619,25 @@ impl Paragraph {
         Paragraph(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
+    /// Reformat this paragraph
+    ///
+    /// # Arguments
+    /// * `indentation` - The indentation to use
+    /// * `immediate_empty_line` - Whether multi-line values should always start with an empty line
+    /// * `max_line_length_one_liner` - If set, then this is the max length of the value if it is
+    ///     crammed into a "one-liner" value
+    /// * `sort_entries` - If set, then this function will sort the entries according to the given
+    /// function
+    /// * `format_value` - If set, then this function will format the value according to the given
+    ///   function
     #[must_use]
     pub fn wrap_and_sort(
-        &mut self,
+        &self,
         indentation: Indentation,
         immediate_empty_line: bool,
         max_line_length_one_liner: Option<usize>,
         sort_entries: Option<&dyn Fn(&Entry, &Entry) -> std::cmp::Ordering>,
+        format_value: Option<&dyn Fn(&str, &str) -> String>,
     ) -> Paragraph {
         let mut builder = GreenNodeBuilder::new();
 
@@ -663,7 +666,7 @@ impl Paragraph {
             });
         }
 
-        for (pre, mut entry) in entries.into_iter() {
+        for (pre, entry) in entries.into_iter() {
             for c in pre.into_iter() {
                 builder.token(c.kind().into(), c.as_token().unwrap().text());
             }
@@ -671,7 +674,7 @@ impl Paragraph {
             inject(
                 &mut builder,
                 entry
-                    .wrap_and_sort(indentation, immediate_empty_line, max_line_length_one_liner)
+                    .wrap_and_sort(indentation, immediate_empty_line, max_line_length_one_liner, format_value)
                     .0,
             );
         }
@@ -821,7 +824,7 @@ pub enum Indentation {
     FieldNameLength,
 
     /// The number of spaces to use for indentation.
-    FixedIndentation(u32),
+    Spaces(u32),
 }
 
 impl Entry {
@@ -845,10 +848,11 @@ impl Entry {
 
     #[must_use]
     pub fn wrap_and_sort(
-        &mut self,
+        &self,
         mut indentation: Indentation,
         immediate_empty_line: bool,
         max_line_length_one_liner: Option<usize>,
+        format_value: Option<&dyn Fn(&str, &str) -> String>,
     ) -> Entry {
         let mut builder = GreenNodeBuilder::new();
 
@@ -860,7 +864,7 @@ impl Entry {
                 KEY => {
                     builder.token(KEY.into(), text.unwrap());
                     if indentation == Indentation::FieldNameLength {
-                        indentation = Indentation::FixedIndentation(text.unwrap().len() as u32);
+                        indentation = Indentation::Spaces(text.unwrap().len() as u32);
                     }
                 }
                 COLON => {
@@ -876,7 +880,7 @@ impl Entry {
             }
         }
 
-        let indentation = if let Indentation::FixedIndentation(i) = indentation {
+        let indentation = if let Indentation::Spaces(i) = indentation {
             i
         } else {
             1
@@ -893,50 +897,24 @@ impl Entry {
             }
         }
 
-        let first_line_len = content
-            .iter()
-            .take_while(|c| c.kind() != NEWLINE)
-            .map(|c| c.as_token().unwrap().text().len())
-            .sum::<usize>() + self.key().map_or(0, |k| k.len()) + 2 /* ": " */;
-
-        let has_newline = content.iter().any(|c| c.kind() == NEWLINE);
-
-        let mut last_was_newline = false;
-        if max_line_length_one_liner
-            .map(|mll| first_line_len <= mll)
-            .unwrap_or(false)
-            && !has_newline
-        {
-            for c in content {
-                builder.token(c.kind().into(), c.as_token().unwrap().text());
+        // Reformat iff there is a format function and the value
+        // has no errors or comments
+        let tokens = if let Some(ref format_value) = format_value {
+            if !content.iter().any(|c| c.kind() == ERROR || c.kind() == COMMENT) {
+                let concat = content
+                    .iter()
+                    .filter_map(|c| c.as_token().map(|t| t.text()))
+                    .collect::<String>();
+                let formatted = format_value(self.key().as_ref().unwrap(), &concat);
+                crate::lex::lex_inline(&formatted)
+            } else {
+                content.into_iter().map(|n| n.into_token().unwrap()).map(|i| (i.kind(), i.text().to_string())).collect::<Vec<_>>()
             }
         } else {
-            if immediate_empty_line && has_newline {
-                builder.token(NEWLINE.into(), "\n");
-                last_was_newline = true;
-            } else {
-                builder.token(WHITESPACE.into(), " ");
-            }
-            // Strip leading whitespace and newlines
-            while let Some(c) = content.first() {
-                if c.kind() == NEWLINE || c.kind() == WHITESPACE {
-                    content.remove(0);
-                } else {
-                    break;
-                }
-            }
-            for c in content {
-                if last_was_newline {
-                    builder.token(INDENT.into(), &" ".repeat(indentation as usize));
-                }
-                builder.token(c.kind().into(), c.as_token().unwrap().text());
-                last_was_newline = c.kind() == NEWLINE;
-            }
-        }
+            content.into_iter().map(|n| n.into_token().unwrap()).map(|i| (i.kind(), i.text().to_string())).collect::<Vec<_>>()
+        };
 
-        if !last_was_newline {
-            builder.token(NEWLINE.into(), "\n");
-        }
+        rebuild_value(&mut builder, tokens, self.key().map_or(0, |k| k.len()), indentation, immediate_empty_line, max_line_length_one_liner);
 
         builder.finish_node();
         Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
@@ -1154,6 +1132,55 @@ Maintainer: Foo Bar <foo@example.com>
             ("Maintainer".into(), "Foo Bar <foo@example.com>".into()),
         ]
     );
+}
+
+fn rebuild_value(builder: &mut GreenNodeBuilder, mut tokens: Vec<(SyntaxKind, String)>, key_len: usize, indentation: u32, immediate_empty_line: bool, max_line_length_one_liner: Option<usize>) {
+    let first_line_len = tokens
+        .iter()
+        .take_while(|(k, _t)| *k != NEWLINE)
+        .map(|(_k, t)| t.len())
+        .sum::<usize>() + key_len + 2 /* ": " */;
+
+    let has_newline = tokens.iter().any(|(k, _t)| *k == NEWLINE);
+
+    let mut last_was_newline = false;
+    if max_line_length_one_liner
+        .map(|mll| first_line_len <= mll)
+        .unwrap_or(false)
+        && !has_newline
+    {
+        // Just copy tokens if the value fits into one line
+        for (k, t) in tokens {
+            builder.token(k.into(), &t);
+        }
+    } else {
+        // Insert a leading newline if the value is multi-line and immediate_empty_line is set
+        if immediate_empty_line && has_newline {
+            builder.token(NEWLINE.into(), "\n");
+            last_was_newline = true;
+        } else {
+            builder.token(WHITESPACE.into(), " ");
+        }
+        // Strip leading whitespace and newlines
+        while let Some((k, _t)) = tokens.first() {
+            if *k == NEWLINE || *k == WHITESPACE {
+                tokens.remove(0);
+            } else {
+                break;
+            }
+        }
+        for (k, t) in tokens {
+            if last_was_newline {
+                builder.token(INDENT.into(), &" ".repeat(indentation as usize));
+            }
+            builder.token(k.into(), &t);
+            last_was_newline = k == NEWLINE;
+        }
+    }
+
+    if !last_was_newline {
+        builder.token(NEWLINE.into(), "\n");
+    }
 }
 
 #[cfg(test)]
@@ -1428,12 +1455,13 @@ Multi-Line:
         .parse()
         .unwrap();
         let mut ps = d.paragraphs();
-        let mut p = ps.next().unwrap();
+        let p = ps.next().unwrap();
         let result = p.wrap_and_sort(
             super::Indentation::FieldNameLength,
             false,
             None,
             None::<&dyn Fn(&super::Entry, &super::Entry) -> std::cmp::Ordering>,
+            None
         );
         assert_eq!(
             result.to_string(),
@@ -1460,13 +1488,16 @@ Maintainer: Bar Foo <bar@example.com>
         .parse()
         .unwrap();
         let result = d.wrap_and_sort(
-            super::Indentation::FieldNameLength,
-            false,
-            None,
             Some(&|a: &super::Paragraph, b: &super::Paragraph| {
                 a.get("Source").cmp(&b.get("Source"))
             }),
-            None,
+            Some(&|p| p.wrap_and_sort(
+                super::Indentation::FieldNameLength,
+                false,
+                None,
+                None::<&dyn Fn(&super::Entry, &super::Entry) -> std::cmp::Ordering>,
+                None
+            )),
         );
         assert_eq!(
             result.to_string(),
@@ -1491,11 +1522,14 @@ Homepage: https://example.com/
         .parse()
         .unwrap();
         let result = d.wrap_and_sort(
-            super::Indentation::FieldNameLength,
-            false,
             None,
-            None,
-            Some(&|a: &super::Entry, b: &super::Entry| a.key().cmp(&b.key())),
+            Some(&mut |p: &super::Paragraph| -> super::Paragraph { p.wrap_and_sort(
+                super::Indentation::FieldNameLength,
+                false,
+                None,
+                Some(&mut |a: &super::Entry, b: &super::Entry| a.key().cmp(&b.key())),
+                None
+            )})
         );
         assert_eq!(
             result.to_string(),

@@ -256,3 +256,39 @@ impl FromStr for Urgency {
         }
     }
 }
+
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum MultiArch {
+    Same,
+    Foreign,
+    No,
+    Allowed,
+}
+
+impl std::str::FromStr for MultiArch {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "same" => Ok(MultiArch::Same),
+            "foreign" => Ok(MultiArch::Foreign),
+            "no" => Ok(MultiArch::No),
+            "allowed" => Ok(MultiArch::Allowed),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::fmt::Display for MultiArch {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(match self {
+            MultiArch::Same => "same",
+            MultiArch::Foreign => "foreign",
+            MultiArch::No => "no",
+            MultiArch::Allowed => "allowed",
+        })
+    }
+}
+
+

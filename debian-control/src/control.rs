@@ -1,6 +1,21 @@
-use crate::fields::Priority;
+use crate::fields::{MultiArch, Priority};
 use crate::relations::Relations;
-use crate::vcs::Vcs;
+
+fn format_field(name: &str, value: &str) -> String {
+    match name {
+        "Uploaders" => value
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect::<Vec<_>>()
+            .join(",\n"),
+        "Build-Depends" | "Build-Depends-Indep" | "Build-Depends-Arch" | "Build-Conflicts" | "Build-Conflicts-Indep" | "Build-Conflics-Arch" | "Depends" | "Recommends" | "Suggests" | "Enhances" | "Pre-Depends" | "Breaks" => {
+            let relations: Relations = value.parse().unwrap();
+            let relations = relations.wrap_and_sort();
+            relations.to_string()
+        },
+        _ => value.to_string(),
+    }
+}
 
 pub struct Control(deb822_lossless::Deb822);
 
@@ -94,6 +109,44 @@ impl Control {
         let (control, errors) = deb822_lossless::Deb822::read_relaxed(&mut r)?;
         Ok((Self(control), errors))
     }
+
+    pub fn wrap_and_sort(&mut self, indentation: deb822_lossless::Indentation, immediate_empty_line: bool, max_line_length_one_liner: Option<usize>) {
+        let sort_paragraphs = |a: &deb822_lossless::Paragraph, b: &deb822_lossless::Paragraph| -> std::cmp::Ordering {
+            // Sort Source before Package
+            let a_is_source = a.get("Source").is_some();
+            let b_is_source = b.get("Source").is_some();
+
+            if a_is_source && !b_is_source {
+                return std::cmp::Ordering::Less;
+            } else if !a_is_source && b_is_source {
+                return std::cmp::Ordering::Greater;
+            } else if a_is_source && b_is_source {
+                return a.get("Source").cmp(&b.get("Source"));
+            }
+
+            a.get("Package").cmp(&b.get("Package"))
+        };
+
+        let wrap_paragraph = |p: &deb822_lossless::Paragraph| -> deb822_lossless::Paragraph {
+            // TODO: Add Source/Package specific wrapping
+            // TODO: Add support for wrapping and sorting fields
+            p.wrap_and_sort(indentation, immediate_empty_line, max_line_length_one_liner, None, Some(&format_field))
+        };
+
+        self.0 = self.0.wrap_and_sort(Some(&sort_paragraphs), Some(&wrap_paragraph));
+    }
+}
+
+impl From<Control> for deb822_lossless::Deb822 {
+    fn from(c: Control) -> Self {
+        c.0
+    }
+}
+
+impl From<deb822_lossless::Deb822> for Control {
+    fn from(d: deb822_lossless::Deb822) -> Self {
+        Control(d)
+    }
 }
 
 impl Default for Control {
@@ -112,10 +165,32 @@ impl std::str::FromStr for Control {
 
 pub struct Source(deb822_lossless::Paragraph);
 
+impl From<Source> for deb822_lossless::Paragraph {
+    fn from(s: Source) -> Self {
+        s.0
+    }
+}
+
+impl From<deb822_lossless::Paragraph> for Source {
+    fn from(p: deb822_lossless::Paragraph) -> Self {
+        Source(p)
+    }
+}
+
 impl Source {
     /// The name of the source package.
     pub fn name(&self) -> Option<String> {
         self.0.get("Source")
+    }
+
+    pub fn wrap_and_sort(&mut self, indentation: deb822_lossless::Indentation, immediate_empty_line: bool, max_line_length_one_liner: Option<usize>) {
+        self.0 = self.0.wrap_and_sort(
+            indentation,
+            immediate_empty_line,
+            max_line_length_one_liner,
+            None,
+            Some(&format_field),
+        );
     }
 
     pub fn as_mut_deb822(&mut self) -> &mut deb822_lossless::Paragraph {
@@ -373,6 +448,18 @@ impl std::fmt::Display for Control {
 
 pub struct Binary(deb822_lossless::Paragraph);
 
+impl From<Binary> for deb822_lossless::Paragraph {
+    fn from(b: Binary) -> Self {
+        b.0
+    }
+}
+
+impl From<deb822_lossless::Paragraph> for Binary {
+    fn from(p: deb822_lossless::Paragraph) -> Self {
+        Binary(p)
+    }
+}
+
 #[cfg(feature = "python-debian")]
 impl pyo3::ToPyObject for Binary {
     fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
@@ -389,12 +476,26 @@ impl pyo3::FromPyObject<'_> for Binary {
 }
 
 impl Binary {
+    pub fn new() -> Self {
+        Binary(deb822_lossless::Paragraph::new())
+    }
+
     pub fn as_mut_deb822(&mut self) -> &mut deb822_lossless::Paragraph {
         &mut self.0
     }
 
     pub fn as_deb822(&self) -> &deb822_lossless::Paragraph {
         &self.0
+    }
+
+    pub fn wrap_and_sort(&mut self, indentation: deb822_lossless::Indentation, immediate_empty_line: bool, max_line_length_one_liner: Option<usize>) {
+        self.0 = self.0.wrap_and_sort(
+            indentation,
+            immediate_empty_line,
+            max_line_length_one_liner,
+            None,
+            Some(&format_field),
+        );
     }
 
     /// The name of the package.
@@ -705,37 +806,43 @@ Description: this is the short description
         let relations: Relations = "bar (>= 1.0.0)".parse().unwrap();
         binary.set_depends(Some(&relations));
     }
-}
 
-#[derive(PartialEq, Eq, Debug)]
-pub enum MultiArch {
-    Same,
-    Foreign,
-    No,
-    Allowed,
-}
+    #[test]
+    fn test_wrap_and_sort() {
+        let mut control: Control = r#"Package: blah
+Section:     libs
 
-impl std::str::FromStr for MultiArch {
-    type Err = ();
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "same" => Ok(MultiArch::Same),
-            "foreign" => Ok(MultiArch::Foreign),
-            "no" => Ok(MultiArch::No),
-            "allowed" => Ok(MultiArch::Allowed),
-            _ => Err(()),
-        }
+
+Package: foo
+Description: this is a 
+      bar
+      blah
+"#.parse().unwrap();
+        control.wrap_and_sort(deb822_lossless::Indentation::Spaces(2), false, None);
+        let expected = r#"Package: blah
+Section: libs
+
+Package: foo
+Description: this is a 
+  bar
+  blah
+"#.to_owned();
+        assert_eq!(control.to_string(), expected);
     }
-}
 
-impl std::fmt::Display for MultiArch {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(match self {
-            MultiArch::Same => "same",
-            MultiArch::Foreign => "foreign",
-            MultiArch::No => "no",
-            MultiArch::Allowed => "allowed",
-        })
+    #[test]
+    fn test_wrap_and_sort_source() {
+        let mut control: Control = r#"Source: blah
+Depends: foo, bar   (<=  1.0.0)
+
+"#
+        .parse()
+        .unwrap();
+        control.wrap_and_sort(deb822_lossless::Indentation::Spaces(2), true, None);
+        let expected = r#"Source: blah
+Depends: bar (<= 1.0.0), foo
+"#.to_owned();
+        assert_eq!(control.to_string(), expected);
     }
 }

@@ -19,6 +19,15 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    pub fn new_inline(input: &'a str) -> Self {
+        Lexer {
+            input: input.chars().peekable(),
+            start_of_line: false,
+            colon_count: 1,
+            indent: 0,
+        }
+    }
+
     fn is_whitespace(c: char) -> bool {
         c == ' ' || c == '\t'
     }
@@ -108,6 +117,11 @@ impl Iterator for Lexer<'_> {
 
 pub(crate) fn lex(input: &str) -> Vec<(SyntaxKind, String)> {
     let mut lexer = Lexer::new(input);
+    lexer.by_ref().collect::<Vec<_>>()
+}
+
+pub(crate) fn lex_inline(input: &str) -> Vec<(SyntaxKind, String)> {
+    let mut lexer = Lexer::new_inline(input);
     lexer.by_ref().collect::<Vec<_>>()
 }
 
@@ -266,6 +280,19 @@ Section: vcs
                 (KEY, "Priority"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "source"), (NEWLINE, "\n"),
                 (KEY, "Section"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "vcs"), (NEWLINE, "\n"), (NEWLINE, "\n")
             ]
+        );
+    }
+
+    #[test]
+    fn test_lex_inline() {
+        let text = r"syncthing-gtk";
+        let tokens = super::lex_inline(text);
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|(kind, text)| (*kind, text.as_str()))
+                .collect::<Vec<_>>(),
+            vec![(VALUE, "syncthing-gtk")]
         );
     }
 }
