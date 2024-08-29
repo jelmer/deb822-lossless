@@ -60,13 +60,13 @@ pub enum SyntaxKind {
     SUBSTVAR,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum VersionConstraint {
-    GreaterThanEqual, // >=
+    LessThan,         // <<
     LessThanEqual,    // <=
     Equal,            // =
     GreaterThan,      // >>
-    LessThan,         // <<
+    GreaterThanEqual, // >=
 }
 
 impl std::str::FromStr for VersionConstraint {
@@ -378,7 +378,7 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
                     None => {
                         break;
                     }
-                    e => {
+                    _ => {
                         self.builder.start_node(SyntaxKind::ERROR.into());
                         match self.tokens.pop() {
                             Some((k, t)) => {
@@ -724,6 +724,14 @@ impl Relations {
         Self::from(vec![])
     }
 
+    #[must_use]
+    pub fn wrap_and_sort(self) -> Self {
+        let mut entries = self.entries().map(|e| e.wrap_and_sort()).collect::<Vec<_>>();
+        entries.sort();
+        // TODO: preserve comments
+        Self::from(entries)
+    }
+
     pub fn entries(&self) -> impl Iterator<Item = Entry> + '_ {
         self.0.children().filter_map(Entry::cast)
     }
@@ -836,12 +844,51 @@ impl Default for Entry {
     }
 }
 
+impl PartialOrd for Entry {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let mut rels_a = self.relations();
+        let mut rels_b = other.relations();
+        while let (Some(a), Some(b)) = (rels_a.next(), rels_b.next()) {
+            match a.cmp(&b) {
+                std::cmp::Ordering::Equal => continue,
+                x => return Some(x),
+            }
+        }
+
+        if rels_a.next().is_some() {
+            return Some(std::cmp::Ordering::Greater);
+        }
+
+        if rels_b.next().is_some() {
+            return Some(std::cmp::Ordering::Less);
+        }
+
+        Some(std::cmp::Ordering::Equal)
+    }
+}
+
+impl Eq for Entry {}
+
+impl Ord for Entry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
 impl Entry {
     pub fn new() -> Self {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(SyntaxKind::ENTRY.into());
         builder.finish_node();
         Entry(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+
+    #[must_use]
+    pub fn wrap_and_sort(&self) -> Self {
+        let mut relations = self.relations().map(|r| r.wrap_and_sort()).collect::<Vec<_>>();
+        // TODO: preserve comments
+        relations.sort();
+        Self::from(relations)
     }
 
     pub fn relations(&self) -> impl Iterator<Item = Relation> + '_ {
@@ -1005,6 +1052,74 @@ impl Relation {
         Relation(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
+    #[must_use]
+    pub fn wrap_and_sort(&self) -> Self {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(SyntaxKind::RELATION.into());
+        builder.token(IDENT.into(), self.name().as_str());
+        if let Some(archqual) = self.archqual() {
+            builder.token(COLON.into(), ":");
+            builder.token(IDENT.into(), archqual.as_str());
+        }
+        if let Some((vc, version)) = self.version() {
+            builder.token(WHITESPACE.into(), " ");
+            builder.start_node(SyntaxKind::VERSION.into());
+            builder.token(L_PARENS.into(), "(");
+            builder.start_node(SyntaxKind::CONSTRAINT.into());
+            builder.token(
+                match vc {
+                    VersionConstraint::GreaterThanEqual => R_ANGLE.into(),
+                    VersionConstraint::LessThanEqual => L_ANGLE.into(),
+                    VersionConstraint::Equal => EQUAL.into(),
+                    VersionConstraint::GreaterThan => R_ANGLE.into(),
+                    VersionConstraint::LessThan => L_ANGLE.into(),
+                },
+                vc.to_string().as_str(),
+            );
+            builder.finish_node();
+            builder.token(WHITESPACE.into(), " ");
+            builder.token(IDENT.into(), version.to_string().as_str());
+            builder.token(R_PARENS.into(), ")");
+            builder.finish_node();
+        }
+        if let Some(architectures) = self.architectures() {
+            builder.token(WHITESPACE.into(), " ");
+            builder.start_node(ARCHITECTURES.into());
+            builder.token(L_BRACKET.into(), "[");
+            for (i, arch) in architectures.enumerate() {
+                if i > 0 {
+                    builder.token(WHITESPACE.into(), " ");
+                }
+                builder.token(IDENT.into(), arch.as_str());
+            }
+            builder.token(R_BRACKET.into(), "]");
+            builder.finish_node();
+        }
+        for profiles in self.profiles() {
+            builder.token(WHITESPACE.into(), " ");
+            builder.start_node(PROFILES.into());
+            builder.token(L_ANGLE.into(), "<");
+            for (i, profile) in profiles.into_iter().enumerate() {
+                if i > 0 {
+                    builder.token(WHITESPACE.into(), " ");
+                }
+                match profile {
+                    BuildProfile::Disabled(name) => {
+                        builder.token(NOT.into(), "!");
+                        builder.token(IDENT.into(), name.as_str());
+                    }
+                    BuildProfile::Enabled(name) => {
+                        builder.token(IDENT.into(), name.as_str());
+                    }
+                }
+            }
+            builder.token(R_ANGLE.into(), ">");
+            builder.finish_node();
+        }
+        builder.finish_node();
+        Relation(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+
     /// Create a new simple relation, without any version constraints.
     ///
     /// # Example
@@ -1141,19 +1256,17 @@ impl Relation {
     }
 
     /// Return an iterator over the architectures for this relation
-    pub fn architectures(&self) -> impl Iterator<Item = String> + '_ {
-        let architectures = self.0.children().find(|n| n.kind() == ARCHITECTURES);
+    pub fn architectures(&self) -> Option<impl Iterator<Item = String> + '_> {
+        let architectures = self.0.children().find(|n| n.kind() == ARCHITECTURES)?;
 
-        let architectures = architectures.as_ref().unwrap();
-
-        architectures.children_with_tokens().filter_map(|node| {
+        Some(architectures.children_with_tokens().filter_map(|node| {
             let token = node.as_token()?;
             if token.kind() == IDENT {
                 Some(token.text().to_string())
             } else {
                 None
             }
-        })
+        }))
     }
 
     /// Returns an iterator over the build profiles for this relation<up><up>
@@ -1183,6 +1296,41 @@ impl Relation {
             }
             ret
         })
+    }
+}
+
+impl PartialOrd for Relation {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        // Compare by name first, then by version
+        let name_cmp = self.name().cmp(&other.name());
+        if name_cmp != std::cmp::Ordering::Equal {
+            return Some(name_cmp);
+        }
+
+        let self_version = self.version();
+        let other_version = other.version();
+
+        match (self_version, other_version) {
+            (Some((self_vc, self_version)), Some((other_vc, other_version))) => {
+                let vc_cmp = self_vc.cmp(&other_vc);
+                if vc_cmp != std::cmp::Ordering::Equal {
+                    return Some(vc_cmp);
+                }
+
+                Some(self_version.cmp(&other_version))
+            }
+            (Some(_), None) => Some(std::cmp::Ordering::Greater),
+            (None, Some(_)) => Some(std::cmp::Ordering::Less),
+            (None, None) => Some(std::cmp::Ordering::Equal),
+        }
+    }
+}
+
+impl Eq for Relation {}
+
+impl Ord for Relation {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 
@@ -1324,7 +1472,7 @@ mod tests {
         );
         assert_eq!(relation.version(), None);
         assert_eq!(
-            relation.architectures().collect::<Vec<_>>(),
+            relation.architectures().unwrap().collect::<Vec<_>>(),
             vec![
                 "amd64", "arm64", "armhf", "i386", "mips", "mips64el", "mipsel", "ppc64el", "s390x"
             ]
@@ -1356,7 +1504,7 @@ mod tests {
             Some((VersionConstraint::GreaterThanEqual, "1.0".parse().unwrap()))
         );
         assert_eq!(
-            relation.architectures().collect::<Vec<_>>(),
+            relation.architectures().unwrap().collect::<Vec<_>>(),
             vec!["i386", "arm"]
                 .into_iter()
                 .map(|s| s.to_string())
@@ -1640,5 +1788,23 @@ mod tests {
             _ => None,
         };
         assert!(!rels.satisfied_by(&mut satisfied));
+    }
+
+    #[test]
+    fn test_wrap_and_sort_relation() {
+        let relation: Relation = "   python3-dulwich   (>= 11) [  amd64 ] <  lala>".parse().unwrap();
+
+        let wrapped = relation.wrap_and_sort();
+
+        assert_eq!(wrapped.to_string(), "python3-dulwich (>= 11) [amd64] <lala>");
+    }
+
+    #[test]
+    fn test_wrap_and_sort_relations() {
+        let entry: Relations = "python3-dulwich (>= 0.20.21)   | bar, \n\n\n\npython3-dulwich (<< 0.21)".parse().unwrap();
+
+        let wrapped = entry.wrap_and_sort();
+
+        assert_eq!(wrapped.to_string(), "bar | python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)");
     }
 }
