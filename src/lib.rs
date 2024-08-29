@@ -37,7 +37,7 @@ mod lex;
 mod convert;
 pub use convert::{FromDeb822Paragraph, ToDeb822Paragraph};
 #[cfg(feature = "derive")]
-use deb822_derive::Deb822;
+pub use deb822_derive::Deb822;
 use crate::lex::lex;
 use rowan::ast::AstNode;
 use std::path::Path;

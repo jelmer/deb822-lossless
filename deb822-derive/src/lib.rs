@@ -2,6 +2,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
+use syn::spanned::Spanned;
 use syn::{Data, Type, TypePath};
 
 fn is_option(ty: &syn::Type) -> bool {
@@ -22,6 +23,7 @@ fn is_option(ty: &syn::Type) -> bool {
 //    b: i32,
 //    c: Option<String>,
 //    d: Vec<String>,
+//    #[deb822(field = "E")]
 //    e: bool,
 // }
 // ```
@@ -37,7 +39,7 @@ fn is_option(ty: &syn::Type) -> bool {
 //         b: para.get("b").ok_or_else(|| "missing field: b")?.parse().map_err(|e| format!("parsing field b: {}", e))?,
 //         c: para.get("c").map(|v| v.parse().map_err(|e| format!("parsing field c: {}", e))).transpose()?,
 //         d: para.get("d").ok_or_else(|| "missing field: d")?.split_whitespace().map(|s| s.to_string()).collect(),
-//         e: para.get("e").ok_or_else(|| "missing field: e")?.parse().map_err(|e| format!("parsing field e: {}", e))?,
+//         e: para.get("E").ok_or_else(|| "missing field: e")?.parse().map_err(|e| format!("parsing field E: {}", e))?,
 //     })
 // }
 //
@@ -50,7 +52,7 @@ fn is_option(ty: &syn::Type) -> bool {
 //             fields.insert("c", &v.to_string());
 //         }
 //         fields.insert("d", &self.d.join(" "));
-//         fields.insert("e", &self.e.to_string());
+//         fields.insert("E", &self.e.to_string());
 //         deb822_lossless::Paragraph::from(fields)
 //     }
 //
@@ -63,12 +65,35 @@ fn is_option(ty: &syn::Type) -> bool {
 //             para.remove("c");
 //         }
 //         para.insert("d", &self.d.join(" "));
-//         para.insert("e", &self.e.to_string());
+//         para.insert("E", &self.e.to_string());
 //     }
 // }
 // ```
 
-#[proc_macro_derive(Deb822)]
+// Extract the `#[deb822]` attributes from a field
+fn deb822_attrs(f: &syn::Field) -> impl Iterator<Item = &syn::Attribute> {
+    f.attrs.iter().filter(|a| a.path().is_ident("deb822"))
+}
+
+// Extract the `field` attribute from a `#[deb822]` attribute
+fn deb822_field_name(attr: &syn::Attribute) -> Result<Option<String>, syn::Error> {
+    let list = attr.meta.require_list()?;
+    // Extract each entry from the list
+    while let Ok(l) = list.parse_args::<syn::MetaNameValue>() {
+        if l.path.is_ident("field") {
+            if let syn::Expr::Lit(syn::ExprLit{lit: syn::Lit::Str(s), ..}) = l.value {
+                return Ok(Some(s.value()));
+            } else {
+                return Err(syn::Error::new(l.value.span(), "expected string literal in deb822 attribute"));
+            }
+        } else {
+            return Err(syn::Error::new(l.span(), format!("unsupported attribute: {}", l.path.get_ident().unwrap())));
+        }
+    }
+    Ok(None)
+}
+
+#[proc_macro_derive(Deb822, attributes(deb822))]
 pub fn derive_deb822(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
@@ -81,7 +106,14 @@ pub fn derive_deb822(input: TokenStream) -> TokenStream {
 
     let from_fields = s.fields.iter().map(|f| {
             let ident = &f.ident;
-            let key = ident.as_ref().unwrap().to_string();
+            // Get key either from the #[deb822(field = "foo")] attribute, or derive it from the
+            // field name
+            let mut key = ident.as_ref().unwrap().to_string();
+            for attr in deb822_attrs(f) {
+                if let Some(overridden_key) = deb822_field_name(attr).unwrap() {
+                    key = overridden_key;
+                }
+            }
             // Check if the field is optional or not
             let ty = &f.ty;
             let is_option = is_option(ty);
@@ -139,7 +171,7 @@ pub fn derive_deb822(input: TokenStream) -> TokenStream {
     }).collect::<Vec<_>>();
 
     let gen = quote! {
-        impl deb822_lossless::convert::FromDeb822Paragraph for #name {
+        impl deb822_lossless::FromDeb822Paragraph for #name {
             fn from_paragraph(para: &deb822_lossless::Paragraph) -> Result<Self, String> {
                 Ok(Self {
                     #(#from_fields,)*
@@ -147,7 +179,7 @@ pub fn derive_deb822(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl deb822_lossless::convert::ToDeb822Paragraph for #name {
+        impl deb822_lossless::ToDeb822Paragraph for #name {
             fn to_paragraph(&self) -> deb822_lossless::Paragraph {
                 let mut fields = Vec::new();
                 #(#to_fields)*
