@@ -1,5 +1,4 @@
-use crate::control::MultiArch;
-use crate::fields::{Priority, Sha1Checksum, Sha256Checksum, Sha512Checksum};
+use crate::fields::{MultiArch, Priority, Sha1Checksum, Sha256Checksum, Sha512Checksum};
 use crate::relations::Relations;
 
 /// A source package in the APT package manager.

@@ -724,6 +724,7 @@ impl Relations {
         Self::from(vec![])
     }
 
+    #[must_use]
     pub fn wrap_and_sort(self) -> Self {
         let mut entries = self.entries().map(|e| e.wrap_and_sort()).collect::<Vec<_>>();
         entries.sort();
@@ -882,6 +883,7 @@ impl Entry {
         Entry(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
+    #[must_use]
     pub fn wrap_and_sort(&self) -> Self {
         let mut relations = self.relations().map(|r| r.wrap_and_sort()).collect::<Vec<_>>();
         // TODO: preserve comments
@@ -1050,6 +1052,7 @@ impl Relation {
         Relation(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
+    #[must_use]
     pub fn wrap_and_sort(&self) -> Self {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(SyntaxKind::RELATION.into());
