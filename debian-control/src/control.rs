@@ -1,6 +1,21 @@
 use crate::fields::{MultiArch, Priority};
 use crate::relations::Relations;
-use crate::vcs::Vcs;
+
+fn format_field(name: &str, value: &str) -> String {
+    match name {
+        "Uploaders" => value
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect::<Vec<_>>()
+            .join(",\n"),
+        "Build-Depends" | "Build-Depends-Indep" | "Build-Depends-Arch" | "Build-Conflicts" | "Build-Conflicts-Indep" | "Build-Conflics-Arch" | "Depends" | "Recommends" | "Suggests" | "Enhances" | "Pre-Depends" | "Breaks" => {
+            let relations: Relations = value.parse().unwrap();
+            let relations = relations.wrap_and_sort();
+            relations.to_string()
+        },
+        _ => value.to_string(),
+    }
+}
 
 pub struct Control(deb822_lossless::Deb822);
 
@@ -115,10 +130,22 @@ impl Control {
         let wrap_paragraph = |p: &deb822_lossless::Paragraph| -> deb822_lossless::Paragraph {
             // TODO: Add Source/Package specific wrapping
             // TODO: Add support for wrapping and sorting fields
-            p.wrap_and_sort(indentation, immediate_empty_line, max_line_length_one_liner, None)
+            p.wrap_and_sort(indentation, immediate_empty_line, max_line_length_one_liner, None, Some(&format_field))
         };
 
         self.0 = self.0.wrap_and_sort(Some(&sort_paragraphs), Some(&wrap_paragraph));
+    }
+}
+
+impl From<Control> for deb822_lossless::Deb822 {
+    fn from(c: Control) -> Self {
+        c.0
+    }
+}
+
+impl From<deb822_lossless::Deb822> for Control {
+    fn from(d: deb822_lossless::Deb822) -> Self {
+        Control(d)
     }
 }
 
@@ -138,10 +165,32 @@ impl std::str::FromStr for Control {
 
 pub struct Source(deb822_lossless::Paragraph);
 
+impl From<Source> for deb822_lossless::Paragraph {
+    fn from(s: Source) -> Self {
+        s.0
+    }
+}
+
+impl From<deb822_lossless::Paragraph> for Source {
+    fn from(p: deb822_lossless::Paragraph) -> Self {
+        Source(p)
+    }
+}
+
 impl Source {
     /// The name of the source package.
     pub fn name(&self) -> Option<String> {
         self.0.get("Source")
+    }
+
+    pub fn wrap_and_sort(&mut self, indentation: deb822_lossless::Indentation, immediate_empty_line: bool, max_line_length_one_liner: Option<usize>) {
+        self.0 = self.0.wrap_and_sort(
+            indentation,
+            immediate_empty_line,
+            max_line_length_one_liner,
+            None,
+            Some(&format_field),
+        );
     }
 
     pub fn as_mut_deb822(&mut self) -> &mut deb822_lossless::Paragraph {
@@ -399,6 +448,18 @@ impl std::fmt::Display for Control {
 
 pub struct Binary(deb822_lossless::Paragraph);
 
+impl From<Binary> for deb822_lossless::Paragraph {
+    fn from(b: Binary) -> Self {
+        b.0
+    }
+}
+
+impl From<deb822_lossless::Paragraph> for Binary {
+    fn from(p: deb822_lossless::Paragraph) -> Self {
+        Binary(p)
+    }
+}
+
 #[cfg(feature = "python-debian")]
 impl pyo3::ToPyObject for Binary {
     fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
@@ -415,12 +476,26 @@ impl pyo3::FromPyObject<'_> for Binary {
 }
 
 impl Binary {
+    pub fn new() -> Self {
+        Binary(deb822_lossless::Paragraph::new())
+    }
+
     pub fn as_mut_deb822(&mut self) -> &mut deb822_lossless::Paragraph {
         &mut self.0
     }
 
     pub fn as_deb822(&self) -> &deb822_lossless::Paragraph {
         &self.0
+    }
+
+    pub fn wrap_and_sort(&mut self, indentation: deb822_lossless::Indentation, immediate_empty_line: bool, max_line_length_one_liner: Option<usize>) {
+        self.0 = self.0.wrap_and_sort(
+            indentation,
+            immediate_empty_line,
+            max_line_length_one_liner,
+            None,
+            Some(&format_field),
+        );
     }
 
     /// The name of the package.
@@ -744,15 +819,29 @@ Description: this is a
       bar
       blah
 "#.parse().unwrap();
-        control.wrap_and_sort(deb822_lossless::Indentation::Spaces(2), true, None);
+        control.wrap_and_sort(deb822_lossless::Indentation::Spaces(2), false, None);
         let expected = r#"Package: blah
 Section: libs
 
 Package: foo
-Description:
-  this is a 
+Description: this is a 
   bar
   blah
+"#.to_owned();
+        assert_eq!(control.to_string(), expected);
+    }
+
+    #[test]
+    fn test_wrap_and_sort_source() {
+        let mut control: Control = r#"Source: blah
+Depends: foo, bar   (<=  1.0.0)
+
+"#
+        .parse()
+        .unwrap();
+        control.wrap_and_sort(deb822_lossless::Indentation::Spaces(2), true, None);
+        let expected = r#"Source: blah
+Depends: bar (<= 1.0.0), foo
 "#.to_owned();
         assert_eq!(control.to_string(), expected);
     }
