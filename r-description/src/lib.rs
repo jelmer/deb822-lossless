@@ -82,11 +82,14 @@ impl RDescription {
     pub fn package(&self) -> Option<String> {
         self.0.get("Package")
     }
-
     pub fn set_package(&mut self, package: &str) {
         self.0.insert("Package", package);
     }
 
+    /// One line description of the package, and is often shown in a package listing
+    ///
+    /// It should be plain text (no markup), capitalised like a title, and NOT end in a period.
+    /// Keep it short: listings will often truncate the title to 65 characters.
     pub fn title(&self) -> Option<String> {
         self.0.get("Title")
     }
