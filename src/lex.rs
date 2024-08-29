@@ -227,6 +227,7 @@ Files:
  b7a7d67a02974c52c408fdb5e118406d 890 cvsd_1.0.24.dsc
  b73ee40774c3086cb8490cdbb96ac883 258139 cvsd_1.0.24.tar.gz
 Vcs-Browser: http://arthurdejong.org/viewvc/cvsd/
+# A comment
 Vcs-Cvs: :pserver:anonymous@arthurdejong.org:/arthur/
 Checksums-Sha256:
  a7bb7a3aacee19cd14ce5c26cb86e348b1608e6f1f6e97c6ea7c58efa440ac43 890 cvsd_1.0.24.dsc
@@ -254,7 +255,9 @@ Section: vcs
                 (KEY, "Architecture"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "any"), (NEWLINE, "\n"),
                 (KEY, "Standards-Version"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "3.9.3"), (NEWLINE, "\n"),
                 (KEY, "Format"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "3.0 (native)"), (NEWLINE, "\n"),
-                (KEY, "Files"), (COLON, ":"), (NEWLINE, "\n"), (INDENT, " "), (VALUE, "b7a7d67a02974c52c408fdb5e118406d 890 cvsd_1.0.24.dsc"), (NEWLINE, "\n"), (INDENT, " "), (VALUE, "b73ee40774c3086cb8490cdbb96ac883 258139 cvsd_1.0.24.tar.gz"), (NEWLINE, "\n"), (KEY, "Vcs-Browser"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "http://arthurdejong.org/viewvc/cvsd/"), (NEWLINE, "\n"),
+                (KEY, "Files"), (COLON, ":"), (NEWLINE, "\n"), (INDENT, " "), (VALUE, "b7a7d67a02974c52c408fdb5e118406d 890 cvsd_1.0.24.dsc"), (NEWLINE, "\n"), (INDENT, " "), (VALUE, "b73ee40774c3086cb8490cdbb96ac883 258139 cvsd_1.0.24.tar.gz"), (NEWLINE, "\n"),
+                (KEY, "Vcs-Browser"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "http://arthurdejong.org/viewvc/cvsd/"), (NEWLINE, "\n"),
+                (COMMENT, "# A comment"), (NEWLINE, "\n"),
                 (KEY, "Vcs-Cvs"), (COLON, ":"), (WHITESPACE, " "), (VALUE, ":pserver:anonymous@arthurdejong.org:/arthur/"), (NEWLINE, "\n"),
                 (KEY, "Checksums-Sha256"), (COLON, ":"), (NEWLINE, "\n"), (INDENT, " "), (VALUE, "a7bb7a3aacee19cd14ce5c26cb86e348b1608e6f1f6e97c6ea7c58efa440ac43 890 cvsd_1.0.24.dsc"), (NEWLINE, "\n"), (INDENT, " "), (VALUE, "46bc517760c1070ae408693b89603986b53e6f068ae6bdc744e2e830e46b8cba 258139 cvsd_1.0.24.tar.gz"), (NEWLINE, "\n"),
                 (KEY, "Homepage"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "http://arthurdejong.org/cvsd/"), (NEWLINE, "\n"),
