@@ -531,6 +531,46 @@ fn inject(builder: &mut GreenNodeBuilder, node: SyntaxNode) {
     builder.finish_node();
 }
 
+impl FromIterator<Paragraph> for Deb822 {
+    fn from_iter<T: IntoIterator<Item = Paragraph>>(iter: T) -> Self {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(ROOT.into());
+        for (i, paragraph) in iter.into_iter().enumerate() {
+            if i > 0 {
+                builder.start_node(EMPTY_LINE.into());
+                builder.token(NEWLINE.into(), "\n");
+                builder.finish_node();
+            }
+            inject(&mut builder, paragraph.0);
+        }
+        builder.finish_node();
+        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+}
+
+impl<'a> FromIterator<(&'a str, &'a str)> for Paragraph {
+    fn from_iter<T: IntoIterator<Item = (&'a str, &'a str)>>(iter: T) -> Self {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(PARAGRAPH.into());
+        for (key, value) in iter {
+            builder.start_node(ENTRY.into());
+            builder.token(KEY.into(), key);
+            builder.token(COLON.into(), ":");
+            builder.token(WHITESPACE.into(), " ");
+            for (i, line) in value.split("\n").enumerate() {
+                if i > 0 {
+                    builder.token(INDENT.into(), " ");
+                }
+                builder.token(VALUE.into(), line);
+                builder.token(NEWLINE.into(), "\n");
+            }
+            builder.finish_node();
+        }
+        builder.finish_node();
+        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+}
+
 impl Paragraph {
     pub fn new() -> Paragraph {
         let mut builder = GreenNodeBuilder::new();
@@ -1415,6 +1455,36 @@ Homepage: https://example.com/
 Homepage: https://example.com/
 Maintainer: Foo Bar <foo@example.com>
 Source: foo
+"#
+        );
+    }
+
+    #[test]
+    fn test_para_from_iter() {
+        let p: super::Paragraph = vec![("Foo", "Bar"), ("Baz", "Qux")].into_iter().collect();
+        assert_eq!(
+            p.to_string(),
+            r#"Foo: Bar
+Baz: Qux
+"#
+        );
+    }
+
+    #[test]
+    fn test_deb822_from_iter() {
+        let d: super::Deb822 = vec![
+            vec![("Foo", "Bar"), ("Baz", "Qux")].into_iter().collect(),
+            vec![("A", "B"), ("C", "D")].into_iter().collect(),
+        ]
+        .into_iter()
+        .collect();
+        assert_eq!(
+            d.to_string(),
+            r#"Foo: Bar
+Baz: Qux
+
+A: B
+C: D
 "#
         );
     }
