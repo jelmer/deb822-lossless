@@ -378,7 +378,7 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
                     None => {
                         break;
                     }
-                    e => {
+                    _ => {
                         self.builder.start_node(SyntaxKind::ERROR.into());
                         match self.tokens.pop() {
                             Some((k, t)) => {
