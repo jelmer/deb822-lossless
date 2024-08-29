@@ -34,6 +34,10 @@
 //! ```
 
 mod lex;
+mod convert;
+pub use convert::{FromDeb822Paragraph, ToDeb822Paragraph};
+#[cfg(feature = "derive")]
+use deb822_derive::Deb822;
 use crate::lex::lex;
 use rowan::ast::AstNode;
 use std::path::Path;
@@ -159,7 +163,16 @@ fn parse(text: &str) -> Parse {
 
     impl Parser {
         fn parse_entry(&mut self) {
+            while self.current() == Some(COMMENT) {
+                self.bump();
+
+                if self.current() == Some(NEWLINE) {
+                    self.bump();
+                }
+            }
+
             self.builder.start_node(ENTRY.into());
+
             // First, parse the key and colon
             if self.current() == Some(KEY) {
                 self.bump();
@@ -542,6 +555,41 @@ impl FromIterator<Paragraph> for Deb822 {
                 builder.finish_node();
             }
             inject(&mut builder, paragraph.0);
+        }
+        builder.finish_node();
+        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+}
+
+impl From<Vec<(String, String)>> for Paragraph {
+    fn from(v: Vec<(String, String)>) -> Self {
+        v.into_iter().collect()
+    }
+}
+
+impl From<Vec<(&str, &str)>> for Paragraph {
+    fn from(v: Vec<(&str, &str)>) -> Self {
+        v.into_iter().collect()
+    }
+}
+
+impl FromIterator<(String, String)> for Paragraph {
+    fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(PARAGRAPH.into());
+        for (key, value) in iter {
+            builder.start_node(ENTRY.into());
+            builder.token(KEY.into(), &key);
+            builder.token(COLON.into(), ":");
+            builder.token(WHITESPACE.into(), " ");
+            for (i, line) in value.split("\n").enumerate() {
+                if i > 0 {
+                    builder.token(INDENT.into(), " ");
+                }
+                builder.token(VALUE.into(), line);
+                builder.token(NEWLINE.into(), "\n");
+            }
+            builder.finish_node();
         }
         builder.finish_node();
         Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
@@ -1462,6 +1510,15 @@ Source: foo
     #[test]
     fn test_para_from_iter() {
         let p: super::Paragraph = vec![("Foo", "Bar"), ("Baz", "Qux")].into_iter().collect();
+        assert_eq!(
+            p.to_string(),
+            r#"Foo: Bar
+Baz: Qux
+"#
+        );
+
+        let p: super::Paragraph = vec![("Foo".to_string(), "Bar".to_string()), ("Baz".to_string(), "Qux".to_string())].into_iter().collect();
+
         assert_eq!(
             p.to_string(),
             r#"Foo: Bar
