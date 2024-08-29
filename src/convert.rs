@@ -87,5 +87,41 @@ mod tests {
             assert_eq!(para.get("baz"), Some("blah".to_string()));
             assert_eq!(para.to_string(), "bar: new\n# comment\nbaz: blah\n");
         }
+
+        #[test]
+        fn test_deserialize_with() {
+            let mut para: Paragraph = "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
+
+            fn to_bool(s: &str) -> Result<bool, String> {
+                Ok(s == "ja")
+            }
+
+            fn from_bool(s: &bool) -> String {
+                if *s {
+                    "ja".to_string()
+                } else {
+                    "nee".to_string()
+                }
+            }
+
+            #[derive(Deb822)]
+            struct Foo {
+                bar: String,
+                #[deb822(deserialize_with = to_bool, serialize_with = from_bool)]
+                baz: bool,
+            }
+
+            let mut foo: Foo = Foo::from_paragraph(&para).unwrap();
+            assert_eq!(foo.bar, "bar");
+            assert_eq!(foo.baz, false);
+
+            foo.bar = "new".to_string();
+
+            foo.update_paragraph(&mut para);
+
+            assert_eq!(para.get("bar"), Some("new".to_string()));
+            assert_eq!(para.get("baz"), Some("nee".to_string()));
+            assert_eq!(para.to_string(), "bar: new\n# comment\nbaz: nee\n");
+        }
     }
 }
