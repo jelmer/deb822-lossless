@@ -21,12 +21,12 @@ mod tests {
     #[cfg(feature = "derive")]
     mod derive {
         use crate as deb822_lossless;
-        use crate::Deb822;
+        use crate::{FromDeb822,ToDeb822};
         use super::*;
 
         #[test]
         fn test_derive() {
-            #[derive(Deb822)]
+            #[derive(ToDeb822)]
             struct Foo {
                 bar: String,
                 baz: i32,
@@ -47,7 +47,7 @@ mod tests {
 
         #[test]
         fn test_optional_missing() {
-            #[derive(Deb822)]
+            #[derive(ToDeb822)]
             struct Foo {
                 bar: String,
                 baz: Option<String>,
@@ -69,7 +69,7 @@ mod tests {
         fn test_update_preserve_comments() {
             let mut para: Paragraph = "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
 
-            #[derive(Deb822)]
+            #[derive(FromDeb822, ToDeb822)]
             struct Foo {
                 bar: String,
                 baz: String,
@@ -104,7 +104,7 @@ mod tests {
                 }
             }
 
-            #[derive(Deb822)]
+            #[derive(FromDeb822, ToDeb822)]
             struct Foo {
                 bar: String,
                 #[deb822(deserialize_with = to_bool, serialize_with = from_bool)]

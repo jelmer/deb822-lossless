@@ -17,7 +17,7 @@ fn is_option(ty: &syn::Type) -> bool {
 // Generate `from_paragraph`, ``to_paragraph`` methods for the annotated struct, i.e.:
 //
 // ```rust
-// #[derive(Deb822)]
+// #[derive(FromDeb822)]
 // struct X {
 //    a: i32,
 //    b: i32,
@@ -43,6 +43,23 @@ fn is_option(ty: &syn::Type) -> bool {
 //     })
 // }
 //
+// And:
+//
+//// ```rust
+// #[derive(ToDeb822)]
+// struct X {
+//    a: i32,
+//    b: i32,
+//    c: Option<String>,
+//    d: Vec<String>,
+//    #[deb822(field = "E")]
+//    e: bool,
+// }
+// ```
+//
+// will generate:
+//
+// ```rust
 // impl ToDeb822Paragraph for X {
 //     fn to_paragraph(&self) -> deb822_lossless::Paragraph {
 //         let mut fields = Vec::<(String, String)>::new();
@@ -116,15 +133,15 @@ fn extract_field_attributes(attrs: &[syn::Attribute]) -> Result<FieldAttributes,
     })
 }
 
-#[proc_macro_derive(Deb822, attributes(deb822))]
-pub fn derive_deb822(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(FromDeb822, attributes(deb822))]
+pub fn derive_from_deb822(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
 
     let s = if let syn::Data::Struct(s) = &input.data {
         s
     } else {
-        panic!("Deb822 can only be derived for structs")
+        panic!("FromDeb822 can only be derived for structs")
     };
 
     let from_fields = s.fields.iter().map(|f| {
@@ -154,6 +171,29 @@ pub fn derive_deb822(input: TokenStream) -> TokenStream {
                 }
             }
         }).collect::<Vec<_>>();
+
+    let gen = quote! {
+        impl deb822_lossless::FromDeb822Paragraph for #name {
+            fn from_paragraph(para: &deb822_lossless::Paragraph) -> Result<Self, String> {
+                Ok(Self {
+                    #(#from_fields,)*
+                })
+            }
+        }
+    };
+    gen.into()
+}
+
+#[proc_macro_derive(ToDeb822, attributes(deb822))]
+pub fn derive_to_deb822(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+
+    let s = if let syn::Data::Struct(s) = &input.data {
+        s
+    } else {
+        panic!("Deb822 can only be derived for structs")
+    };
 
     let mut to_fields = vec![];
     let mut update_fields = vec![];
@@ -199,14 +239,6 @@ pub fn derive_deb822(input: TokenStream) -> TokenStream {
     }
 
     let gen = quote! {
-        impl deb822_lossless::FromDeb822Paragraph for #name {
-            fn from_paragraph(para: &deb822_lossless::Paragraph) -> Result<Self, String> {
-                Ok(Self {
-                    #(#from_fields,)*
-                })
-            }
-        }
-
         impl deb822_lossless::ToDeb822Paragraph for #name {
             fn to_paragraph(&self) -> deb822_lossless::Paragraph {
                 let mut fields = Vec::<(String, String)>::new();
