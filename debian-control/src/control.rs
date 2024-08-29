@@ -1,4 +1,4 @@
-use crate::fields::Priority;
+use crate::fields::{MultiArch, Priority};
 use crate::relations::Relations;
 use crate::vcs::Vcs;
 
@@ -93,6 +93,32 @@ impl Control {
     ) -> Result<(Self, Vec<String>), deb822_lossless::Error> {
         let (control, errors) = deb822_lossless::Deb822::read_relaxed(&mut r)?;
         Ok((Self(control), errors))
+    }
+
+    pub fn wrap_and_sort(&mut self, indentation: deb822_lossless::Indentation, immediate_empty_line: bool, max_line_length_one_liner: Option<usize>) {
+        let sort_paragraphs = |a: &deb822_lossless::Paragraph, b: &deb822_lossless::Paragraph| -> std::cmp::Ordering {
+            // Sort Source before Package
+            let a_is_source = a.get("Source").is_some();
+            let b_is_source = b.get("Source").is_some();
+
+            if a_is_source && !b_is_source {
+                return std::cmp::Ordering::Less;
+            } else if !a_is_source && b_is_source {
+                return std::cmp::Ordering::Greater;
+            } else if a_is_source && b_is_source {
+                return a.get("Source").cmp(&b.get("Source"));
+            }
+
+            a.get("Package").cmp(&b.get("Package"))
+        };
+
+        let wrap_paragraph = |p: &deb822_lossless::Paragraph| -> deb822_lossless::Paragraph {
+            // TODO: Add Source/Package specific wrapping
+            // TODO: Add support for wrapping and sorting fields
+            p.wrap_and_sort(indentation, immediate_empty_line, max_line_length_one_liner, None)
+        };
+
+        self.0 = self.0.wrap_and_sort(Some(&sort_paragraphs), Some(&wrap_paragraph));
     }
 }
 
@@ -705,37 +731,29 @@ Description: this is the short description
         let relations: Relations = "bar (>= 1.0.0)".parse().unwrap();
         binary.set_depends(Some(&relations));
     }
-}
 
-#[derive(PartialEq, Eq, Debug)]
-pub enum MultiArch {
-    Same,
-    Foreign,
-    No,
-    Allowed,
-}
+    #[test]
+    fn test_wrap_and_sort() {
+        let mut control: Control = r#"Package: blah
+Section:     libs
 
-impl std::str::FromStr for MultiArch {
-    type Err = ();
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "same" => Ok(MultiArch::Same),
-            "foreign" => Ok(MultiArch::Foreign),
-            "no" => Ok(MultiArch::No),
-            "allowed" => Ok(MultiArch::Allowed),
-            _ => Err(()),
-        }
-    }
-}
 
-impl std::fmt::Display for MultiArch {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(match self {
-            MultiArch::Same => "same",
-            MultiArch::Foreign => "foreign",
-            MultiArch::No => "no",
-            MultiArch::Allowed => "allowed",
-        })
+Package: foo
+Description: this is a 
+      bar
+      blah
+"#.parse().unwrap();
+        control.wrap_and_sort(deb822_lossless::Indentation::Spaces(2), true, None);
+        let expected = r#"Package: blah
+Section: libs
+
+Package: foo
+Description:
+  this is a 
+  bar
+  blah
+"#.to_owned();
+        assert_eq!(control.to_string(), expected);
     }
 }

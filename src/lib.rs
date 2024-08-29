@@ -396,12 +396,9 @@ impl Deb822 {
     ///               given function.
     #[must_use]
     pub fn wrap_and_sort(
-        self: &Deb822,
-        indentation: Indentation,
-        immediate_empty_line: bool,
-        max_line_length_one_liner: Option<usize>,
+        &self,
         sort_paragraphs: Option<&dyn Fn(&Paragraph, &Paragraph) -> std::cmp::Ordering>,
-        sort_entries: Option<&dyn Fn(&Entry, &Entry) -> std::cmp::Ordering>,
+        wrap_and_sort_paragraph: Option<&dyn Fn(&Paragraph) -> Paragraph>,
     ) -> Deb822 {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(ROOT.into());
@@ -438,7 +435,7 @@ impl Deb822 {
             });
         }
 
-        for (i, mut paragraph) in paragraphs.into_iter().enumerate() {
+        for (i, paragraph) in paragraphs.into_iter().enumerate() {
             if i > 0 {
                 builder.start_node(EMPTY_LINE.into());
                 builder.token(NEWLINE.into(), "\n");
@@ -447,18 +444,12 @@ impl Deb822 {
             for c in paragraph.0.into_iter() {
                 builder.token(c.kind().into(), c.as_token().unwrap().text());
             }
-            inject(
-                &mut builder,
-                paragraph
-                    .1
-                    .wrap_and_sort(
-                        indentation,
-                        immediate_empty_line,
-                        max_line_length_one_liner,
-                        sort_entries,
-                    )
-                    .0,
-            );
+            let new_paragraph = if let Some(ref ws) = wrap_and_sort_paragraph {
+                ws(&paragraph.1)
+            } else {
+                paragraph.1
+            };
+            inject(&mut builder, new_paragraph.0);
         }
 
         for c in current {
@@ -630,7 +621,7 @@ impl Paragraph {
 
     #[must_use]
     pub fn wrap_and_sort(
-        &mut self,
+        &self,
         indentation: Indentation,
         immediate_empty_line: bool,
         max_line_length_one_liner: Option<usize>,
@@ -663,7 +654,7 @@ impl Paragraph {
             });
         }
 
-        for (pre, mut entry) in entries.into_iter() {
+        for (pre, entry) in entries.into_iter() {
             for c in pre.into_iter() {
                 builder.token(c.kind().into(), c.as_token().unwrap().text());
             }
@@ -821,7 +812,7 @@ pub enum Indentation {
     FieldNameLength,
 
     /// The number of spaces to use for indentation.
-    FixedIndentation(u32),
+    Spaces(u32),
 }
 
 impl Entry {
@@ -845,7 +836,7 @@ impl Entry {
 
     #[must_use]
     pub fn wrap_and_sort(
-        &mut self,
+        &self,
         mut indentation: Indentation,
         immediate_empty_line: bool,
         max_line_length_one_liner: Option<usize>,
@@ -860,7 +851,7 @@ impl Entry {
                 KEY => {
                     builder.token(KEY.into(), text.unwrap());
                     if indentation == Indentation::FieldNameLength {
-                        indentation = Indentation::FixedIndentation(text.unwrap().len() as u32);
+                        indentation = Indentation::Spaces(text.unwrap().len() as u32);
                     }
                 }
                 COLON => {
@@ -876,7 +867,7 @@ impl Entry {
             }
         }
 
-        let indentation = if let Indentation::FixedIndentation(i) = indentation {
+        let indentation = if let Indentation::Spaces(i) = indentation {
             i
         } else {
             1
@@ -1428,7 +1419,7 @@ Multi-Line:
         .parse()
         .unwrap();
         let mut ps = d.paragraphs();
-        let mut p = ps.next().unwrap();
+        let p = ps.next().unwrap();
         let result = p.wrap_and_sort(
             super::Indentation::FieldNameLength,
             false,
@@ -1460,13 +1451,15 @@ Maintainer: Bar Foo <bar@example.com>
         .parse()
         .unwrap();
         let result = d.wrap_and_sort(
-            super::Indentation::FieldNameLength,
-            false,
-            None,
             Some(&|a: &super::Paragraph, b: &super::Paragraph| {
                 a.get("Source").cmp(&b.get("Source"))
             }),
-            None,
+            Some(&|p| p.wrap_and_sort(
+                super::Indentation::FieldNameLength,
+                false,
+                None,
+                None::<&dyn Fn(&super::Entry, &super::Entry) -> std::cmp::Ordering>,
+            )),
         );
         assert_eq!(
             result.to_string(),
@@ -1491,11 +1484,13 @@ Homepage: https://example.com/
         .parse()
         .unwrap();
         let result = d.wrap_and_sort(
-            super::Indentation::FieldNameLength,
-            false,
             None,
-            None,
-            Some(&|a: &super::Entry, b: &super::Entry| a.key().cmp(&b.key())),
+            Some(&mut |p: &super::Paragraph| -> super::Paragraph { p.wrap_and_sort(
+                super::Indentation::FieldNameLength,
+                false,
+                None,
+                Some(&mut |a: &super::Entry, b: &super::Entry| a.key().cmp(&b.key())),
+            )})
         );
         assert_eq!(
             result.to_string(),
