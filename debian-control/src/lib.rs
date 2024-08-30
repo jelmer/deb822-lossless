@@ -1,8 +1,6 @@
 //! Lossless parser for Debian control files.
 //!
-//! This crate provides a parser for Debian control files. It is lossless, meaning that it will
-//! preserve the original formatting of the file. It also provides a way to serialize the parsed
-//! data back to a string.
+//! This crate provides a parser for Debian control files.
 //!
 //! # Example
 //!
@@ -11,13 +9,14 @@
 //! use std::fs::File;
 //!
 //! let mut control = Control::new();
-//! let mut source = control.add_source("hello");
-//! source.set_section(Some("rust"));
+//! let mut source = &mut control.source;
+//! source.name = "hello".to_string();
+//! source.section = Some("rust".to_string());
 //!
 //! let mut binary = control.add_binary("hello");
-//! binary.set_architecture(Some("amd64"));
-//! binary.set_priority(Some(Priority::Optional));
-//! binary.set_description(Some("Hello, world!"));
+//! binary.architecture = Some("amd64".to_string());
+//! binary.priority = Some(Priority::Optional);
+//! binary.description = Some("Hello, world!".to_string());
 //!
 //! assert_eq!(control.to_string(), r#"Source: hello
 //! Section: rust
@@ -28,12 +27,17 @@
 //! Description: Hello, world!
 //! "#);
 //! ```
+//!
+//! See the ``lossless`` module for a parser that preserves all comments and formatting, and
+//! as well as allowing inline errors.
 pub mod apt;
 pub mod changes;
 pub mod control;
 pub use control::{Binary, Control, Source};
 pub mod fields;
 pub use fields::*;
+#[cfg(feature = "lossless")]
+pub mod lossless;
 pub mod pgp;
 pub mod relations;
 pub mod vcs;
