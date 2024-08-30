@@ -22,7 +22,7 @@ impl std::fmt::Display for Priority {
 }
 
 impl std::str::FromStr for Priority {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -31,7 +31,7 @@ impl std::str::FromStr for Priority {
             "standard" => Ok(Priority::Standard),
             "optional" => Ok(Priority::Optional),
             "extra" => Ok(Priority::Extra),
-            _ => Err(()),
+            _ => Err(format!("Invalid priority: {}", s)),
         }
     }
 }
@@ -66,13 +66,13 @@ impl std::fmt::Display for Sha1Checksum {
 }
 
 impl std::str::FromStr for Sha1Checksum {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts = s.split_whitespace();
-        let sha1 = parts.next().ok_or(())?;
-        let size = parts.next().ok_or(())?.parse().map_err(|_| ())?;
-        let filename = parts.next().ok_or(())?.to_string();
+        let sha1 = parts.next().ok_or_else(|| "Missing sha1".to_string())?;
+        let size = parts.next().ok_or_else(|| "Missing size".to_string())?.parse().map_err(|e: std::num::ParseIntError| e.to_string())?;
+        let filename = parts.next().ok_or_else(|| "Missing filename".to_string())?.to_string();
         Ok(Self {
             sha1: sha1.to_string(),
             size,
@@ -105,13 +105,13 @@ impl std::fmt::Display for Sha256Checksum {
 }
 
 impl std::str::FromStr for Sha256Checksum {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts = s.split_whitespace();
-        let sha256 = parts.next().ok_or(())?;
-        let size = parts.next().ok_or(())?.parse().map_err(|_| ())?;
-        let filename = parts.next().ok_or(())?.to_string();
+        let sha256 = parts.next().ok_or_else(|| "Missing sha256".to_string())?;
+        let size = parts.next().ok_or_else(|| "Missing size".to_string())?.parse().map_err(|e: std::num::ParseIntError| e.to_string())?;
+        let filename = parts.next().ok_or_else(|| "Missing filename".to_string())?.to_string();
         Ok(Self {
             sha256: sha256.to_string(),
             size,
@@ -144,13 +144,13 @@ impl std::fmt::Display for Sha512Checksum {
 }
 
 impl std::str::FromStr for Sha512Checksum {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts = s.split_whitespace();
-        let sha512 = parts.next().ok_or(())?;
-        let size = parts.next().ok_or(())?.parse().map_err(|_| ())?;
-        let filename = parts.next().ok_or(())?.to_string();
+        let sha512 = parts.next().ok_or_else(|| "Missing sha512".to_string())?;
+        let size = parts.next().ok_or_else(|| "Missing size".to_string())?.parse().map_err(|e: std::num::ParseIntError| e.to_string())?;
+        let filename = parts.next().ok_or_else(|| "Missing filename".to_string())?.to_string();
         Ok(Self {
             sha512: sha512.to_string(),
             size,
@@ -195,19 +195,19 @@ impl std::fmt::Display for PackageListEntry {
 }
 
 impl std::str::FromStr for PackageListEntry {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts = s.split_whitespace();
-        let package = parts.next().ok_or(())?.to_string();
-        let package_type = parts.next().ok_or(())?.to_string();
-        let section = parts.next().ok_or(())?.to_string();
-        let priority = parts.next().ok_or(())?.parse().map_err(|_| ())?;
+        let package = parts.next().ok_or_else(|| "Missing package".to_string())?.to_string();
+        let package_type = parts.next().ok_or_else(|| "Missing package type".to_string())?.to_string();
+        let section = parts.next().ok_or_else(|| "Missing section".to_string())?.to_string();
+        let priority = parts.next().ok_or_else(|| "Missing priority".to_string())?.parse()?;
         let mut extra = std::collections::HashMap::new();
         for part in parts {
             let mut kv = part.split('=');
-            let k = kv.next().ok_or(())?.to_string();
-            let v = kv.next().ok_or(())?.to_string();
+            let k = kv.next().ok_or_else(|| "Missing key".to_string())?.to_string();
+            let v = kv.next().ok_or_else(|| "Missing value".to_string())?.to_string();
             extra.insert(k, v);
         }
         Ok(Self {
@@ -267,7 +267,7 @@ pub enum MultiArch {
 }
 
 impl std::str::FromStr for MultiArch {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -275,7 +275,7 @@ impl std::str::FromStr for MultiArch {
             "foreign" => Ok(MultiArch::Foreign),
             "no" => Ok(MultiArch::No),
             "allowed" => Ok(MultiArch::Allowed),
-            _ => Err(()),
+            _ => Err(format!("Invalid multiarch: {}", s)),
         }
     }
 }
