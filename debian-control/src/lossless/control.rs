@@ -1,5 +1,5 @@
 use crate::fields::{MultiArch, Priority};
-use crate::relations::Relations;
+use crate::lossless::relations::Relations;
 
 fn format_field(name: &str, value: &str) -> String {
     match name {
@@ -56,7 +56,7 @@ impl Control {
     ///
     /// # Example
     /// ```rust
-    /// use debian_control::control::Control;
+    /// use debian_control::lossless::control::Control;
     /// let mut control = Control::new();
     /// let source = control.add_source("foo");
     /// assert_eq!(source.name(), Some("foo".to_owned()));
@@ -77,7 +77,7 @@ impl Control {
     ///
     /// # Example
     /// ```rust
-    /// use debian_control::control::Control;
+    /// use debian_control::lossless::control::Control;
     /// let mut control = Control::new();
     /// let binary = control.add_binary("foo");
     /// assert_eq!(binary.name(), Some("foo".to_owned()));
