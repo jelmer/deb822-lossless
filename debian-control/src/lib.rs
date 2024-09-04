@@ -1,23 +1,23 @@
-//! Lossless parser for Debian control files.
+//! Parser for Debian control files.
 //!
-//! This crate provides a parser for Debian control files. It is lossless, meaning that it will
-//! preserve the original formatting of the file. It also provides a way to serialize the parsed
-//! data back to a string.
+//! This crate provides a parser for Debian control files.
 //!
 //! # Example
 //!
 //! ```rust
-//! use debian_control::{Control, Priority};
+//! use debian_control::lossy::Control;
+//! use debian_control::fields::Priority;
 //! use std::fs::File;
 //!
 //! let mut control = Control::new();
-//! let mut source = control.add_source("hello");
-//! source.set_section(Some("rust"));
+//! let mut source = &mut control.source;
+//! source.name = "hello".to_string();
+//! source.section = Some("rust".to_string());
 //!
 //! let mut binary = control.add_binary("hello");
-//! binary.set_architecture(Some("amd64"));
-//! binary.set_priority(Some(Priority::Optional));
-//! binary.set_description(Some("Hello, world!"));
+//! binary.architecture = Some("amd64".to_string());
+//! binary.priority = Some(Priority::Optional);
+//! binary.description = Some("Hello, world!".to_string());
 //!
 //! assert_eq!(control.to_string(), r#"Source: hello
 //! Section: rust
@@ -28,14 +28,19 @@
 //! Description: Hello, world!
 //! "#);
 //! ```
-pub mod apt;
-pub mod changes;
-pub mod control;
-pub use control::{Binary, Control, Source};
+//!
+//! See the ``lossless`` module for a parser that preserves all comments and formatting, and
+//! as well as allowing inline errors.
+pub mod lossy;
+pub use lossless::control::{Binary, Control, Source};
 pub mod fields;
 pub use fields::*;
-pub mod pgp;
+pub mod lossless;
+pub use lossless::apt;
+pub use lossless::control;
+pub use lossless::changes;
 pub mod relations;
+pub mod pgp;
 pub mod vcs;
 
 #[derive(Debug, PartialEq)]
@@ -83,6 +88,9 @@ pub fn parse_identity(s: &str) -> Result<(&str, &str), ParseIdentityError> {
         Err(ParseIdentityError::NoEmail)
     }
 }
+
+
+
 
 #[cfg(test)]
 mod tests {

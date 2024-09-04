@@ -12,7 +12,7 @@ homepage = { workspace = true }
 rowan = ">=0.15"
 debversion = ">=0.3"
 regex = "1"
-deb822-lossless = { version = ">=0.1.20", path = ".." }
+deb822-lossless = { version = ">=0.1.20", path = "..", features = ["derive"] }
 url = "2"
 pyo3 = { workspace = true, optional = true }
 chrono = { version = "0.4", optional = true }
@@ -21,3 +21,6 @@ chrono = { version = "0.4", optional = true }
 default = ["chrono"]
 python-debian = ["dep:pyo3", "deb822-lossless/python-debian"]
 chrono = ["dep:chrono"]
+
+[[example]]
+name = "create-file"
