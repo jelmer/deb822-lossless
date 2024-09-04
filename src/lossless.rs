@@ -97,8 +97,17 @@ fn parse(text: &str) -> Parse {
             while self.current() == Some(COMMENT) {
                 self.bump();
 
-                if self.current() == Some(NEWLINE) {
-                    self.bump();
+                match self.current() {
+                    Some(NEWLINE) => {
+                        self.bump();
+                    }
+                    None => { return; }
+                    Some(g) => {
+                        self.builder.start_node(ERROR.into());
+                        self.bump();
+                        self.errors.push(format!("expected newline, got {:?}", g));
+                        self.builder.finish_node();
+                    }
                 }
             }
 
@@ -110,7 +119,9 @@ fn parse(text: &str) -> Parse {
                 self.skip_ws();
             } else {
                 self.builder.start_node(ERROR.into());
-                self.bump();
+                if self.current().is_some() {
+                    self.bump();
+                }
                 self.errors.push("expected key".to_string());
                 self.builder.finish_node();
             }

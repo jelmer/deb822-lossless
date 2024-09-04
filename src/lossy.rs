@@ -27,7 +27,7 @@ pub struct Paragraph {
 }
 
 impl Paragraph {
-    pub fn get_field(&self, name: &str) -> Option<&str> {
+    pub fn get(&self, name: &str) -> Option<&str> {
         for field in &self.fields {
             if field.name == name {
                 return Some(&field.value);
@@ -38,6 +38,10 @@ impl Paragraph {
 
     pub fn is_empty(&self) -> bool {
         self.fields.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.fields.len()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
@@ -85,6 +89,20 @@ impl std::fmt::Display for Deb822 {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Deb822(pub Vec<Paragraph>);
+
+impl Deb822 {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Paragraph> {
+        self.0.iter()
+    }
+}
 
 impl std::str::FromStr for Deb822 {
     type Err = Error;
