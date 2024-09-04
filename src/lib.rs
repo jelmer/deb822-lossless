@@ -1,5 +1,5 @@
 #![allow(clippy::type_complexity)]
-//! Lossless parser for deb822 style files.
+//! Parser for deb822 style files.
 //!
 //! This parser can be used to parse files in the deb822 format, while preserving
 //! all whitespace and comments. It is based on the [rowan] library, which is a
