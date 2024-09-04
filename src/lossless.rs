@@ -1,4 +1,4 @@
-use crate::{lex::lex, lex::SyntaxKind::{self,*}};
+use crate::{lex::lex, lex::SyntaxKind::{self,*}, Indentation};
 use rowan::ast::AstNode;
 use std::path::Path;
 use std::str::FromStr;
@@ -760,15 +760,6 @@ impl pyo3::FromPyObject<'_> for Paragraph {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Indentation {
-    /// Use the same indentation as the original line for the value.
-    FieldNameLength,
-
-    /// The number of spaces to use for indentation.
-    Spaces(u32),
-}
-
 impl Entry {
     pub fn new(key: &str, value: &str) -> Entry {
         let mut builder = GreenNodeBuilder::new();
@@ -822,7 +813,7 @@ impl Entry {
             }
         }
 
-        let indentation = if let Indentation::Spaces(i) = indentation {
+        let indentation = if let crate::Indentation::Spaces(i) = indentation {
             i
         } else {
             1
@@ -1399,7 +1390,7 @@ Multi-Line:
         let mut ps = d.paragraphs();
         let p = ps.next().unwrap();
         let result = p.wrap_and_sort(
-            super::Indentation::FieldNameLength,
+            crate::Indentation::FieldNameLength,
             false,
             None,
             None::<&dyn Fn(&super::Entry, &super::Entry) -> std::cmp::Ordering>,
@@ -1434,7 +1425,7 @@ Maintainer: Bar Foo <bar@example.com>
                 a.get("Source").cmp(&b.get("Source"))
             }),
             Some(&|p| p.wrap_and_sort(
-                super::Indentation::FieldNameLength,
+                crate::Indentation::FieldNameLength,
                 false,
                 None,
                 None::<&dyn Fn(&super::Entry, &super::Entry) -> std::cmp::Ordering>,
@@ -1466,7 +1457,7 @@ Homepage: https://example.com/
         let result = d.wrap_and_sort(
             None,
             Some(&mut |p: &super::Paragraph| -> super::Paragraph { p.wrap_and_sort(
-                super::Indentation::FieldNameLength,
+                crate::Indentation::FieldNameLength,
                 false,
                 None,
                 Some(&mut |a: &super::Entry, b: &super::Entry| a.key().cmp(&b.key())),

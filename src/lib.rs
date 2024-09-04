@@ -37,7 +37,18 @@ mod lex;
 mod convert;
 pub mod lossless;
 pub mod lossy;
-pub use lossless::{Deb822, Paragraph};
+pub use lossless::{Deb822, Paragraph, ParseError, Error};
 pub use convert::{FromDeb822Paragraph, ToDeb822Paragraph};
 #[cfg(feature = "derive")]
 pub use deb822_derive::{FromDeb822, ToDeb822};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Indentation {
+    /// Use the same indentation as the original line for the value.
+    FieldNameLength,
+
+    /// The number of spaces to use for indentation.
+    Spaces(u32),
+}
+
+
