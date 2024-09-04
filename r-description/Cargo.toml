@@ -10,6 +10,3 @@ license = "Apache-2.0"
 [dependencies]
 deb822-lossless = { version = ">=0.1.22", path = "..", features = ["derive"] }
 url = "2"
-
-[features]
-lossless = []
