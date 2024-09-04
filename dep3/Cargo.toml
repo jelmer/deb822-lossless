@@ -9,4 +9,8 @@ repository = "https://github.com/jelmer/deb822-lossless"
 
 [dependencies]
 chrono = ">=0.4"
-deb822-lossless = { path = "..", version = ">=0.1.9" }
+deb822-lossless = { path = "..", version = ">=0.1.9", features = ["derive"] }
+url = "2.5.2"
+
+[features]
+lossy = []

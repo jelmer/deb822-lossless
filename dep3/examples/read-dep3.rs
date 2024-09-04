@@ -1,4 +1,4 @@
-use dep3::PatchHeader;
+use dep3::lossy::PatchHeader;
 use std::str::FromStr;
 
 pub const TEXT: &str = r#"From: John Doe <john.doe@example>
@@ -12,6 +12,6 @@ Forwarded: not-needed
 pub fn main() {
     let patch_header = PatchHeader::from_str(TEXT).unwrap();
 
-    println!("Description: {}", patch_header.description().unwrap());
-    println!("Debian Bugs: {}", patch_header.vendor_bugs("Debian").collect::<Vec<_>>().join(", "));
+    println!("Description: {}", patch_header.description.unwrap());
+    println!("Debian Bugs: {}", patch_header.bug_debian.unwrap());
 }
