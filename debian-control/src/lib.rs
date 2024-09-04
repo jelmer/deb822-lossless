@@ -1,11 +1,12 @@
-//! Lossless parser for Debian control files.
+//! Parser for Debian control files.
 //!
 //! This crate provides a parser for Debian control files.
 //!
 //! # Example
 //!
 //! ```rust
-//! use debian_control::{Control, Priority};
+//! use debian_control::lossy::Control;
+//! use debian_control::fields::Priority;
 //! use std::fs::File;
 //!
 //! let mut control = Control::new();
@@ -30,16 +31,16 @@
 //!
 //! See the ``lossless`` module for a parser that preserves all comments and formatting, and
 //! as well as allowing inline errors.
-pub mod apt;
-pub mod changes;
-pub mod control;
-pub use control::{Binary, Control, Source};
+pub mod lossy;
+pub use lossless::control::{Binary, Control, Source};
 pub mod fields;
 pub use fields::*;
-#[cfg(feature = "lossless")]
 pub mod lossless;
-pub mod pgp;
+pub use lossless::apt;
+pub use lossless::control;
+pub use lossless::changes;
 pub mod relations;
+pub mod pgp;
 pub mod vcs;
 
 #[derive(Debug, PartialEq)]
@@ -87,6 +88,9 @@ pub fn parse_identity(s: &str) -> Result<(&str, &str), ParseIdentityError> {
         Err(ParseIdentityError::NoEmail)
     }
 }
+
+
+
 
 #[cfg(test)]
 mod tests {

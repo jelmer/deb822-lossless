@@ -21,7 +21,6 @@
 use debversion::Version;
 use rowan::{Direction, NodeOrToken};
 use crate::relations::SyntaxKind::{self,*};
-
 use crate::relations::{BuildProfile, VersionConstraint};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
