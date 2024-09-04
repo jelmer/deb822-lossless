@@ -1,6 +1,34 @@
-use crate::SyntaxKind;
 use std::iter::Peekable;
 use std::str::Chars;
+
+/// Let's start with defining all kinds of tokens and
+/// composite nodes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[allow(non_camel_case_types)]
+#[repr(u16)]
+pub enum SyntaxKind {
+    KEY = 0,
+    VALUE,
+    COLON,
+    INDENT,
+    NEWLINE,
+    WHITESPACE, // whitespaces is explicit
+    COMMENT,    // comments
+    ERROR,      // as well as errors
+
+    // composite nodes
+    ROOT,       // The entire file
+    PARAGRAPH,  // A deb822 paragraph
+    ENTRY,      // A single key-value pair
+    EMPTY_LINE, // An empty line
+}
+
+/// Convert our `SyntaxKind` into the rowan `SyntaxKind`.
+impl From<SyntaxKind> for rowan::SyntaxKind {
+    fn from(kind: SyntaxKind) -> Self {
+        Self(kind as u16)
+    }
+}
 
 pub struct Lexer<'a> {
     input: Peekable<Chars<'a>>,
@@ -108,7 +136,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl Iterator for Lexer<'_> {
-    type Item = (crate::SyntaxKind, String);
+    type Item = (SyntaxKind, String);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_token()
@@ -127,7 +155,7 @@ pub(crate) fn lex_inline(input: &str) -> Vec<(SyntaxKind, String)> {
 
 #[cfg(test)]
 mod tests {
-    use crate::SyntaxKind::*;
+    use super::SyntaxKind::*;
     #[test]
     fn test_empty() {
         assert_eq!(super::lex(""), vec![]);
