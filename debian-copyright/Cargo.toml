@@ -12,6 +12,3 @@ version = "0.1.24"
 debversion = ">=0.3"
 regex = ">=1.10"
 deb822-lossless = { version = ">=0.1.10", path = "..", features = ["derive"] }
-
-[features]
-lossless = []
