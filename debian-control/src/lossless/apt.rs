@@ -1,5 +1,5 @@
 use crate::fields::{MultiArch, Priority, Sha1Checksum, Sha256Checksum, Sha512Checksum};
-use crate::relations::Relations;
+use crate::lossless::relations::Relations;
 
 /// A source package in the APT package manager.
 pub struct Source(deb822_lossless::Paragraph);
@@ -1095,7 +1095,7 @@ Multi-Arch: same
 
     #[test]
     fn test_release() {
-        let s = include_str!("testdata/Release");
+        let s = include_str!("../testdata/Release");
         let release: super::Release = s.parse().unwrap();
 
         assert_eq!(release.origin(), Some("Debian".to_string()));

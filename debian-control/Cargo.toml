@@ -21,8 +21,6 @@ chrono = { version = "0.4", optional = true }
 default = ["chrono"]
 python-debian = ["dep:pyo3", "deb822-lossless/python-debian"]
 chrono = ["dep:chrono"]
-lossless = []
 
 [[example]]
 name = "create-file"
-required-features = ["lossless"]

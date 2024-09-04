@@ -1,7 +1,7 @@
 use deb822_lossless::{FromDeb822, ToDeb822};
 use deb822_lossless::{FromDeb822Paragraph, ToDeb822Paragraph};
 use crate::fields::Priority;
-use crate::relations::Relations;
+use crate::lossy::relations::Relations;
 
 fn deserialize_yesno(s: &str) -> Result<bool, String> {
     match s {
