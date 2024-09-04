@@ -13,4 +13,4 @@ deb822-lossless = { path = "..", version = ">=0.1.9", features = ["derive"] }
 url = "2.5.2"
 
 [features]
-lossless = []
+lossy = []
