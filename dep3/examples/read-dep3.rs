@@ -1,4 +1,4 @@
-use dep3::PatchHeader;
+use dep3::lossy::PatchHeader;
 use std::str::FromStr;
 
 pub const TEXT: &str = r#"From: John Doe <john.doe@example>
