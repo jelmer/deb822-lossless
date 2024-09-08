@@ -105,6 +105,27 @@ impl std::fmt::Display for Relation {
     }
 }
 
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Relation {
+    fn deserialize<D>(deserializer: D) -> Result<Relation, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Relation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_string().serialize(serializer)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Relations(pub Vec<Vec<Relation>>);
 
@@ -326,6 +347,26 @@ impl std::str::FromStr for Relations {
     }
 }
 
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Relations {
+    fn deserialize<D>(deserializer: D) -> Result<Relations, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Relations {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer {
+        self.to_string().serialize(serializer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -450,5 +491,27 @@ mod tests {
                 vec![BuildProfile::Disabled("cross".to_string())]
             ]
         );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serde_relations() {
+        let input = "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)";
+        let parsed: Relations = input.parse().unwrap();
+        let serialized = serde_json::to_string(&parsed).unwrap();
+        assert_eq!(serialized, r#""python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)""#);
+        let deserialized: Relations = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, parsed);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serde_relation() {
+        let input = "python3-dulwich (>= 0.20.21)";
+        let parsed: Relation = input.parse().unwrap();
+        let serialized = serde_json::to_string(&parsed).unwrap();
+        assert_eq!(serialized, r#""python3-dulwich (>= 0.20.21)""#);
+        let deserialized: Relation = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, parsed);
     }
 }
