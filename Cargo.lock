@@ -116,7 +116,7 @@ dependencies = [
 
 [[package]]
 name = "debian-copyright"
-version = "0.1.24"
+version = "0.1.25"
 dependencies = [
  "deb822-lossless",
  "debversion",
@@ -135,7 +135,7 @@ dependencies = [
 
 [[package]]
 name = "dep3"
-version = "0.1.24"
+version = "0.1.25"
 dependencies = [
  "chrono",
  "deb822-lossless",
@@ -377,7 +377,7 @@ dependencies = [
 
 [[package]]
 name = "r-description"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "deb822-lossless",
  "url",
