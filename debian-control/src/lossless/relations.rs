@@ -1076,6 +1076,76 @@ impl Relation {
         }
     }
 
+    pub fn set_version(&mut self, version_constraint: Option<(VersionConstraint, Version)>) {
+        let current_version = self.0.children().find(|n| n.kind() == VERSION);
+        if let Some((vc, version)) = version_constraint {
+            let mut builder = GreenNodeBuilder::new();
+            builder.start_node(VERSION.into());
+            builder.token(L_PARENS.into(), "(");
+            builder.start_node(CONSTRAINT.into());
+            match vc {
+                VersionConstraint::GreaterThanEqual => {
+                    builder.token(R_ANGLE.into(), ">");
+                    builder.token(EQUAL.into(), "=");
+                }
+                VersionConstraint::LessThanEqual => {
+                    builder.token(L_ANGLE.into(), "<");
+                    builder.token(EQUAL.into(), "=");
+                }
+                VersionConstraint::Equal => {
+                    builder.token(EQUAL.into(), "=");
+                }
+                VersionConstraint::GreaterThan => {
+                    builder.token(R_ANGLE.into(), ">");
+                }
+                VersionConstraint::LessThan => {
+                    builder.token(L_ANGLE.into(), "<");
+                }
+            }
+            builder.finish_node(); // CONSTRAINT
+            builder.token(WHITESPACE.into(), " ");
+            builder.token(IDENT.into(), version.to_string().as_str());
+            builder.token(R_PARENS.into(), ")");
+            builder.finish_node(); // VERSION
+
+            if let Some(current_version) = current_version {
+                self.0.splice_children(
+                    current_version.index()..current_version.index() + 1,
+                    vec![SyntaxNode::new_root(builder.finish())
+                        .clone_for_update()
+                        .into()],
+                );
+            } else {
+                let name_node = self.0.children_with_tokens().find(|n| n.kind() == IDENT);
+                let idx = if let Some(name_node) = name_node {
+                    name_node.index() + 1
+                } else {
+                    0
+                };
+                let new_children = vec![
+                    GreenToken::new(WHITESPACE.into(), " ").into(),
+                    builder.finish().into()];
+                self.0 = SyntaxNode::new_root(self.0.green().splice_children(
+                    idx..idx,
+                    new_children,
+                )).clone_for_update();
+            }
+        } else {
+            if let Some(current_version) = current_version {
+                // Remove any whitespace before the version token
+                while let Some(prev) = current_version.prev_sibling_or_token() {
+                    if prev.kind() == WHITESPACE || prev.kind() == NEWLINE {
+                        prev.detach();
+                    } else {
+                        break;
+                    }
+                }
+                current_version.detach();
+            }
+        }
+    }
+
+
     /// Return an iterator over the architectures for this relation
     pub fn architectures(&self) -> Option<impl Iterator<Item = String> + '_> {
         let architectures = self.0.children().find(|n| n.kind() == ARCHITECTURES)?;
@@ -1963,5 +2033,19 @@ mod tests {
         rel.remove();
         assert!(entry.is_empty());
         assert_eq!(0, entry.len());
+    }
+
+    #[test]
+    fn test_relation_set_version() {
+        let mut rel: Relation = "samba".parse().unwrap();
+        rel.set_version(None);
+        assert_eq!("samba", rel.to_string());
+        rel.set_version(Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
+        assert_eq!("samba (>= 2.0)", rel.to_string());
+        rel.set_version(None);
+        assert_eq!("samba", rel.to_string());
+        rel.set_version(Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
+        rel.set_version(Some((VersionConstraint::GreaterThanEqual, "1.1".parse().unwrap())));
+        assert_eq!("samba (>= 1.1)", rel.to_string());
     }
 }
