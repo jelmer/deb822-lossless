@@ -329,6 +329,9 @@ impl std::str::FromStr for Relations {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut relations = Vec::new();
+        if s.is_empty() {
+            return Ok(Relations(relations));
+        }
         for entry in s.split(",") {
             let entry = entry.trim();
             if entry.is_empty() {
@@ -513,5 +516,49 @@ mod tests {
         assert_eq!(serialized, r#""python3-dulwich (>= 0.20.21)""#);
         let deserialized: Relation = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, parsed);
+    }
+
+    #[test]
+    fn test_relations_is_empty() {
+        let input = "python3-dulwich (>= 0.20.21)";
+        let parsed: Relations = input.parse().unwrap();
+        assert!(!parsed.is_empty());
+        let input = "";
+        let parsed: Relations = input.parse().unwrap();
+        assert!(parsed.is_empty());
+    }
+
+    #[test]
+    fn test_relations_len() {
+        let input = "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)";
+        let parsed: Relations = input.parse().unwrap();
+        assert_eq!(parsed.len(), 2);
+    }
+
+    #[test]
+    fn test_relations_remove() {
+        let input = "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)";
+        let mut parsed: Relations = input.parse().unwrap();
+        parsed.remove(1);
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed.to_string(), "python3-dulwich (>= 0.20.21)");
+    }
+
+    #[test]
+    fn test_relations_satisfied_by() {
+        let input = "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)";
+        let parsed: Relations = input.parse().unwrap();
+        assert!(parsed.satisfied_by(&mut |name| {
+            match name {
+                "python3-dulwich" => Some("0.20.21".parse().unwrap()),
+                _ => None
+            }
+        }));
+        assert!(!parsed.satisfied_by(&mut |name| {
+            match name {
+                "python3-dulwich" => Some("0.21".parse().unwrap()),
+                _ => None
+            }
+        }));
     }
 }
