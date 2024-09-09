@@ -710,8 +710,8 @@ impl Entry {
     ///
     /// # Example
     /// ```
-    /// use debian_control::lossless::relations::Entry;
-    /// let entry = Entry::from(vec!["samba (>= 2.0)".parse().unwrap()]);
+    /// use debian_control::lossless::relations::{Relation,Entry};
+    /// let entry = Entry::from(vec!["samba (>= 2.0)".parse::<Relation>().unwrap()]);
     /// assert!(entry.satisfied_by(&mut |name| {
     ///    match name {
     ///    "samba" => Some("2.0".parse().unwrap()),
@@ -1408,6 +1408,19 @@ impl From<Relation> for crate::lossy::Relation {
             architectures: relation.architectures().map(|a| a.collect()),
             profiles: relation.profiles().collect(),
         }
+    }
+}
+
+impl From<Entry> for Vec<crate::lossy::Relation> {
+    fn from(entry: Entry) -> Self {
+        entry.relations().map(|r| r.into()).collect()
+    }
+}
+
+impl From<Vec<crate::lossy::Relation>> for Entry {
+    fn from(relations: Vec<crate::lossy::Relation>) -> Self {
+        let relations: Vec<Relation> = relations.into_iter().map(|r| r.into()).collect();
+        Entry::from(relations)
     }
 }
 
