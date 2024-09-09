@@ -33,6 +33,12 @@ pub struct Relation {
     pub profiles: Vec<Vec<BuildProfile>>,
 }
 
+impl Default for Relation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Relation {
     pub fn new() -> Self {
         Self {
@@ -155,6 +161,12 @@ impl FromIterator<Vec<Relation>> for Relations {
     }
 }
 
+impl Default for Relations {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Relations {
     pub fn new() -> Self {
         Self(Vec::new())
@@ -235,7 +247,7 @@ impl std::str::FromStr for Relation {
             let mut constraint = String::new();
             while let Some((kind, t)) = tokens.peek() {
                 match kind {
-                    EQUAL | L_ANGLE | R_ANGLE => { constraint.push_str(&t); tokens.next(); }
+                    EQUAL | L_ANGLE | R_ANGLE => { constraint.push_str(t); tokens.next(); }
                     _ => break,
                 }
             };
@@ -342,7 +354,7 @@ impl std::str::FromStr for Relations {
                 if relation.is_empty() {
                     return Err("Empty relation".to_string());
                 }
-                Ok(relation.parse()?)
+                relation.parse()
             });
             relations.push(entry_relations.collect::<Result<Vec<_>, _>>()?);
         }
