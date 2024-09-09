@@ -140,6 +140,12 @@ impl std::str::FromStr for Control {
     }
 }
 
+impl Default for Control {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Control {
     pub fn new() -> Self {
         Self {

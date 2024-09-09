@@ -475,6 +475,12 @@ impl pyo3::FromPyObject<'_> for Binary {
     }
 }
 
+impl Default for Binary {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Binary {
     pub fn new() -> Self {
         Binary(deb822_lossless::Paragraph::new())

@@ -97,7 +97,7 @@ pub trait VersionLookup {
 
 impl VersionLookup for std::collections::HashMap<String, debversion::Version> {
     fn lookup_version<'a>(&'a self, package: &str) -> Option<Cow<'a, debversion::Version>> {
-        self.get(package).map(|v| Cow::Borrowed(v))
+        self.get(package).map(Cow::Borrowed)
     }
 }
 
@@ -106,7 +106,7 @@ where
     F: Fn(&str) -> Option<debversion::Version>,
 {
     fn lookup_version<'a>(&'a self, name: &str) -> Option<Cow<'a, debversion::Version>> {
-        self(name).map(|v| Cow::Owned(v))
+        self(name).map(Cow::Owned)
     }
 }
 
