@@ -779,6 +779,14 @@ impl Entry {
         }
         self.0.detach();
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.relations().count() == 0
+    }
+
+    pub fn len(&self) -> usize {
+        self.relations().count()
+    }
 }
 
 fn inject(builder: &mut GreenNodeBuilder, node: SyntaxNode) {
@@ -1100,6 +1108,56 @@ impl Relation {
             }
             ret
         })
+    }
+
+    pub fn remove(&mut self) {
+        let mut removed_pipe = false;
+        let is_first = !self
+            .0
+            .siblings(Direction::Prev)
+            .skip(1)
+            .any(|n| n.kind() == RELATION);
+        while let Some(n) = self.0.next_sibling_or_token() {
+            if n.kind() == WHITESPACE || n.kind() == COMMENT || n.kind() == NEWLINE {
+                n.detach();
+            } else if n.kind() == PIPE {
+                n.detach();
+                removed_pipe = true;
+                break;
+            } else {
+                panic!("Unexpected node: {:?}", n);
+            }
+        }
+        if !is_first {
+            while let Some(n) = self.0.prev_sibling_or_token() {
+                if n.kind() == WHITESPACE || n.kind() == NEWLINE {
+                    n.detach();
+                } else if !removed_pipe && n.kind() == PIPE {
+                    n.detach();
+                    break;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            while let Some(n) = self.0.next_sibling_or_token() {
+                if n.kind() == WHITESPACE || n.kind() == NEWLINE {
+                    n.detach();
+                } else {
+                    break;
+                }
+            }
+        }
+        // If this was the last relation in the entry, remove the entire entry
+        if let Some(mut parent) = self.0.parent().and_then(Entry::cast) {
+            if parent.is_empty() {
+                parent.remove();
+            } else {
+                self.0.detach();
+            }
+        } else {
+            self.0.detach();
+        }
     }
 }
 
@@ -1674,5 +1732,29 @@ mod tests {
         let serialized = serde_json::to_string(&entry).unwrap();
         let deserialized: Entry = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized.to_string(), entry.to_string());
+    }
+
+    #[test]
+    fn test_remove_first_relation() {
+        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)".parse().unwrap();
+        let mut rel = entry.relations().next().unwrap();
+        rel.remove();
+        assert_eq!(entry.to_string(), "python3-dulwich (<< 0.18)");
+    }
+
+    #[test]
+    fn test_remove_last_relation() {
+        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)".parse().unwrap();
+        let mut rel = entry.relations().nth(1).unwrap();
+        rel.remove();
+        assert_eq!(entry.to_string(), "python3-dulwich (>= 0.20.21) ");
+    }
+
+    #[test]
+    fn test_remove_only_relation() {
+        let entry: Entry = "python3-dulwich (>= 0.20.21)".parse().unwrap();
+        let mut rel = entry.relations().next().unwrap();
+        rel.remove();
+        assert_eq!(entry.to_string(), "");
     }
 }
