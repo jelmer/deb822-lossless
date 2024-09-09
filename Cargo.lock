@@ -40,9 +40,9 @@ checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
 
 [[package]]
 name = "cc"
-version = "1.1.15"
+version = "1.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57b6a275aa2903740dc87da01c62040406b8812552e97129a63ea8850a17c6e6"
+checksum = "b62ac837cdb5cb22e10a256099b4fc502b1dfe560cb282963a974d7abd80e476"
 dependencies = [
  "shlex",
 ]
@@ -81,7 +81,7 @@ checksum = "7704b5fdd17b18ae31c4c1da5a2e0305a2bf17b5249300a9ee9ed7b72114c636"
 
 [[package]]
 name = "deb822-derive"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -90,7 +90,7 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.1.24"
+version = "0.1.25"
 dependencies = [
  "deb822-derive",
  "pyo3",
@@ -101,7 +101,7 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "chrono",
  "deb822-lossless",
@@ -125,10 +125,11 @@ dependencies = [
 
 [[package]]
 name = "debversion"
-version = "0.4.1"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b6c96844ac16a110ee3ea355b7e511ffe0221242caebb2cc5e1bbfd285744cf"
+checksum = "af9a77dd8b295674d42a18cbde8f51c7fc5609523faccda69b7b612f4dd04a4a"
 dependencies = [
+ "chrono",
  "lazy-regex",
 ]
 
