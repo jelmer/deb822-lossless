@@ -7,7 +7,7 @@
 //!
 //! let mut relations: Relations = r"python3-dulwich (>= 0.19.0), python3-requests, python3-urllib3 (<< 1.26.0)".parse().unwrap();
 //! assert_eq!(relations.to_string(), "python3-dulwich (>= 0.19.0), python3-requests, python3-urllib3 (<< 1.26.0)");
-//! assert!(relations.satisfied_by(&mut |name| {
+//! assert!(relations.satisfied_by(|name: &str| -> Option<debversion::Version> {
 //!    match name {
 //!    "python3-dulwich" => Some("0.19.0".parse().unwrap()),
 //!    "python3-requests" => Some("2.25.1".parse().unwrap()),
@@ -615,7 +615,7 @@ impl Relations {
         (parse.root(), parse.errors)
     }
 
-    pub fn satisfied_by(&self, package_version: &mut dyn FnMut(&str) -> Option<debversion::Version>) -> bool {
+    pub fn satisfied_by(&self, package_version: impl crate::VersionLookup + Copy) -> bool {
         self.entries().all(|e| e.satisfied_by(package_version))
     }
 
@@ -720,23 +720,23 @@ impl Entry {
     /// ```
     /// use debian_control::lossless::relations::{Relation,Entry};
     /// let entry = Entry::from(vec!["samba (>= 2.0)".parse::<Relation>().unwrap()]);
-    /// assert!(entry.satisfied_by(&mut |name| {
+    /// assert!(entry.satisfied_by(|name: &str| -> Option<debversion::Version> {
     ///    match name {
     ///    "samba" => Some("2.0".parse().unwrap()),
     ///    _ => None
     /// }}));
     /// ```
-    pub fn satisfied_by(&self, package_version: &mut dyn FnMut(&str) -> Option<debversion::Version>) -> bool {
+    pub fn satisfied_by(&self, package_version: impl crate::VersionLookup + Copy) -> bool {
         self.relations().any(|r| {
-            let actual = package_version(r.name().as_str());
+            let actual = package_version.lookup_version(r.name().as_str());
             if let Some((vc, version)) = r.version() {
                 if let Some(actual) = actual {
                     match vc {
-                        VersionConstraint::GreaterThanEqual => actual >= version,
-                        VersionConstraint::LessThanEqual => actual <= version,
-                        VersionConstraint::Equal => actual == version,
-                        VersionConstraint::GreaterThan => actual > version,
-                        VersionConstraint::LessThan => actual < version,
+                        VersionConstraint::GreaterThanEqual => *actual >= version,
+                        VersionConstraint::LessThanEqual => *actual <= version,
+                        VersionConstraint::Equal => *actual == version,
+                        VersionConstraint::GreaterThan => *actual > version,
+                        VersionConstraint::LessThan => *actual < version,
                     }
                 } else {
                     false
@@ -1884,23 +1884,23 @@ mod tests {
         let rels: Relations = "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"
             .parse()
             .unwrap();
-        let mut satisfied = |name: &str| match name {
+        let satisfied = |name: &str| -> Option<debversion::Version> { match name {
             "python3-dulwich" => Some("0.20.21".parse().unwrap()),
             _ => None,
-        };
-        assert!(rels.satisfied_by(&mut satisfied));
+        }};
+        assert!(rels.satisfied_by(&satisfied));
 
-        let mut satisfied = |name: &str| match name {
+        let satisfied = |name: &str| match name {
             "python3-dulwich" => Some("0.21".parse().unwrap()),
             _ => None,
         };
-        assert!(!rels.satisfied_by(&mut satisfied));
+        assert!(!rels.satisfied_by(&satisfied));
 
-        let mut satisfied = |name: &str| match name {
+        let satisfied = |name: &str| match name {
             "python3-dulwich" => Some("0.20.20".parse().unwrap()),
             _ => None,
         };
-        assert!(!rels.satisfied_by(&mut satisfied));
+        assert!(!rels.satisfied_by(&satisfied));
     }
 
     #[test]
