@@ -43,6 +43,8 @@ pub mod relations;
 pub mod pgp;
 pub mod vcs;
 
+use std::borrow::Cow;
+
 #[derive(Debug, PartialEq)]
 pub enum ParseIdentityError {
     NoEmail,
@@ -89,8 +91,24 @@ pub fn parse_identity(s: &str) -> Result<(&str, &str), ParseIdentityError> {
     }
 }
 
+pub trait VersionLookup {
+    fn lookup_version<'a>(&'a self, package: &'_ str) -> Option<std::borrow::Cow<'a, debversion::Version>>;
+}
 
+impl VersionLookup for std::collections::HashMap<String, debversion::Version> {
+    fn lookup_version<'a>(&'a self, package: &str) -> Option<Cow<'a, debversion::Version>> {
+        self.get(package).map(|v| Cow::Borrowed(v))
+    }
+}
 
+impl<F> VersionLookup for F
+where
+    F: Fn(&str) -> Option<debversion::Version>,
+{
+    fn lookup_version<'a>(&'a self, name: &str) -> Option<Cow<'a, debversion::Version>> {
+        self(name).map(|v| Cow::Owned(v))
+    }
+}
 
 #[cfg(test)]
 mod tests {
