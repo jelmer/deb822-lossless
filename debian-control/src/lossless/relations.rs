@@ -523,6 +523,12 @@ impl<'de> serde::Deserialize<'de> for Relation {
     }
 }
 
+impl Default for Relations {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Relations {
     pub fn new() -> Self {
         Self::from(vec![])
@@ -693,6 +699,61 @@ impl Entry {
         builder.start_node(SyntaxKind::ENTRY.into());
         builder.finish_node();
         Entry(SyntaxNode::new_root(builder.finish()).clone_for_update())
+    }
+
+    pub fn replace(&mut self, idx: usize, relation: Relation) {
+        let current_relation = self.get_relation(idx).unwrap();
+
+        let old_root = current_relation.0;
+        let new_root = relation.0;
+        // Preserve white the current relation has
+        let mut prev = new_root.first_child_or_token();
+        let mut new_head_len = 0;
+        // First, strip off any whitespace from the new relation
+        while let Some(p) = prev {
+            if p.kind() == WHITESPACE || p.kind() == NEWLINE {
+                new_head_len += 1;
+                prev = p.next_sibling_or_token();
+            } else {
+                break;
+            }
+        }
+        let mut new_tail_len = 0;
+        let mut next = new_root.last_child_or_token();
+        while let Some(n) = next {
+            if n.kind() == WHITESPACE || n.kind() == NEWLINE {
+                new_tail_len += 1;
+                next = n.prev_sibling_or_token();
+            } else {
+                break;
+            }
+        }
+        // Then, inherit the whitespace from the old relation
+        let mut prev = old_root.first_child_or_token();
+        let mut old_head = vec![];
+        while let Some(p) = prev {
+            if p.kind() == WHITESPACE || p.kind() == NEWLINE {
+                old_head.push(p.clone());
+                prev = p.next_sibling_or_token();
+            } else {
+                break;
+            }
+        }
+        let mut old_tail = vec![];
+        let mut next = old_root.last_child_or_token();
+        while let Some(n) = next {
+            if n.kind() == WHITESPACE || n.kind() == NEWLINE {
+                old_tail.push(n.clone());
+                next = n.prev_sibling_or_token();
+            } else {
+                break;
+            }
+        }
+        new_root.splice_children(0..new_head_len, old_head);
+        let tail_pos = new_root.children_with_tokens().count() - new_tail_len;
+        new_root.splice_children(tail_pos - new_tail_len..tail_pos, old_tail.into_iter().rev().collect());
+        let index = old_root.index();
+        self.0.splice_children(index..index + 1, vec![new_root.into()]);
     }
 
     #[must_use]
@@ -1130,18 +1191,16 @@ impl Relation {
                     new_children,
                 )).clone_for_update();
             }
-        } else {
-            if let Some(current_version) = current_version {
-                // Remove any whitespace before the version token
-                while let Some(prev) = current_version.prev_sibling_or_token() {
-                    if prev.kind() == WHITESPACE || prev.kind() == NEWLINE {
-                        prev.detach();
-                    } else {
-                        break;
-                    }
+        } else if let Some(current_version) = current_version {
+            // Remove any whitespace before the version token
+            while let Some(prev) = current_version.prev_sibling_or_token() {
+                if prev.kind() == WHITESPACE || prev.kind() == NEWLINE {
+                    prev.detach();
+                } else {
+                    break;
                 }
-                current_version.detach();
             }
+            current_version.detach();
         }
     }
 
@@ -1888,19 +1947,19 @@ mod tests {
             "python3-dulwich" => Some("0.20.21".parse().unwrap()),
             _ => None,
         }};
-        assert!(rels.satisfied_by(&satisfied));
+        assert!(rels.satisfied_by(satisfied));
 
         let satisfied = |name: &str| match name {
             "python3-dulwich" => Some("0.21".parse().unwrap()),
             _ => None,
         };
-        assert!(!rels.satisfied_by(&satisfied));
+        assert!(!rels.satisfied_by(satisfied));
 
         let satisfied = |name: &str| match name {
             "python3-dulwich" => Some("0.20.20".parse().unwrap()),
             _ => None,
         };
-        assert!(!rels.satisfied_by(&satisfied));
+        assert!(!rels.satisfied_by(satisfied));
     }
 
     #[test]
@@ -2047,5 +2106,13 @@ mod tests {
         rel.set_version(Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
         rel.set_version(Some((VersionConstraint::GreaterThanEqual, "1.1".parse().unwrap())));
         assert_eq!("samba (>= 1.1)", rel.to_string());
+    }
+
+    #[test]
+    fn test_replace_relation() {
+        let mut entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)".parse().unwrap();
+        let new_rel = Relation::simple("python3-breezy");
+        entry.replace(0, new_rel);
+        assert_eq!(entry.to_string(), "python3-breezy | python3-dulwich (<< 0.18)");
     }
 }
