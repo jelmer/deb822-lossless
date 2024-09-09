@@ -22,6 +22,7 @@ use debversion::Version;
 use rowan::{Direction, NodeOrToken};
 use crate::relations::SyntaxKind::{self,*};
 use crate::relations::{BuildProfile, VersionConstraint};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParseError(Vec<String>);
@@ -428,7 +429,7 @@ impl PartialEq for Entry {
 
 impl PartialEq for Relation {
     fn eq(&self, other: &Self) -> bool {
-        self.name() == other.name() && self.version() == other.version()
+        self.name() == other.name() && self.version() == other.version() && self.archqual() == other.archqual() && self.architectures().map(|x| x.collect::<HashSet<_>>()) == other.architectures().map(|x| x.collect::<HashSet<_>>()) && self.profiles().eq(other.profiles())
     }
 }
 
@@ -709,8 +710,8 @@ impl Entry {
     ///
     /// # Example
     /// ```
-    /// use debian_control::lossless::relations::Entry;
-    /// let entry = Entry::from(vec!["samba (>= 2.0)".parse().unwrap()]);
+    /// use debian_control::lossless::relations::{Relation,Entry};
+    /// let entry = Entry::from(vec!["samba (>= 2.0)".parse::<Relation>().unwrap()]);
     /// assert!(entry.satisfied_by(&mut |name| {
     ///    match name {
     ///    "samba" => Some("2.0".parse().unwrap()),
@@ -1159,6 +1160,131 @@ impl Relation {
             self.0.detach();
         }
     }
+
+    pub fn set_architectures<'a>(&mut self, architectures: impl Iterator<Item = &'a str>) {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(ARCHITECTURES.into());
+        builder.token(L_BRACKET.into(), "[");
+        for (i, arch) in architectures.enumerate() {
+            if i > 0 {
+                builder.token(WHITESPACE.into(), " ");
+            }
+            builder.token(IDENT.into(), arch);
+        }
+        builder.token(R_BRACKET.into(), "]");
+        builder.finish_node();
+
+        let node_architectures = self.0.children().find(|n| n.kind() == ARCHITECTURES);
+        if let Some(node_architectures) = node_architectures {
+            self.0 = SyntaxNode::new_root(node_architectures.replace_with(builder.finish()))
+                .clone_for_update();
+        } else {
+            let profiles = self.0.children().find(|n| n.kind() == PROFILES);
+            let idx = if let Some(profiles) = profiles {
+                profiles.index()
+            } else {
+                self.0.children_with_tokens().count()
+            };
+            self.0.splice_children(
+                idx..idx,
+                vec![SyntaxNode::new_root(builder.finish())
+                    .clone_for_update()
+                    .into()],
+            );
+        }
+    }
+
+    pub fn add_profile(&mut self, profile: &[BuildProfile]) {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(PROFILES.into());
+        builder.token(L_ANGLE.into(), "<");
+        for (i, profile) in profile.iter().enumerate() {
+            if i > 0 {
+                builder.token(WHITESPACE.into(), " ");
+            }
+            match profile {
+                BuildProfile::Disabled(name) => {
+                    builder.token(NOT.into(), "!");
+                    builder.token(IDENT.into(), name.as_str());
+                }
+                BuildProfile::Enabled(name) => {
+                    builder.token(IDENT.into(), name.as_str());
+                }
+            }
+        }
+        builder.token(R_ANGLE.into(), ">");
+        builder.finish_node();
+
+        let node_profiles = self.0.children().find(|n| n.kind() == PROFILES);
+        if let Some(node_profiles) = node_profiles {
+            self.0 = SyntaxNode::new_root(node_profiles.replace_with(builder.finish()))
+                .clone_for_update();
+        } else {
+            let idx = self.0.children_with_tokens().count();
+            self.0.splice_children(
+                idx..idx,
+                vec![SyntaxNode::new_root(builder.finish())
+                    .clone_for_update()
+                    .into()],
+            );
+        }
+    }
+
+    pub fn build(name: &str) -> RelationBuilder {
+        RelationBuilder::new(name)
+    }
+}
+
+pub struct RelationBuilder {
+    name: String,
+    version_constraint: Option<(VersionConstraint, Version)>,
+    archqual: Option<String>,
+    architectures: Vec<String>,
+    profiles: Vec<Vec<BuildProfile>>,
+}
+
+impl RelationBuilder {
+    fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            version_constraint: None,
+            archqual: None,
+            architectures: vec![],
+            profiles: vec![],
+        }
+    }
+
+    pub fn version_constraint(mut self, vc: VersionConstraint, version: Version) -> Self {
+        self.version_constraint = Some((vc, version));
+        self
+    }
+
+    pub fn archqual(mut self, archqual: &str) -> Self {
+        self.archqual = Some(archqual.to_string());
+        self
+    }
+
+    pub fn architectures(mut self, architectures: Vec<String>) -> Self {
+        self.architectures = architectures;
+        self
+    }
+
+    pub fn profiles(mut self, profiles: Vec<Vec<BuildProfile>>) -> Self {
+        self.profiles = profiles;
+        self
+    }
+
+    pub fn build(self) -> Relation {
+        let mut relation = Relation::new(&self.name, self.version_constraint);
+        if let Some(archqual) = &self.archqual {
+            relation.set_archqual(archqual);
+        }
+        relation.set_architectures(self.architectures.iter().map(|s| s.as_str()));
+        for profile in &self.profiles {
+            relation.add_profile(profile);
+        }
+        relation
+    }
 }
 
 impl PartialOrd for Relation {
@@ -1248,6 +1374,53 @@ impl std::str::FromStr for Relation {
         }
 
         Ok(relation)
+    }
+}
+
+impl From<crate::lossy::Relation> for Relation {
+    fn from(relation: crate::lossy::Relation) -> Self {
+        let mut builder = Relation::build(&relation.name);
+
+        if let Some((vc, version)) = relation.version {
+            builder = builder.version_constraint(vc, version);
+        }
+
+        if let Some(archqual) = relation.archqual {
+            builder = builder.archqual(&archqual);
+        }
+
+        if let Some(architectures) = relation.architectures {
+            builder = builder.architectures(architectures);
+        }
+
+        builder = builder.profiles(relation.profiles);
+
+        builder.build()
+    }
+}
+
+impl From<Relation> for crate::lossy::Relation {
+    fn from(relation: Relation) -> Self {
+        crate::lossy::Relation {
+            name: relation.name(),
+            version: relation.version(),
+            archqual: relation.archqual(),
+            architectures: relation.architectures().map(|a| a.collect()),
+            profiles: relation.profiles().collect(),
+        }
+    }
+}
+
+impl From<Entry> for Vec<crate::lossy::Relation> {
+    fn from(entry: Entry) -> Self {
+        entry.relations().map(|r| r.into()).collect()
+    }
+}
+
+impl From<Vec<crate::lossy::Relation>> for Entry {
+    fn from(relations: Vec<crate::lossy::Relation>) -> Self {
+        let relations: Vec<Relation> = relations.into_iter().map(|r| r.into()).collect();
+        Entry::from(relations)
     }
 }
 
