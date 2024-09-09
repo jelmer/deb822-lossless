@@ -618,6 +618,14 @@ impl Relations {
     pub fn satisfied_by(&self, package_version: &mut dyn FnMut(&str) -> Option<debversion::Version>) -> bool {
         self.entries().all(|e| e.satisfied_by(package_version))
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries().count() == 0
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries().count()
+    }
 }
 
 impl From<Vec<Entry>> for Relations {
@@ -1929,5 +1937,31 @@ mod tests {
         let mut rel = entry.relations().next().unwrap();
         rel.remove();
         assert_eq!(entry.to_string(), "");
+    }
+
+    #[test]
+    fn test_relations_is_empty() {
+        let entry: Relations = "python3-dulwich (>= 0.20.21)".parse().unwrap();
+        assert!(!entry.is_empty());
+        assert_eq!(1, entry.len());
+        let mut rel = entry.entries().next().unwrap();
+        rel.remove();
+        assert!(entry.is_empty());
+        assert_eq!(0, entry.len());
+    }
+
+    #[test]
+    fn test_entry_is_empty() {
+        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)".parse().unwrap();
+        assert!(!entry.is_empty());
+        assert_eq!(2, entry.len());
+        let mut rel = entry.relations().next().unwrap();
+        rel.remove();
+        assert!(!entry.is_empty());
+        assert_eq!(1, entry.len());
+        let mut rel = entry.relations().next().unwrap();
+        rel.remove();
+        assert!(entry.is_empty());
+        assert_eq!(0, entry.len());
     }
 }
