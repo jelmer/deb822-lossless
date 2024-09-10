@@ -139,7 +139,7 @@ impl std::str::FromStr for Deb822 {
                         tokens.next();
                     }
 
-                    while let Some((k, t)) = tokens.next() {
+                    for (k, t) in tokens.by_ref() {
                         match k {
                             SyntaxKind::VALUE => {
                                 current_paragraph.last_mut().unwrap().value = t.to_string();
@@ -151,7 +151,7 @@ impl std::str::FromStr for Deb822 {
                         }
                     }
 
-                    current_paragraph.last_mut().unwrap().value.push_str("\n");
+                    current_paragraph.last_mut().unwrap().value.push('\n');
 
                     // while the next line starts with INDENT, it's a continuation of the value
                     while tokens.peek().map(|(k, _)| *k) == Some(SyntaxKind::INDENT) {
@@ -191,7 +191,7 @@ impl std::str::FromStr for Deb822 {
                     return Err(Error::UnexpectedToken(*k, t.to_string()));
                 }
                 SyntaxKind::COMMENT => {
-                    while let Some((k, _)) = tokens.next() {
+                    for (k, _) in tokens.by_ref() {
                         if *k == SyntaxKind::NEWLINE {
                             break;
                         }

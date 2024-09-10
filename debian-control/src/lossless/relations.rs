@@ -18,10 +18,10 @@
 //! relations.get_entry(0).unwrap().get_relation(0).unwrap().set_archqual("amd64");
 //! assert_eq!(relations.to_string(), "python3-dulwich:amd64 (>= 0.19.0), python3-urllib3 (<< 1.26.0)");
 //! ```
+use crate::relations::SyntaxKind::{self, *};
+use crate::relations::{BuildProfile, VersionConstraint};
 use debversion::Version;
 use rowan::{Direction, NodeOrToken};
-use crate::relations::SyntaxKind::{self,*};
-use crate::relations::{BuildProfile, VersionConstraint};
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -429,7 +429,12 @@ impl PartialEq for Entry {
 
 impl PartialEq for Relation {
     fn eq(&self, other: &Self) -> bool {
-        self.name() == other.name() && self.version() == other.version() && self.archqual() == other.archqual() && self.architectures().map(|x| x.collect::<HashSet<_>>()) == other.architectures().map(|x| x.collect::<HashSet<_>>()) && self.profiles().eq(other.profiles())
+        self.name() == other.name()
+            && self.version() == other.version()
+            && self.archqual() == other.archqual()
+            && self.architectures().map(|x| x.collect::<HashSet<_>>())
+                == other.architectures().map(|x| x.collect::<HashSet<_>>())
+            && self.profiles().eq(other.profiles())
     }
 }
 
@@ -536,7 +541,10 @@ impl Relations {
 
     #[must_use]
     pub fn wrap_and_sort(self) -> Self {
-        let mut entries = self.entries().map(|e| e.wrap_and_sort()).collect::<Vec<_>>();
+        let mut entries = self
+            .entries()
+            .map(|e| e.wrap_and_sort())
+            .collect::<Vec<_>>();
         entries.sort();
         // TODO: preserve comments
         Self::from(entries)
@@ -751,14 +759,21 @@ impl Entry {
         }
         new_root.splice_children(0..new_head_len, old_head);
         let tail_pos = new_root.children_with_tokens().count() - new_tail_len;
-        new_root.splice_children(tail_pos - new_tail_len..tail_pos, old_tail.into_iter().rev().collect());
+        new_root.splice_children(
+            tail_pos - new_tail_len..tail_pos,
+            old_tail.into_iter().rev().collect(),
+        );
         let index = old_root.index();
-        self.0.splice_children(index..index + 1, vec![new_root.into()]);
+        self.0
+            .splice_children(index..index + 1, vec![new_root.into()]);
     }
 
     #[must_use]
     pub fn wrap_and_sort(&self) -> Self {
-        let mut relations = self.relations().map(|r| r.wrap_and_sort()).collect::<Vec<_>>();
+        let mut relations = self
+            .relations()
+            .map(|r| r.wrap_and_sort())
+            .collect::<Vec<_>>();
         // TODO: preserve comments
         relations.sort();
         Self::from(relations)
@@ -856,6 +871,50 @@ impl Entry {
 
     pub fn len(&self) -> usize {
         self.relations().count()
+    }
+
+    pub fn push(&mut self, relation: Relation) {
+        let is_empty = !self
+            .0
+            .children_with_tokens()
+            .any(|n| n.kind() == PIPE || n.kind() == RELATION);
+
+        let (position, new_children) = if let Some(current_relation) = self.relations().last() {
+            let to_insert: Vec<NodeOrToken<GreenNode, GreenToken>> = if is_empty {
+                vec![relation.0.green().into()]
+            } else {
+                vec![
+                    NodeOrToken::Token(GreenToken::new(WHITESPACE.into(), " ")),
+                    NodeOrToken::Token(GreenToken::new(PIPE.into(), "|")),
+                    NodeOrToken::Token(GreenToken::new(WHITESPACE.into(), " ")),
+                    relation.0.green().into(),
+                ]
+            };
+
+            (current_relation.0.index() + 1, to_insert)
+        } else {
+            let child_count = self.0.children_with_tokens().count();
+            (
+                child_count,
+                if is_empty {
+                    vec![relation.0.green().into()]
+                } else {
+                    vec![
+                        NodeOrToken::Token(GreenToken::new(PIPE.into(), "|")),
+                        NodeOrToken::Token(GreenToken::new(WHITESPACE.into(), " ")),
+                        relation.0.green().into(),
+                    ]
+                },
+            )
+        };
+
+        self.0 = SyntaxNode::new_root(
+            self.0.replace_with(
+                self.0
+                    .green()
+                    .splice_children(position..position, new_children),
+            ),
+        )
     }
 }
 
@@ -1185,11 +1244,11 @@ impl Relation {
                 };
                 let new_children = vec![
                     GreenToken::new(WHITESPACE.into(), " ").into(),
-                    builder.finish().into()];
-                self.0 = SyntaxNode::new_root(self.0.green().splice_children(
-                    idx..idx,
-                    new_children,
-                )).clone_for_update();
+                    builder.finish().into(),
+                ];
+                self.0 =
+                    SyntaxNode::new_root(self.0.green().splice_children(idx..idx, new_children))
+                        .clone_for_update();
             }
         } else if let Some(current_version) = current_version {
             // Remove any whitespace before the version token
@@ -1203,7 +1262,6 @@ impl Relation {
             current_version.detach();
         }
     }
-
 
     /// Return an iterator over the architectures for this relation
     pub fn architectures(&self) -> Option<impl Iterator<Item = String> + '_> {
@@ -1943,10 +2001,12 @@ mod tests {
         let rels: Relations = "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"
             .parse()
             .unwrap();
-        let satisfied = |name: &str| -> Option<debversion::Version> { match name {
-            "python3-dulwich" => Some("0.20.21".parse().unwrap()),
-            _ => None,
-        }};
+        let satisfied = |name: &str| -> Option<debversion::Version> {
+            match name {
+                "python3-dulwich" => Some("0.20.21".parse().unwrap()),
+                _ => None,
+            }
+        };
         assert!(rels.satisfied_by(satisfied));
 
         let satisfied = |name: &str| match name {
@@ -1964,20 +2024,31 @@ mod tests {
 
     #[test]
     fn test_wrap_and_sort_relation() {
-        let relation: Relation = "   python3-dulwich   (>= 11) [  amd64 ] <  lala>".parse().unwrap();
+        let relation: Relation = "   python3-dulwich   (>= 11) [  amd64 ] <  lala>"
+            .parse()
+            .unwrap();
 
         let wrapped = relation.wrap_and_sort();
 
-        assert_eq!(wrapped.to_string(), "python3-dulwich (>= 11) [amd64] <lala>");
+        assert_eq!(
+            wrapped.to_string(),
+            "python3-dulwich (>= 11) [amd64] <lala>"
+        );
     }
 
     #[test]
     fn test_wrap_and_sort_relations() {
-        let entry: Relations = "python3-dulwich (>= 0.20.21)   | bar, \n\n\n\npython3-dulwich (<< 0.21)".parse().unwrap();
+        let entry: Relations =
+            "python3-dulwich (>= 0.20.21)   | bar, \n\n\n\npython3-dulwich (<< 0.21)"
+                .parse()
+                .unwrap();
 
         let wrapped = entry.wrap_and_sort();
 
-        assert_eq!(wrapped.to_string(), "bar | python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)");
+        assert_eq!(
+            wrapped.to_string(),
+            "bar | python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"
+        );
     }
 
     #[cfg(feature = "serde")]
@@ -2009,10 +2080,7 @@ mod tests {
     fn test_serialize_relation() {
         let relation: Relation = "python3-dulwich (>= 0.20.21)".parse().unwrap();
         let serialized = serde_json::to_string(&relation).unwrap();
-        assert_eq!(
-            serialized,
-            r#""python3-dulwich (>= 0.20.21)""#
-        );
+        assert_eq!(serialized, r#""python3-dulwich (>= 0.20.21)""#);
     }
 
     #[cfg(feature = "serde")]
@@ -2027,7 +2095,9 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn test_serialize_entry() {
-        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)".parse().unwrap();
+        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)"
+            .parse()
+            .unwrap();
         let serialized = serde_json::to_string(&entry).unwrap();
         assert_eq!(
             serialized,
@@ -2038,7 +2108,9 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn test_deserialize_entry() {
-        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)".parse().unwrap();
+        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)"
+            .parse()
+            .unwrap();
         let serialized = serde_json::to_string(&entry).unwrap();
         let deserialized: Entry = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized.to_string(), entry.to_string());
@@ -2046,7 +2118,9 @@ mod tests {
 
     #[test]
     fn test_remove_first_relation() {
-        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)".parse().unwrap();
+        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)"
+            .parse()
+            .unwrap();
         let mut rel = entry.relations().next().unwrap();
         rel.remove();
         assert_eq!(entry.to_string(), "python3-dulwich (<< 0.18)");
@@ -2054,7 +2128,9 @@ mod tests {
 
     #[test]
     fn test_remove_last_relation() {
-        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)".parse().unwrap();
+        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)"
+            .parse()
+            .unwrap();
         let mut rel = entry.relations().nth(1).unwrap();
         rel.remove();
         assert_eq!(entry.to_string(), "python3-dulwich (>= 0.20.21) ");
@@ -2081,7 +2157,9 @@ mod tests {
 
     #[test]
     fn test_entry_is_empty() {
-        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)".parse().unwrap();
+        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)"
+            .parse()
+            .unwrap();
         assert!(!entry.is_empty());
         assert_eq!(2, entry.len());
         let mut rel = entry.relations().next().unwrap();
@@ -2099,20 +2177,45 @@ mod tests {
         let mut rel: Relation = "samba".parse().unwrap();
         rel.set_version(None);
         assert_eq!("samba", rel.to_string());
-        rel.set_version(Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
+        rel.set_version(Some((
+            VersionConstraint::GreaterThanEqual,
+            "2.0".parse().unwrap(),
+        )));
         assert_eq!("samba (>= 2.0)", rel.to_string());
         rel.set_version(None);
         assert_eq!("samba", rel.to_string());
-        rel.set_version(Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
-        rel.set_version(Some((VersionConstraint::GreaterThanEqual, "1.1".parse().unwrap())));
+        rel.set_version(Some((
+            VersionConstraint::GreaterThanEqual,
+            "2.0".parse().unwrap(),
+        )));
+        rel.set_version(Some((
+            VersionConstraint::GreaterThanEqual,
+            "1.1".parse().unwrap(),
+        )));
         assert_eq!("samba (>= 1.1)", rel.to_string());
     }
 
     #[test]
     fn test_replace_relation() {
-        let mut entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)".parse().unwrap();
+        let mut entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)"
+            .parse()
+            .unwrap();
         let new_rel = Relation::simple("python3-breezy");
         entry.replace(0, new_rel);
-        assert_eq!(entry.to_string(), "python3-breezy | python3-dulwich (<< 0.18)");
+        assert_eq!(
+            entry.to_string(),
+            "python3-breezy | python3-dulwich (<< 0.18)"
+        );
+    }
+
+    #[test]
+    fn test_entry_push_relation() {
+        let mut entry: Entry = "python3-dulwich (>= 0.20.21)".parse().unwrap();
+        let new_rel = Relation::simple("python3-breezy");
+        entry.push(new_rel);
+        assert_eq!(
+            entry.to_string(),
+            "python3-dulwich (>= 0.20.21) | python3-breezy"
+        );
     }
 }
