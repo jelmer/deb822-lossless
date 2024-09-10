@@ -515,7 +515,7 @@ impl FromIterator<(String, String)> for Paragraph {
             builder.token(KEY.into(), &key);
             builder.token(COLON.into(), ":");
             builder.token(WHITESPACE.into(), " ");
-            for (i, line) in value.split("\n").enumerate() {
+            for (i, line) in value.split('\n').enumerate() {
                 if i > 0 {
                     builder.token(INDENT.into(), " ");
                 }
@@ -538,7 +538,7 @@ impl<'a> FromIterator<(&'a str, &'a str)> for Paragraph {
             builder.token(KEY.into(), key);
             builder.token(COLON.into(), ":");
             builder.token(WHITESPACE.into(), " ");
-            for (i, line) in value.split("\n").enumerate() {
+            for (i, line) in value.split('\n').enumerate() {
                 if i > 0 {
                     builder.token(INDENT.into(), " ");
                 }
@@ -768,7 +768,7 @@ impl Entry {
         builder.token(KEY.into(), key);
         builder.token(COLON.into(), ":");
         builder.token(WHITESPACE.into(), " ");
-        for (i, line) in value.split("\n").enumerate() {
+        for (i, line) in value.split('\n').enumerate() {
             if i > 0 {
                 builder.token(INDENT.into(), " ");
             }
