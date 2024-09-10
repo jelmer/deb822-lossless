@@ -305,6 +305,9 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
                             self.error("Substvars are not allowed".to_string());
                         }
                     }
+                    Some(COMMA) => {
+                        // Empty entry, but that's okay - probably?
+                    }
                     Some(c) => {
                         self.error(format!("expected $ or identifier but got {:?}", c));
                     }
@@ -2217,5 +2220,30 @@ mod tests {
             entry.to_string(),
             "python3-dulwich (>= 0.20.21) | python3-breezy"
         );
+    }
+
+    #[test]
+    fn test_relations_remove_empty_entry() {
+        let (mut relations, errors) = Relations::parse_relaxed("foo, , bar, ", false);
+        assert_eq!(errors, Vec::<String>::new());
+        assert_eq!(relations.to_string(), "foo, , bar, ");
+        assert_eq!(relations.len(), 2);
+        assert_eq!(
+            relations.entries().nth(0).unwrap().to_string(),
+            "foo".to_string()
+        );
+        assert_eq!(
+            relations.entries().nth(1).unwrap().to_string(),
+            "bar".to_string()
+        );
+        relations.remove(1);
+        assert_eq!(relations.to_string(), "foo, , ");
+    }
+
+    #[test]
+    fn test_wrap_and_sort_removes_empty_entries() {
+        let relations: Relations = "foo, , bar, ".parse().unwrap();
+        let wrapped = relations.wrap_and_sort();
+        assert_eq!(wrapped.to_string(), "bar, foo");
     }
 }
