@@ -344,12 +344,12 @@ impl std::str::FromStr for Relations {
         if s.is_empty() {
             return Ok(Relations(relations));
         }
-        for entry in s.split(",") {
+        for entry in s.split(',') {
             let entry = entry.trim();
             if entry.is_empty() {
                 return Err("Empty entry".to_string());
             }
-            let entry_relations = entry.split("|").map(|relation| {
+            let entry_relations = entry.split('|').map(|relation| {
                 let relation = relation.trim();
                 if relation.is_empty() {
                     return Err("Empty relation".to_string());
