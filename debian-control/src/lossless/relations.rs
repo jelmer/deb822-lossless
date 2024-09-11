@@ -585,13 +585,15 @@ impl Relations {
     }
 
     #[deprecated = "Use `remove_entry` instead"]
-    pub fn remove(&mut self, idx: usize) {
+    pub fn remove(&mut self, idx: usize) -> Entry {
         self.remove_entry(idx)
     }
 
     /// Remove the entry at the given index
-    pub fn remove_entry(&mut self, idx: usize) {
-        self.get_entry(idx).unwrap().remove();
+    pub fn remove_entry(&mut self, idx: usize) -> Entry {
+        let mut entry = self.get_entry(idx).unwrap();
+        entry.remove();
+        entry
     }
 
     /// Insert a new entry at the given index
@@ -840,8 +842,10 @@ impl Entry {
     /// entry.remove_relation(1);
     /// assert_eq!(entry.to_string(), "python3-dulwich (>= 0.19.0)");
     /// ```
-    pub fn remove_relation(&self, idx: usize) {
-        self.get_relation(idx).unwrap().remove();
+    pub fn remove_relation(&self, idx: usize) -> Relation {
+        let mut relation = self.get_relation(idx).unwrap();
+        relation.remove();
+        relation
     }
 
     /// Check if this entry is satisfied by the given package versions.
