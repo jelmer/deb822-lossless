@@ -1,9 +1,8 @@
+use crate::RCode;
 /// A library for parsing and manipulating R DESCRIPTION files.
 ///
 /// See https://r-pkgs.org/description.html for more information.
-
 use deb822_lossless::Paragraph;
-use crate::RCode;
 
 pub struct RDescription(Paragraph);
 
@@ -56,6 +55,7 @@ impl std::str::FromStr for RDescription {
     }
 }
 
+#[allow(dead_code)]
 pub struct Relations(String);
 
 impl RDescription {
@@ -147,7 +147,10 @@ impl RDescription {
     }
 
     pub fn url(&self) -> Option<url::Url> {
-        self.0.get("URL").as_ref().map(|s| url::Url::parse(s.as_str()).unwrap())
+        self.0
+            .get("URL")
+            .as_ref()
+            .map(|s| url::Url::parse(s.as_str()).unwrap())
     }
 
     pub fn set_url(&mut self, url: &url::Url) {
@@ -155,7 +158,9 @@ impl RDescription {
     }
 
     pub fn bug_reports(&self) -> Option<url::Url> {
-        self.0.get("BugReports").map(|s| url::Url::parse(s.as_str()).unwrap())
+        self.0
+            .get("BugReports")
+            .map(|s| url::Url::parse(s.as_str()).unwrap())
     }
 
     pub fn set_bug_reports(&mut self, bug_reports: &url::Url) {
@@ -163,7 +168,9 @@ impl RDescription {
     }
 
     pub fn imports(&self) -> Option<Vec<String>> {
-        self.0.get("Imports").map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
+        self.0
+            .get("Imports")
+            .map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
     }
 
     pub fn set_imports(&mut self, imports: &[&str]) {
@@ -171,7 +178,9 @@ impl RDescription {
     }
 
     pub fn suggests(&self) -> Option<Vec<String>> {
-        self.0.get("Suggests").map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
+        self.0
+            .get("Suggests")
+            .map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
     }
 
     pub fn set_suggests(&mut self, suggests: &[&str]) {
@@ -179,7 +188,9 @@ impl RDescription {
     }
 
     pub fn depends(&self) -> Option<Vec<String>> {
-        self.0.get("Depends").map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
+        self.0
+            .get("Depends")
+            .map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
     }
 
     pub fn set_depends(&mut self, depends: &[&str]) {
@@ -187,7 +198,9 @@ impl RDescription {
     }
 
     pub fn linking_to(&self) -> Option<Vec<String>> {
-        self.0.get("LinkingTo").map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
+        self.0
+            .get("LinkingTo")
+            .map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
     }
 
     pub fn set_linking_to(&mut self, linking_to: &[&str]) {
@@ -199,7 +212,8 @@ impl RDescription {
     }
 
     pub fn set_lazy_data(&mut self, lazy_data: bool) {
-        self.0.insert("LazyData", if lazy_data { "true" } else { "false" });
+        self.0
+            .insert("LazyData", if lazy_data { "true" } else { "false" });
     }
 
     pub fn collate(&self) -> Option<String> {
@@ -210,21 +224,26 @@ impl RDescription {
         self.0.insert("Collate", collate);
     }
 
-
     pub fn vignette_builder(&self) -> Option<Vec<String>> {
-        self.0.get("VignetteBuilder").map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
+        self.0
+            .get("VignetteBuilder")
+            .map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
     }
 
     pub fn set_vignette_builder(&mut self, vignette_builder: &[&str]) {
-        self.0.insert("VignetteBuilder", &vignette_builder.join(", "));
+        self.0
+            .insert("VignetteBuilder", &vignette_builder.join(", "));
     }
 
     pub fn system_requirements(&self) -> Option<Vec<String>> {
-        self.0.get("SystemRequirements").map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
+        self.0
+            .get("SystemRequirements")
+            .map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
     }
 
     pub fn set_system_requirements(&mut self, system_requirements: &[&str]) {
-        self.0.insert("SystemRequirements", &system_requirements.join(", "));
+        self.0
+            .insert("SystemRequirements", &system_requirements.join(", "));
     }
 
     pub fn date(&self) -> Option<String> {
@@ -235,7 +254,6 @@ impl RDescription {
         self.0.insert("Date", date);
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -259,12 +277,30 @@ RoxygenNote: 7.3.2
         let desc: RDescription = s.parse().unwrap();
 
         assert_eq!(desc.package(), Some("mypackage".to_string()));
-        assert_eq!(desc.title(), Some("What the Package Does (One Line, Title Case)".to_string()));
+        assert_eq!(
+            desc.title(),
+            Some("What the Package Does (One Line, Title Case)".to_string())
+        );
         assert_eq!(desc.version(), Some("0.0.0.9000".to_string()));
-        assert_eq!(desc.authors(), Some(RCode(r#"person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-comment = c(ORCID = "YOUR-ORCID-ID"))"#.to_string())));
-        assert_eq!(desc.description(), Some("What the package does (one paragraph).".to_string()));
-        assert_eq!(desc.license(), Some("`use_mit_license()`, `use_gpl3_license()` or friends to pick a\nlicense".to_string()));
+        assert_eq!(
+            desc.authors(),
+            Some(RCode(
+                r#"person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
+comment = c(ORCID = "YOUR-ORCID-ID"))"#
+                    .to_string()
+            ))
+        );
+        assert_eq!(
+            desc.description(),
+            Some("What the package does (one paragraph).".to_string())
+        );
+        assert_eq!(
+            desc.license(),
+            Some(
+                "`use_mit_license()`, `use_gpl3_license()` or friends to pick a\nlicense"
+                    .to_string()
+            )
+        );
         assert_eq!(desc.encoding(), Some("UTF-8".to_string()));
         assert_eq!(desc.roxygen(), Some("list(markdown = TRUE)".to_string()));
         assert_eq!(desc.roxygen_note(), Some("7.3.2".to_string()));
