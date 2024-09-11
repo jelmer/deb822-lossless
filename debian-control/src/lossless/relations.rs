@@ -181,9 +181,13 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
                     self.builder.finish_node();
                     self.skip_ws();
                 }
-                None | Some(L_PARENS) | Some(L_BRACKET) | Some(PIPE) | Some(COMMA) => {}
+                None | Some(L_PARENS) | Some(L_BRACKET) | Some(PIPE) | Some(COMMA)
+                | Some(L_ANGLE) => {}
                 e => {
-                    self.error(format!("Expected ':' or '|' or '[' or ',' but got {:?}", e));
+                    self.error(format!(
+                        "Expected ':' or '|' or '[' or '<' or ',' but got {:?}",
+                        e
+                    ));
                 }
             }
 
@@ -827,6 +831,15 @@ impl Entry {
     }
 
     /// Remove this entry
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::{Relations,Entry};
+    /// let mut relations: Relations = r"python3-dulwich (>= 0.19.0), python3-urllib3 (<< 1.26.0)".parse().unwrap();
+    /// let mut entry = relations.get_entry(0).unwrap();
+    /// entry.remove();
+    /// assert_eq!(relations.to_string(), "python3-urllib3 (<< 1.26.0)");
+    /// ```
     pub fn remove(&mut self) {
         let mut removed_comma = false;
         let is_first = !self
@@ -876,6 +889,18 @@ impl Entry {
         self.relations().count()
     }
 
+    /// Push a new relation to the entry
+    ///
+    /// # Arguments
+    /// * `relation` - The relation to push
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::{Relation,Entry};
+    /// let mut entry: Entry = "samba (>= 2.0)".parse().unwrap();
+    /// entry.push("python3-requests".parse().unwrap());
+    /// assert_eq!(entry.to_string(), "samba (>= 2.0) | python3-requests");
+    /// ```
     pub fn push(&mut self, relation: Relation) {
         let is_empty = !self
             .0
@@ -1199,6 +1224,16 @@ impl Relation {
         }
     }
 
+    /// Set the version constraint for this relation
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::{Relation};
+    /// use debian_control::relations::VersionConstraint;
+    /// let mut relation = Relation::simple("samba");
+    /// relation.set_version(Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
+    /// assert_eq!(relation.to_string(), "samba (>= 2.0)");
+    /// ```
     pub fn set_version(&mut self, version_constraint: Option<(VersionConstraint, Version)>) {
         let current_version = self.0.children().find(|n| n.kind() == VERSION);
         if let Some((vc, version)) = version_constraint {
@@ -1267,6 +1302,13 @@ impl Relation {
     }
 
     /// Return an iterator over the architectures for this relation
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::Relation;
+    /// let relation: Relation = "samba [amd64]".parse().unwrap();
+    /// assert_eq!(relation.architectures().unwrap().collect::<Vec<_>>(), vec!["amd64".to_string()]);
+    /// ```
     pub fn architectures(&self) -> Option<impl Iterator<Item = String> + '_> {
         let architectures = self.0.children().find(|n| n.kind() == ARCHITECTURES)?;
 
@@ -1280,7 +1322,15 @@ impl Relation {
         }))
     }
 
-    /// Returns an iterator over the build profiles for this relation<up><up>
+    /// Returns an iterator over the build profiles for this relation
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::{Relation};
+    /// use debian_control::relations::{BuildProfile};
+    /// let relation: Relation = "samba <!nocheck>".parse().unwrap();
+    /// assert_eq!(relation.profiles().collect::<Vec<_>>(), vec![vec![BuildProfile::Disabled("nocheck".to_string())]]);
+    /// ```
     pub fn profiles(&self) -> impl Iterator<Item = Vec<BuildProfile>> + '_ {
         let profiles = self.0.children().filter(|n| n.kind() == PROFILES);
 
@@ -1309,6 +1359,16 @@ impl Relation {
         })
     }
 
+    /// Remove this relation
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::{Relation,Entry};
+    /// let mut entry: Entry = r"python3-dulwich (>= 0.19.0) | python3-urllib3 (<< 1.26.0)".parse().unwrap();
+    /// let mut relation = entry.get_relation(0).unwrap();
+    /// relation.remove();
+    /// assert_eq!(entry.to_string(), "python3-urllib3 (<< 1.26.0)");
+    /// ```
     pub fn remove(&mut self) {
         let mut removed_pipe = false;
         let is_first = !self
@@ -1359,6 +1419,15 @@ impl Relation {
         }
     }
 
+    /// Set the architectures for this relation
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::Relation;
+    /// let mut relation = Relation::simple("samba");
+    /// relation.set_architectures(vec!["amd64", "i386"].into_iter());
+    /// assert_eq!(relation.to_string(), "samba [amd64 i386]");
+    /// ```
     pub fn set_architectures<'a>(&mut self, architectures: impl Iterator<Item = &'a str>) {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(ARCHITECTURES.into());
@@ -1383,12 +1452,13 @@ impl Relation {
             } else {
                 self.0.children_with_tokens().count()
             };
-            self.0.splice_children(
+            self.0 = SyntaxNode::new_root(self.0.green().splice_children(
                 idx..idx,
-                vec![SyntaxNode::new_root(builder.finish())
-                    .clone_for_update()
-                    .into()],
-            );
+                vec![
+                    GreenToken::new(WHITESPACE.into(), " ").into(),
+                    builder.finish().into(),
+                ],
+            ));
         }
     }
 
