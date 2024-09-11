@@ -1992,7 +1992,8 @@ mod tests {
         let mut rels: Relations = r#"python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"#
             .parse()
             .unwrap();
-        rels.remove_entry(0);
+        let removed = rels.remove_entry(0);
+        assert_eq!(removed.to_string(), "python3-dulwich (>= 0.20.21)");
         assert_eq!(rels.to_string(), "python3-dulwich (<< 0.21)");
     }
 
@@ -2429,6 +2430,14 @@ mod tests {
         );
         relations.remove_entry(1);
         assert_eq!(relations.to_string(), "foo, , ");
+    }
+
+    #[test]
+    fn test_entry_remove_relation() {
+        let entry: Entry = "python3-dulwich | samba".parse().unwrap();
+        let removed = entry.remove_relation(0);
+        assert_eq!(removed.to_string(), "python3-dulwich");
+        assert_eq!(entry.to_string(), "samba");
     }
 
     #[test]
