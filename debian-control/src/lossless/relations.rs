@@ -559,6 +559,7 @@ impl Relations {
         Self::from(vec![])
     }
 
+    /// Wrap and sort this relations field
     #[must_use]
     pub fn wrap_and_sort(self) -> Self {
         let mut entries = self
@@ -572,6 +573,10 @@ impl Relations {
 
     pub fn entries(&self) -> impl Iterator<Item = Entry> + '_ {
         self.0.children().filter_map(Entry::cast)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = Entry> + '_ {
+        self.entries()
     }
 
     /// Remove the entry at the given index
@@ -658,10 +663,12 @@ impl Relations {
         self.entries().all(|e| e.satisfied_by(package_version))
     }
 
+    /// Check if this relations field is empty
     pub fn is_empty(&self) -> bool {
         self.entries().count() == 0
     }
 
+    /// Get the number of entries in this relations field
     pub fn len(&self) -> usize {
         self.entries().count()
     }
@@ -727,6 +734,7 @@ impl Ord for Entry {
 }
 
 impl Entry {
+    /// Create a new entry
     pub fn new() -> Self {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(SyntaxKind::ENTRY.into());
@@ -734,6 +742,7 @@ impl Entry {
         Entry(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
+    /// Replace the relation at the given index
     pub fn replace(&mut self, idx: usize, relation: Relation) {
         let current_relation = self.get_relation(idx).unwrap();
 
@@ -804,10 +813,17 @@ impl Entry {
         Self::from(relations)
     }
 
+    /// Iterate over the relations in this entry
     pub fn relations(&self) -> impl Iterator<Item = Relation> + '_ {
         self.0.children().filter_map(Relation::cast)
     }
 
+    /// Iterate over the relations in this entry
+    pub fn iter(&self) -> impl Iterator<Item = Relation> + '_ {
+        self.relations()
+    }
+
+    /// Get the relation at the given index
     pub fn get_relation(&self, idx: usize) -> Option<Relation> {
         self.relations().nth(idx)
     }
@@ -1019,6 +1035,19 @@ impl From<Relation> for Entry {
 }
 
 impl Relation {
+    /// Create a new relation
+    ///
+    /// # Arguments
+    /// * `name` - The name of the package
+    /// * `version_constraint` - The version constraint and version to use
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::{Relation};
+    /// use debian_control::relations::VersionConstraint;
+    /// let relation = Relation::new("samba", Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
+    /// assert_eq!(relation.to_string(), "samba (>= 2.0)");
+    /// ```
     pub fn new(name: &str, version_constraint: Option<(VersionConstraint, Version)>) -> Self {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(SyntaxKind::RELATION.into());
@@ -1054,6 +1083,14 @@ impl Relation {
         Relation(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
+    /// Wrap and sort this relation
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::Relation;
+    /// let relation = "  samba  (  >= 2.0) ".parse::<Relation>().unwrap();
+    /// assert_eq!(relation.wrap_and_sort().to_string(), "samba (>= 2.0)");
+    /// ```
     #[must_use]
     pub fn wrap_and_sort(&self) -> Self {
         let mut builder = GreenNodeBuilder::new();
@@ -1415,7 +1452,7 @@ impl Relation {
             while let Some(n) = self.0.prev_sibling_or_token() {
                 if n.kind() == WHITESPACE || n.kind() == NEWLINE {
                     n.detach();
-                } else if !removed_pipe && n.kind() == PIPE {
+                } else if n.kind() == PIPE {
                     n.detach();
                     break;
                 } else {
@@ -1506,6 +1543,16 @@ impl Relation {
         }
     }
 
+    /// Add a build profile to this relation
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::Relation;
+    /// use debian_control::relations::BuildProfile;
+    /// let mut relation = Relation::simple("samba");
+    /// relation.add_profile(&[BuildProfile::Disabled("nocheck".to_string())]);
+    /// assert_eq!(relation.to_string(), "samba <!nocheck>");
+    /// ```
     pub fn add_profile(&mut self, profile: &[BuildProfile]) {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(PROFILES.into());
@@ -1533,12 +1580,13 @@ impl Relation {
                 .clone_for_update();
         } else {
             let idx = self.0.children_with_tokens().count();
-            self.0.splice_children(
+            self.0 = SyntaxNode::new_root(self.0.green().splice_children(
                 idx..idx,
-                vec![SyntaxNode::new_root(builder.finish())
-                    .clone_for_update()
-                    .into()],
-            );
+                vec![
+                    GreenToken::new(WHITESPACE.into(), " ").into(),
+                    builder.finish().into(),
+                ],
+            ));
         }
     }
 
@@ -1547,6 +1595,19 @@ impl Relation {
     }
 }
 
+/// A builder for creating a `Relation`
+///
+/// # Example
+/// ```
+/// use debian_control::lossless::relations::{Relation};
+/// use debian_control::relations::VersionConstraint;
+/// let relation = Relation::build("samba")
+///    .version_constraint(VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())
+///    .archqual("any")
+///    .architectures(vec!["amd64".to_string(), "i386".to_string()])
+///    .build();
+/// assert_eq!(relation.to_string(), "samba:any (>= 2.0) [amd64 i386]");
+/// ```
 pub struct RelationBuilder {
     name: String,
     version_constraint: Option<(VersionConstraint, Version)>,
@@ -1556,6 +1617,7 @@ pub struct RelationBuilder {
 }
 
 impl RelationBuilder {
+    /// Create a new `RelationBuilder` with the given package name
     fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -1566,26 +1628,37 @@ impl RelationBuilder {
         }
     }
 
+    /// Set the version constraint for this relation
     pub fn version_constraint(mut self, vc: VersionConstraint, version: Version) -> Self {
         self.version_constraint = Some((vc, version));
         self
     }
 
+    /// Set the architecture qualifier for this relation
     pub fn archqual(mut self, archqual: &str) -> Self {
         self.archqual = Some(archqual.to_string());
         self
     }
 
+    /// Set the architectures for this relation
     pub fn architectures(mut self, architectures: Vec<String>) -> Self {
         self.architectures = architectures;
         self
     }
 
+    /// Set the build profiles for this relation
     pub fn profiles(mut self, profiles: Vec<Vec<BuildProfile>>) -> Self {
         self.profiles = profiles;
         self
     }
 
+    /// Add a build profile to this relation
+    pub fn add_profile(mut self, profile: Vec<BuildProfile>) -> Self {
+        self.profiles.push(profile);
+        self
+    }
+
+    /// Build the `Relation`
     pub fn build(self) -> Relation {
         let mut relation = Relation::new(&self.name, self.version_constraint);
         if let Some(archqual) = &self.archqual {
