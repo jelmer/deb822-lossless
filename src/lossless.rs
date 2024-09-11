@@ -1,3 +1,38 @@
+//! Parser for deb822 style files.
+//!
+//! This parser can be used to parse files in the deb822 format, while preserving
+//! all whitespace and comments. It is based on the [rowan] library, which is a
+//! lossless parser library for Rust.
+//!
+//! Once parsed, the file can be traversed or modified, and then written back to
+//! a file.
+//!
+//! # Example
+//!
+//! ```rust
+//! use deb822_lossless::Deb822;
+//! use std::str::FromStr;
+//!
+//! let input = r###"Package: deb822-lossless
+//! ## Comments are preserved
+//! Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
+//! Homepage: https://github.com/jelmer/deb822-lossless
+//! Section: rust
+//!
+//! Package: deb822-lossless
+//! Architecture: any
+//! Description: Lossless parser for deb822 style files.
+//!   This parser can be used to parse files in the deb822 format, while preserving
+//!   all whitespace and comments. It is based on the [rowan] library, which is a
+//!   lossless parser library for Rust.
+//! "###;
+//!
+//! let deb822 = Deb822::from_str(input).unwrap();
+//! assert_eq!(deb822.paragraphs().count(), 2);
+//! let homepage = deb822.paragraphs().nth(0).unwrap().get("Homepage");
+//! assert_eq!(homepage.as_deref(), Some("https://github.com/jelmer/deb822-lossless"));
+//! ```
+
 use crate::{
     lex::lex,
     lex::SyntaxKind::{self, *},
@@ -137,7 +172,8 @@ fn parse(text: &str) -> Parse {
                 if self.current().is_some() {
                     self.bump();
                 }
-                self.errors.push("expected ':'".to_string());
+                self.errors
+                    .push(format!("expected ':', got {:?}", self.current()));
                 self.builder.finish_node();
             }
             loop {
