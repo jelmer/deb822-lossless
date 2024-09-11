@@ -14,7 +14,7 @@
 //!    "python3-urllib3" => Some("1.25.11".parse().unwrap()),
 //!    _ => None
 //!    }}));
-//! relations.remove(1);
+//! relations.remove_entry(1);
 //! relations.get_entry(0).unwrap().get_relation(0).unwrap().set_archqual("amd64");
 //! assert_eq!(relations.to_string(), "python3-dulwich:amd64 (>= 0.19.0), python3-urllib3 (<< 1.26.0)");
 //! ```
@@ -119,19 +119,21 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
             self.builder.start_node(SyntaxKind::ENTRY.into());
             loop {
                 self.parse_relation();
-                self.skip_ws();
-                match self.current() {
+                match self.peek_past_ws() {
                     Some(COMMA) => {
                         break;
                     }
                     Some(PIPE) => {
+                        self.skip_ws();
                         self.bump();
                         self.skip_ws();
                     }
                     None => {
+                        self.skip_ws();
                         break;
                     }
                     _ => {
+                        self.skip_ws();
                         self.builder.start_node(SyntaxKind::ERROR.into());
                         match self.tokens.pop() {
                             Some((k, t)) => {
@@ -167,9 +169,9 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
             } else {
                 self.error("Expected package name".to_string());
             }
-            self.skip_ws();
-            match self.current() {
+            match self.peek_past_ws() {
                 Some(COLON) => {
+                    self.skip_ws();
                     self.builder.start_node(ARCHQUAL.into());
                     self.bump();
                     self.skip_ws();
@@ -181,9 +183,12 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
                     self.builder.finish_node();
                     self.skip_ws();
                 }
-                None | Some(L_PARENS) | Some(L_BRACKET) | Some(PIPE) | Some(COMMA)
-                | Some(L_ANGLE) => {}
+                Some(PIPE) | Some(COMMA) => {}
+                None | Some(L_PARENS) | Some(L_BRACKET) | Some(L_ANGLE) => {
+                    self.skip_ws();
+                }
                 e => {
+                    self.skip_ws();
                     self.error(format!(
                         "Expected ':' or '|' or '[' or '<' or ',' but got {:?}",
                         e
@@ -191,9 +196,8 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
                 }
             }
 
-            self.skip_ws();
-
-            if self.current() == Some(L_PARENS) {
+            if self.peek_past_ws() == Some(L_PARENS) {
+                self.skip_ws();
                 self.builder.start_node(VERSION.into());
                 self.bump();
                 self.skip_ws();
@@ -226,9 +230,8 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
                 self.builder.finish_node();
             }
 
-            self.skip_ws();
-
-            if self.current() == Some(L_BRACKET) {
+            if self.peek_past_ws() == Some(L_BRACKET) {
+                self.skip_ws();
                 self.builder.start_node(ARCHITECTURES.into());
                 self.bump();
                 loop {
@@ -251,9 +254,9 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
                 }
                 self.builder.finish_node();
             }
-            self.skip_ws();
 
-            while self.current() == Some(L_ANGLE) {
+            while self.peek_past_ws() == Some(L_ANGLE) {
+                self.skip_ws();
                 self.builder.start_node(PROFILES.into());
                 self.bump();
 
@@ -287,8 +290,6 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
                 }
 
                 self.builder.finish_node();
-
-                self.skip_ws();
             }
 
             self.builder.finish_node();
@@ -358,6 +359,18 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
             {
                 self.bump()
             }
+        }
+
+        fn peek_past_ws(&self) -> Option<SyntaxKind> {
+            let mut i = self.tokens.len();
+            while i > 0 {
+                i -= 1;
+                match self.tokens[i].0 {
+                    WHITESPACE | COMMENT | NEWLINE => {}
+                    _ => return Some(self.tokens[i].0),
+                }
+            }
+            None
         }
     }
 
@@ -546,6 +559,7 @@ impl Relations {
         Self::from(vec![])
     }
 
+    /// Wrap and sort this relations field
     #[must_use]
     pub fn wrap_and_sort(self) -> Self {
         let mut entries = self
@@ -561,13 +575,22 @@ impl Relations {
         self.0.children().filter_map(Entry::cast)
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = Entry> + '_ {
+        self.entries()
+    }
+
     /// Remove the entry at the given index
     pub fn get_entry(&self, idx: usize) -> Option<Entry> {
         self.entries().nth(idx)
     }
 
-    /// Remove the entry at the given index
+    #[deprecated = "Use `remove_entry` instead"]
     pub fn remove(&mut self, idx: usize) {
+        self.remove_entry(idx)
+    }
+
+    /// Remove the entry at the given index
+    pub fn remove_entry(&mut self, idx: usize) {
         self.get_entry(idx).unwrap().remove();
     }
 
@@ -640,10 +663,12 @@ impl Relations {
         self.entries().all(|e| e.satisfied_by(package_version))
     }
 
+    /// Check if this relations field is empty
     pub fn is_empty(&self) -> bool {
         self.entries().count() == 0
     }
 
+    /// Get the number of entries in this relations field
     pub fn len(&self) -> usize {
         self.entries().count()
     }
@@ -709,6 +734,7 @@ impl Ord for Entry {
 }
 
 impl Entry {
+    /// Create a new entry
     pub fn new() -> Self {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(SyntaxKind::ENTRY.into());
@@ -716,6 +742,7 @@ impl Entry {
         Entry(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
+    /// Replace the relation at the given index
     pub fn replace(&mut self, idx: usize, relation: Relation) {
         let current_relation = self.get_relation(idx).unwrap();
 
@@ -786,12 +813,35 @@ impl Entry {
         Self::from(relations)
     }
 
+    /// Iterate over the relations in this entry
     pub fn relations(&self) -> impl Iterator<Item = Relation> + '_ {
         self.0.children().filter_map(Relation::cast)
     }
 
+    /// Iterate over the relations in this entry
+    pub fn iter(&self) -> impl Iterator<Item = Relation> + '_ {
+        self.relations()
+    }
+
+    /// Get the relation at the given index
     pub fn get_relation(&self, idx: usize) -> Option<Relation> {
         self.relations().nth(idx)
+    }
+
+    /// Remove the relation at the given index
+    ///
+    /// # Arguments
+    /// * `idx` - The index of the relation to remove
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::{Relation,Entry};
+    /// let mut entry: Entry = r"python3-dulwich (>= 0.19.0) | python3-requests".parse().unwrap();
+    /// entry.remove_relation(1);
+    /// assert_eq!(entry.to_string(), "python3-dulwich (>= 0.19.0)");
+    /// ```
+    pub fn remove_relation(&self, idx: usize) {
+        self.get_relation(idx).unwrap().remove();
     }
 
     /// Check if this entry is satisfied by the given package versions.
@@ -985,6 +1035,19 @@ impl From<Relation> for Entry {
 }
 
 impl Relation {
+    /// Create a new relation
+    ///
+    /// # Arguments
+    /// * `name` - The name of the package
+    /// * `version_constraint` - The version constraint and version to use
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::{Relation};
+    /// use debian_control::relations::VersionConstraint;
+    /// let relation = Relation::new("samba", Some((VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())));
+    /// assert_eq!(relation.to_string(), "samba (>= 2.0)");
+    /// ```
     pub fn new(name: &str, version_constraint: Option<(VersionConstraint, Version)>) -> Self {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(SyntaxKind::RELATION.into());
@@ -1020,6 +1083,14 @@ impl Relation {
         Relation(SyntaxNode::new_root(builder.finish()).clone_for_update())
     }
 
+    /// Wrap and sort this relation
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::Relation;
+    /// let relation = "  samba  (  >= 2.0) ".parse::<Relation>().unwrap();
+    /// assert_eq!(relation.wrap_and_sort().to_string(), "samba (>= 2.0)");
+    /// ```
     #[must_use]
     pub fn wrap_and_sort(&self) -> Self {
         let mut builder = GreenNodeBuilder::new();
@@ -1370,35 +1441,45 @@ impl Relation {
     /// assert_eq!(entry.to_string(), "python3-urllib3 (<< 1.26.0)");
     /// ```
     pub fn remove(&mut self) {
-        let mut removed_pipe = false;
         let is_first = !self
             .0
             .siblings(Direction::Prev)
             .skip(1)
             .any(|n| n.kind() == RELATION);
-        while let Some(n) = self.0.next_sibling_or_token() {
-            if n.kind() == WHITESPACE || n.kind() == COMMENT || n.kind() == NEWLINE {
-                n.detach();
-            } else if n.kind() == PIPE {
-                n.detach();
-                removed_pipe = true;
-                break;
-            } else {
-                panic!("Unexpected node: {:?}", n);
-            }
-        }
         if !is_first {
+            // Not the first item in the list. Remove whitespace backwards to the previous
+            // pipe, the pipe and any whitespace until the previous relation
             while let Some(n) = self.0.prev_sibling_or_token() {
                 if n.kind() == WHITESPACE || n.kind() == NEWLINE {
                     n.detach();
-                } else if !removed_pipe && n.kind() == PIPE {
+                } else if n.kind() == PIPE {
                     n.detach();
                     break;
                 } else {
                     break;
                 }
             }
+            while let Some(n) = self.0.prev_sibling_or_token() {
+                if n.kind() == WHITESPACE || n.kind() == NEWLINE {
+                    n.detach();
+                } else {
+                    break;
+                }
+            }
         } else {
+            // First item in the list. Remove whitespace up to the pipe, the pipe and anything
+            // before the next relation
+            while let Some(n) = self.0.next_sibling_or_token() {
+                if n.kind() == WHITESPACE || n.kind() == COMMENT || n.kind() == NEWLINE {
+                    n.detach();
+                } else if n.kind() == PIPE {
+                    n.detach();
+                    break;
+                } else {
+                    panic!("Unexpected node: {:?}", n);
+                }
+            }
+
             while let Some(n) = self.0.next_sibling_or_token() {
                 if n.kind() == WHITESPACE || n.kind() == NEWLINE {
                     n.detach();
@@ -1462,6 +1543,16 @@ impl Relation {
         }
     }
 
+    /// Add a build profile to this relation
+    ///
+    /// # Example
+    /// ```
+    /// use debian_control::lossless::relations::Relation;
+    /// use debian_control::relations::BuildProfile;
+    /// let mut relation = Relation::simple("samba");
+    /// relation.add_profile(&[BuildProfile::Disabled("nocheck".to_string())]);
+    /// assert_eq!(relation.to_string(), "samba <!nocheck>");
+    /// ```
     pub fn add_profile(&mut self, profile: &[BuildProfile]) {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(PROFILES.into());
@@ -1489,12 +1580,13 @@ impl Relation {
                 .clone_for_update();
         } else {
             let idx = self.0.children_with_tokens().count();
-            self.0.splice_children(
+            self.0 = SyntaxNode::new_root(self.0.green().splice_children(
                 idx..idx,
-                vec![SyntaxNode::new_root(builder.finish())
-                    .clone_for_update()
-                    .into()],
-            );
+                vec![
+                    GreenToken::new(WHITESPACE.into(), " ").into(),
+                    builder.finish().into(),
+                ],
+            ));
         }
     }
 
@@ -1503,6 +1595,19 @@ impl Relation {
     }
 }
 
+/// A builder for creating a `Relation`
+///
+/// # Example
+/// ```
+/// use debian_control::lossless::relations::{Relation};
+/// use debian_control::relations::VersionConstraint;
+/// let relation = Relation::build("samba")
+///    .version_constraint(VersionConstraint::GreaterThanEqual, "2.0".parse().unwrap())
+///    .archqual("any")
+///    .architectures(vec!["amd64".to_string(), "i386".to_string()])
+///    .build();
+/// assert_eq!(relation.to_string(), "samba:any (>= 2.0) [amd64 i386]");
+/// ```
 pub struct RelationBuilder {
     name: String,
     version_constraint: Option<(VersionConstraint, Version)>,
@@ -1512,6 +1617,7 @@ pub struct RelationBuilder {
 }
 
 impl RelationBuilder {
+    /// Create a new `RelationBuilder` with the given package name
     fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -1522,26 +1628,37 @@ impl RelationBuilder {
         }
     }
 
+    /// Set the version constraint for this relation
     pub fn version_constraint(mut self, vc: VersionConstraint, version: Version) -> Self {
         self.version_constraint = Some((vc, version));
         self
     }
 
+    /// Set the architecture qualifier for this relation
     pub fn archqual(mut self, archqual: &str) -> Self {
         self.archqual = Some(archqual.to_string());
         self
     }
 
+    /// Set the architectures for this relation
     pub fn architectures(mut self, architectures: Vec<String>) -> Self {
         self.architectures = architectures;
         self
     }
 
+    /// Set the build profiles for this relation
     pub fn profiles(mut self, profiles: Vec<Vec<BuildProfile>>) -> Self {
         self.profiles = profiles;
         self
     }
 
+    /// Add a build profile to this relation
+    pub fn add_profile(mut self, profile: Vec<BuildProfile>) -> Self {
+        self.profiles.push(profile);
+        self
+    }
+
+    /// Build the `Relation`
     pub fn build(self) -> Relation {
         let mut relation = Relation::new(&self.name, self.version_constraint);
         if let Some(archqual) = &self.archqual {
@@ -1871,7 +1988,7 @@ mod tests {
         let mut rels: Relations = r#"python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"#
             .parse()
             .unwrap();
-        rels.remove(0);
+        rels.remove_entry(0);
         assert_eq!(rels.to_string(), "python3-dulwich (<< 0.21)");
     }
 
@@ -1880,7 +1997,7 @@ mod tests {
         let mut rels: Relations = r#"python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"#
             .parse()
             .unwrap();
-        rels.remove(1);
+        rels.remove_entry(1);
         assert_eq!(rels.to_string(), "python3-dulwich (>= 0.20.21)");
     }
 
@@ -1890,7 +2007,7 @@ mod tests {
             r#"python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21), python3-dulwich (<< 0.22)"#
                 .parse()
                 .unwrap();
-        rels.remove(1);
+        rels.remove_entry(1);
         assert_eq!(
             rels.to_string(),
             "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.22)"
@@ -1902,7 +2019,7 @@ mod tests {
         let mut rels: Relations = r#"python3-dulwich (>= 0.20.21)"#.parse().unwrap();
         let entry = Entry::from(vec![Relation::simple("python3-dulwich")]);
         rels.push(entry);
-        rels.remove(1);
+        rels.remove_entry(1);
         assert_eq!(rels.to_string(), "python3-dulwich (>= 0.20.21)");
     }
 
@@ -2206,7 +2323,7 @@ mod tests {
             .unwrap();
         let mut rel = entry.relations().nth(1).unwrap();
         rel.remove();
-        assert_eq!(entry.to_string(), "python3-dulwich (>= 0.20.21) ");
+        assert_eq!(entry.to_string(), "python3-dulwich (>= 0.20.21)");
     }
 
     #[test]
@@ -2299,14 +2416,14 @@ mod tests {
         assert_eq!(relations.to_string(), "foo, , bar, ");
         assert_eq!(relations.len(), 2);
         assert_eq!(
-            relations.entries().nth(0).unwrap().to_string(),
+            relations.entries().next().unwrap().to_string(),
             "foo".to_string()
         );
         assert_eq!(
             relations.entries().nth(1).unwrap().to_string(),
             "bar".to_string()
         );
-        relations.remove(1);
+        relations.remove_entry(1);
         assert_eq!(relations.to_string(), "foo, , ");
     }
 

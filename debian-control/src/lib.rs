@@ -37,10 +37,10 @@ pub mod fields;
 pub use fields::*;
 pub mod lossless;
 pub use lossless::apt;
-pub use lossless::control;
 pub use lossless::changes;
-pub mod relations;
+pub use lossless::control;
 pub mod pgp;
+pub mod relations;
 pub mod vcs;
 
 use std::borrow::Cow;
@@ -91,8 +91,13 @@ pub fn parse_identity(s: &str) -> Result<(&str, &str), ParseIdentityError> {
     }
 }
 
+/// A trait for looking up versions of packages.
 pub trait VersionLookup {
-    fn lookup_version<'a>(&'a self, package: &'_ str) -> Option<std::borrow::Cow<'a, debversion::Version>>;
+    /// Look up the version of a package.
+    fn lookup_version<'a>(
+        &'a self,
+        package: &'_ str,
+    ) -> Option<std::borrow::Cow<'a, debversion::Version>>;
 }
 
 impl VersionLookup for std::collections::HashMap<String, debversion::Version> {
@@ -107,6 +112,16 @@ where
 {
     fn lookup_version<'a>(&'a self, name: &str) -> Option<Cow<'a, debversion::Version>> {
         self(name).map(Cow::Owned)
+    }
+}
+
+impl VersionLookup for (String, debversion::Version) {
+    fn lookup_version<'a>(&'a self, name: &str) -> Option<Cow<'a, debversion::Version>> {
+        if name == self.0 {
+            Some(Cow::Borrowed(&self.1))
+        } else {
+            None
+        }
     }
 }
 
