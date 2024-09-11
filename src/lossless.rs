@@ -1,4 +1,8 @@
-use crate::{lex::lex, lex::SyntaxKind::{self,*}, Indentation};
+use crate::{
+    lex::lex,
+    lex::SyntaxKind::{self, *},
+    Indentation,
+};
 use rowan::ast::AstNode;
 use std::path::Path;
 use std::str::FromStr;
@@ -45,8 +49,6 @@ impl From<std::io::Error> for Error {
 }
 
 impl std::error::Error for Error {}
-
-
 
 /// Second, implementing the `Language` trait teaches rowan to convert between
 /// these two SyntaxKind types, allowing for a nicer SyntaxNode API where
@@ -101,7 +103,9 @@ fn parse(text: &str) -> Parse {
                     Some(NEWLINE) => {
                         self.bump();
                     }
-                    None => { return; }
+                    None => {
+                        return;
+                    }
                     Some(g) => {
                         self.builder.start_node(ERROR.into());
                         self.bump();
@@ -616,7 +620,12 @@ impl Paragraph {
             inject(
                 &mut builder,
                 entry
-                    .wrap_and_sort(indentation, immediate_empty_line, max_line_length_one_liner, format_value)
+                    .wrap_and_sort(
+                        indentation,
+                        immediate_empty_line,
+                        max_line_length_one_liner,
+                        format_value,
+                    )
                     .0,
             );
         }
@@ -692,10 +701,9 @@ impl Paragraph {
             }
         }
         let entry = Entry::new(key, value);
-        self.0.splice_children(
-            self.0.children().count()..self.0.children().count(),
-            vec![entry.0.clone_for_update().into()],
-        );
+        let count = self.0.children_with_tokens().count();
+        self.0
+            .splice_children(count..count, vec![entry.0.clone_for_update().into()]);
     }
 
     /// Rename the given field in the paragraph.
@@ -833,7 +841,10 @@ impl Entry {
         // Reformat iff there is a format function and the value
         // has no errors or comments
         let tokens = if let Some(ref format_value) = format_value {
-            if !content.iter().any(|c| c.kind() == ERROR || c.kind() == COMMENT) {
+            if !content
+                .iter()
+                .any(|c| c.kind() == ERROR || c.kind() == COMMENT)
+            {
                 let concat = content
                     .iter()
                     .filter_map(|c| c.as_token().map(|t| t.text()))
@@ -841,13 +852,28 @@ impl Entry {
                 let formatted = format_value(self.key().as_ref().unwrap(), &concat);
                 crate::lex::lex_inline(&formatted)
             } else {
-                content.into_iter().map(|n| n.into_token().unwrap()).map(|i| (i.kind(), i.text().to_string())).collect::<Vec<_>>()
+                content
+                    .into_iter()
+                    .map(|n| n.into_token().unwrap())
+                    .map(|i| (i.kind(), i.text().to_string()))
+                    .collect::<Vec<_>>()
             }
         } else {
-            content.into_iter().map(|n| n.into_token().unwrap()).map(|i| (i.kind(), i.text().to_string())).collect::<Vec<_>>()
+            content
+                .into_iter()
+                .map(|n| n.into_token().unwrap())
+                .map(|i| (i.kind(), i.text().to_string()))
+                .collect::<Vec<_>>()
         };
 
-        rebuild_value(&mut builder, tokens, self.key().map_or(0, |k| k.len()), indentation, immediate_empty_line, max_line_length_one_liner);
+        rebuild_value(
+            &mut builder,
+            tokens,
+            self.key().map_or(0, |k| k.len()),
+            indentation,
+            immediate_empty_line,
+            max_line_length_one_liner,
+        );
 
         builder.finish_node();
         Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
@@ -1067,7 +1093,14 @@ Maintainer: Foo Bar <foo@example.com>
     );
 }
 
-fn rebuild_value(builder: &mut GreenNodeBuilder, mut tokens: Vec<(SyntaxKind, String)>, key_len: usize, indentation: u32, immediate_empty_line: bool, max_line_length_one_liner: Option<usize>) {
+fn rebuild_value(
+    builder: &mut GreenNodeBuilder,
+    mut tokens: Vec<(SyntaxKind, String)>,
+    key_len: usize,
+    indentation: u32,
+    immediate_empty_line: bool,
+    max_line_length_one_liner: Option<usize>,
+) {
     let first_line_len = tokens
         .iter()
         .take_while(|(k, _t)| *k != NEWLINE)
@@ -1183,6 +1216,7 @@ Homepage: https://github.com/j-keck/arping
     #[test]
     fn test_remove_field() {
         let d: super::Deb822 = r#"Source: foo
+# Comment
 Maintainer: Foo Bar <jelmer@jelmer.uk>
 Section: net
 
@@ -1203,6 +1237,7 @@ Description: This is a description
         assert_eq!(
             p.to_string(),
             r#"Source: foo
+# Comment
 Maintainer: Foo Bar <jelmer@jelmer.uk>
 Foo: Bar
 "#
@@ -1394,7 +1429,7 @@ Multi-Line:
             false,
             None,
             None::<&dyn Fn(&super::Entry, &super::Entry) -> std::cmp::Ordering>,
-            None
+            None,
         );
         assert_eq!(
             result.to_string(),
@@ -1424,13 +1459,15 @@ Maintainer: Bar Foo <bar@example.com>
             Some(&|a: &super::Paragraph, b: &super::Paragraph| {
                 a.get("Source").cmp(&b.get("Source"))
             }),
-            Some(&|p| p.wrap_and_sort(
-                crate::Indentation::FieldNameLength,
-                false,
-                None,
-                None::<&dyn Fn(&super::Entry, &super::Entry) -> std::cmp::Ordering>,
-                None
-            )),
+            Some(&|p| {
+                p.wrap_and_sort(
+                    crate::Indentation::FieldNameLength,
+                    false,
+                    None,
+                    None::<&dyn Fn(&super::Entry, &super::Entry) -> std::cmp::Ordering>,
+                    None,
+                )
+            }),
         );
         assert_eq!(
             result.to_string(),
@@ -1456,13 +1493,15 @@ Homepage: https://example.com/
         .unwrap();
         let result = d.wrap_and_sort(
             None,
-            Some(&mut |p: &super::Paragraph| -> super::Paragraph { p.wrap_and_sort(
-                crate::Indentation::FieldNameLength,
-                false,
-                None,
-                Some(&mut |a: &super::Entry, b: &super::Entry| a.key().cmp(&b.key())),
-                None
-            )})
+            Some(&mut |p: &super::Paragraph| -> super::Paragraph {
+                p.wrap_and_sort(
+                    crate::Indentation::FieldNameLength,
+                    false,
+                    None,
+                    Some(&mut |a: &super::Entry, b: &super::Entry| a.key().cmp(&b.key())),
+                    None,
+                )
+            }),
         );
         assert_eq!(
             result.to_string(),
@@ -1484,7 +1523,12 @@ Baz: Qux
 "#
         );
 
-        let p: super::Paragraph = vec![("Foo".to_string(), "Bar".to_string()), ("Baz".to_string(), "Qux".to_string())].into_iter().collect();
+        let p: super::Paragraph = vec![
+            ("Foo".to_string(), "Bar".to_string()),
+            ("Baz".to_string(), "Qux".to_string()),
+        ]
+        .into_iter()
+        .collect();
 
         assert_eq!(
             p.to_string(),
