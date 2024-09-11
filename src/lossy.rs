@@ -1,3 +1,7 @@
+//! Lossy parser for deb822 format.
+//!
+//! This parser is lossy in the sense that it will discard whitespace and comments
+//! in the input.
 use crate::lex::SyntaxKind;
 
 #[derive(Debug)]
@@ -27,6 +31,9 @@ pub struct Paragraph {
 }
 
 impl Paragraph {
+    /// Get the value of a field by name.
+    ///
+    /// Returns `None` if the field does not exist.
     pub fn get(&self, name: &str) -> Option<&str> {
         for field in &self.fields {
             if field.name == name {
@@ -36,20 +43,27 @@ impl Paragraph {
         None
     }
 
+    /// Check if the paragraph is empty.
     pub fn is_empty(&self) -> bool {
         self.fields.is_empty()
     }
 
+    /// Return the number of fields in the paragraph.
     pub fn len(&self) -> usize {
         self.fields.len()
     }
 
+    /// Iterate over the fields in the paragraph.
     pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.fields.iter().map(|field| (field.name.as_str(), field.value.as_str()))
+        self.fields
+            .iter()
+            .map(|field| (field.name.as_str(), field.value.as_str()))
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&str, &mut String)> {
-        self.fields.iter_mut().map(|field| (field.name.as_str(), &mut field.value))
+        self.fields
+            .iter_mut()
+            .map(|field| (field.name.as_str(), &mut field.value))
     }
 
     pub fn insert(&mut self, name: &str, value: &str) {
@@ -116,7 +130,10 @@ impl std::str::FromStr for Deb822 {
 
         while let Some((k, t)) = tokens.next() {
             match *k {
-                SyntaxKind::EMPTY_LINE | SyntaxKind::PARAGRAPH | SyntaxKind::ROOT | SyntaxKind::ENTRY => unreachable!(),
+                SyntaxKind::EMPTY_LINE
+                | SyntaxKind::PARAGRAPH
+                | SyntaxKind::ROOT
+                | SyntaxKind::ENTRY => unreachable!(),
                 SyntaxKind::INDENT | SyntaxKind::COLON | SyntaxKind::ERROR => {
                     return Err(Error::UnexpectedToken(*k, t.to_string()));
                 }
@@ -130,9 +147,13 @@ impl std::str::FromStr for Deb822 {
                     });
 
                     match tokens.next() {
-                        Some((SyntaxKind::COLON, _)) => {},
-                        Some((k, t)) => { return Err(Error::UnexpectedToken(*k, t.to_string())); },
-                        None => { return Err(Error::UnexpectedEof); }
+                        Some((SyntaxKind::COLON, _)) => {}
+                        Some((k, t)) => {
+                            return Err(Error::UnexpectedToken(*k, t.to_string()));
+                        }
+                        None => {
+                            return Err(Error::UnexpectedEof);
+                        }
                     }
 
                     while tokens.peek().map(|(k, _)| *k) == Some(SyntaxKind::WHITESPACE) {
@@ -185,7 +206,10 @@ impl std::str::FromStr for Deb822 {
                     }
 
                     // Trim the trailing newline
-                    assert_eq!(current_paragraph.last_mut().unwrap().value.pop(), Some('\n'));
+                    assert_eq!(
+                        current_paragraph.last_mut().unwrap().value.pop(),
+                        Some('\n')
+                    );
                 }
                 SyntaxKind::VALUE => {
                     return Err(Error::UnexpectedToken(*k, t.to_string()));
@@ -199,14 +223,18 @@ impl std::str::FromStr for Deb822 {
                 }
                 SyntaxKind::NEWLINE => {
                     if !current_paragraph.is_empty() {
-                        paragraphs.push(Paragraph { fields: current_paragraph });
+                        paragraphs.push(Paragraph {
+                            fields: current_paragraph,
+                        });
                         current_paragraph = Vec::new();
                     }
                 }
             }
         }
         if !current_paragraph.is_empty() {
-            paragraphs.push(Paragraph { fields: current_paragraph });
+            paragraphs.push(Paragraph {
+                fields: current_paragraph,
+            });
         }
         Ok(Deb822(paragraphs))
     }
@@ -234,45 +262,48 @@ Another-Field: value
 "#;
 
         let deb822: Deb822 = input.parse().unwrap();
-        assert_eq!(deb822, Deb822 {
-            0: vec![
-                Paragraph {
-                    fields: vec![
-                        Field {
-                            name: "Package".to_string(),
-                            value: "hello".to_string(),
-                        },
-                        Field {
-                            name: "Version".to_string(),
-                            value: "2.10".to_string(),
-                        },
-                        Field {
-                            name: "Description".to_string(),
-                            value: "A program that says hello\nSome more text".to_string(),
-                        },
-                    ],
-                },
-                Paragraph {
-                    fields: vec![
-                        Field {
-                            name: "Package".to_string(),
-                            value: "world".to_string(),
-                        },
-                        Field {
-                            name: "Version".to_string(),
-                            value: "1.0".to_string(),
-                        },
-                        Field {
-                            name: "Description".to_string(),
-                            value: "A program that says world\nAnd some more text".to_string(),
-                        },
-                        Field {
-                            name: "Another-Field".to_string(),
-                            value: "value".to_string(),
-                        },
-                    ],
-                },
-            ],
-        });
+        assert_eq!(
+            deb822,
+            Deb822 {
+                0: vec![
+                    Paragraph {
+                        fields: vec![
+                            Field {
+                                name: "Package".to_string(),
+                                value: "hello".to_string(),
+                            },
+                            Field {
+                                name: "Version".to_string(),
+                                value: "2.10".to_string(),
+                            },
+                            Field {
+                                name: "Description".to_string(),
+                                value: "A program that says hello\nSome more text".to_string(),
+                            },
+                        ],
+                    },
+                    Paragraph {
+                        fields: vec![
+                            Field {
+                                name: "Package".to_string(),
+                                value: "world".to_string(),
+                            },
+                            Field {
+                                name: "Version".to_string(),
+                                value: "1.0".to_string(),
+                            },
+                            Field {
+                                name: "Description".to_string(),
+                                value: "A program that says world\nAnd some more text".to_string(),
+                            },
+                            Field {
+                                name: "Another-Field".to_string(),
+                                value: "value".to_string(),
+                            },
+                        ],
+                    },
+                ],
+            }
+        );
     }
 }

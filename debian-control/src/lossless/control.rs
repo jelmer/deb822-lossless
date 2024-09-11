@@ -1,3 +1,37 @@
+//! This module provides a lossless representation of a Debian control file.
+//!
+//! # Example
+//! ```rust
+//! use debian_control::lossless::Control;
+//! use debian_control::relations::VersionConstraint;
+//! let input = r###"Source: dulwich
+//! ## Comments are preserved
+//! Maintainer: Jelmer Vernooĳ <jelmer@jelmer.uk>
+//! Build-Depends: python3, debhelper-compat (= 12)
+//!
+//! Package: python3-dulwich
+//! Architecture: amd64
+//! Description: Pure-python git implementation
+//! "###;
+//!
+//! let mut control: Control = input.parse().unwrap();
+//!
+//! // Bump debhelper-compat
+//! let source = control.source().unwrap();
+//! let bd = source.build_depends().unwrap();
+//!
+//! // Get entry with index 1 in Build-Depends, then set the version
+//! let entry = bd.get_entry(1).unwrap();
+//! let mut debhelper = entry.relations().next().unwrap();
+//! assert_eq!(debhelper.name(), "debhelper-compat");
+//! debhelper.set_version(Some((VersionConstraint::Equal, "13".parse().unwrap())));
+//!
+//! assert_eq!(source.to_string(), r###"Source: dulwich
+//! ## Comments are preserved
+//! Maintainer: Jelmer Vernooĳ <jelmer@jelmer.uk>
+//! Build-Depends: python3, debhelper-compat (= 12)
+//! "###);
+//! ```
 use crate::fields::{MultiArch, Priority};
 use crate::lossless::relations::Relations;
 
@@ -8,11 +42,22 @@ fn format_field(name: &str, value: &str) -> String {
             .map(|s| s.trim().to_string())
             .collect::<Vec<_>>()
             .join(",\n"),
-        "Build-Depends" | "Build-Depends-Indep" | "Build-Depends-Arch" | "Build-Conflicts" | "Build-Conflicts-Indep" | "Build-Conflics-Arch" | "Depends" | "Recommends" | "Suggests" | "Enhances" | "Pre-Depends" | "Breaks" => {
+        "Build-Depends"
+        | "Build-Depends-Indep"
+        | "Build-Depends-Arch"
+        | "Build-Conflicts"
+        | "Build-Conflicts-Indep"
+        | "Build-Conflics-Arch"
+        | "Depends"
+        | "Recommends"
+        | "Suggests"
+        | "Enhances"
+        | "Pre-Depends"
+        | "Breaks" => {
             let relations: Relations = value.parse().unwrap();
             let relations = relations.wrap_and_sort();
             relations.to_string()
-        },
+        }
         _ => value.to_string(),
     }
 }
@@ -110,8 +155,21 @@ impl Control {
         Ok((Self(control), errors))
     }
 
-    pub fn wrap_and_sort(&mut self, indentation: deb822_lossless::Indentation, immediate_empty_line: bool, max_line_length_one_liner: Option<usize>) {
-        let sort_paragraphs = |a: &deb822_lossless::Paragraph, b: &deb822_lossless::Paragraph| -> std::cmp::Ordering {
+    /// Wrap and sort the control file
+    ///
+    /// # Arguments
+    /// * `indentation` - The indentation to use
+    /// * `immediate_empty_line` - Whether to add an empty line at the start of multi-line fields
+    /// * `max_line_length_one_liner` - The maximum line length for one-liner fields
+    pub fn wrap_and_sort(
+        &mut self,
+        indentation: deb822_lossless::Indentation,
+        immediate_empty_line: bool,
+        max_line_length_one_liner: Option<usize>,
+    ) {
+        let sort_paragraphs = |a: &deb822_lossless::Paragraph,
+                               b: &deb822_lossless::Paragraph|
+         -> std::cmp::Ordering {
             // Sort Source before Package
             let a_is_source = a.get("Source").is_some();
             let b_is_source = b.get("Source").is_some();
@@ -130,10 +188,18 @@ impl Control {
         let wrap_paragraph = |p: &deb822_lossless::Paragraph| -> deb822_lossless::Paragraph {
             // TODO: Add Source/Package specific wrapping
             // TODO: Add support for wrapping and sorting fields
-            p.wrap_and_sort(indentation, immediate_empty_line, max_line_length_one_liner, None, Some(&format_field))
+            p.wrap_and_sort(
+                indentation,
+                immediate_empty_line,
+                max_line_length_one_liner,
+                None,
+                Some(&format_field),
+            )
         };
 
-        self.0 = self.0.wrap_and_sort(Some(&sort_paragraphs), Some(&wrap_paragraph));
+        self.0 = self
+            .0
+            .wrap_and_sort(Some(&sort_paragraphs), Some(&wrap_paragraph));
     }
 }
 
@@ -177,13 +243,24 @@ impl From<deb822_lossless::Paragraph> for Source {
     }
 }
 
+impl std::fmt::Display for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 impl Source {
     /// The name of the source package.
     pub fn name(&self) -> Option<String> {
         self.0.get("Source")
     }
 
-    pub fn wrap_and_sort(&mut self, indentation: deb822_lossless::Indentation, immediate_empty_line: bool, max_line_length_one_liner: Option<usize>) {
+    pub fn wrap_and_sort(
+        &mut self,
+        indentation: deb822_lossless::Indentation,
+        immediate_empty_line: bool,
+        max_line_length_one_liner: Option<usize>,
+    ) {
         self.0 = self.0.wrap_and_sort(
             indentation,
             immediate_empty_line,
@@ -494,7 +571,12 @@ impl Binary {
         &self.0
     }
 
-    pub fn wrap_and_sort(&mut self, indentation: deb822_lossless::Indentation, immediate_empty_line: bool, max_line_length_one_liner: Option<usize>) {
+    pub fn wrap_and_sort(
+        &mut self,
+        indentation: deb822_lossless::Indentation,
+        immediate_empty_line: bool,
+        max_line_length_one_liner: Option<usize>,
+    ) {
         self.0 = self.0.wrap_and_sort(
             indentation,
             immediate_empty_line,
@@ -824,7 +906,9 @@ Package: foo
 Description: this is a 
       bar
       blah
-"#.parse().unwrap();
+"#
+        .parse()
+        .unwrap();
         control.wrap_and_sort(deb822_lossless::Indentation::Spaces(2), false, None);
         let expected = r#"Package: blah
 Section: libs
@@ -833,7 +917,8 @@ Package: foo
 Description: this is a 
   bar
   blah
-"#.to_owned();
+"#
+        .to_owned();
         assert_eq!(control.to_string(), expected);
     }
 
@@ -848,7 +933,8 @@ Depends: foo, bar   (<=  1.0.0)
         control.wrap_and_sort(deb822_lossless::Indentation::Spaces(2), true, None);
         let expected = r#"Source: blah
 Depends: bar (<= 1.0.0), foo
-"#.to_owned();
+"#
+        .to_owned();
         assert_eq!(control.to_string(), expected);
     }
 }
