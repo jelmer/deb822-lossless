@@ -7,6 +7,8 @@ license = "Apache-2.0"
 description = "A parser for Debian copyright files"
 repository = { workspace = true }
 homepage = { workspace = true }
+keywords = ["debian", "deb822", "control", "rfc822", "lossless", "edit"]
+categories = ["parser-implementations"]
 
 [dependencies]
 rowan = ">=0.15"
