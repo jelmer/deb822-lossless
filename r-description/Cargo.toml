@@ -6,6 +6,8 @@ version = "0.1.1"
 repository.workspace = true
 homepage.workspace = true
 license = "Apache-2.0"
+keywords = ["debian", "deb822", "r-description", "rfc822", "lossless", "edit", "r"]
+categories = ["parser-implementations"]
 
 [dependencies]
 deb822-lossless = { version = ">=0.1.22", path = "..", features = ["derive"] }

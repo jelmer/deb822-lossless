@@ -7,6 +7,8 @@ description = "A parser for Debian copyright files"
 repository = { workspace = true }
 homepage = { workspace = true }
 version = "0.1.25"
+keywords = ["debian", "deb822", "copyright", "rfc822", "lossless", "edit", "dep8"]
+categories = ["parser-implementations"]
 
 [dependencies]
 debversion = ">=0.3"
