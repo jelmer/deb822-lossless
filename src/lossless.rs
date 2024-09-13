@@ -287,12 +287,13 @@ type SyntaxToken = rowan::SyntaxToken<Lang>;
 type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
 
 impl Parse {
+    #[cfg(test)]
     fn syntax(&self) -> SyntaxNode {
         SyntaxNode::new_root(self.green_node.clone())
     }
 
-    fn root(&self) -> Deb822 {
-        Deb822::cast(self.syntax()).unwrap()
+    fn root_mut(&self) -> Deb822 {
+        Deb822::cast(SyntaxNode::new_root_mut(self.green_node.clone())).unwrap()
     }
 }
 
@@ -358,7 +359,7 @@ impl Deb822 {
 
         builder.start_node(ROOT.into());
         builder.finish_node();
-        Deb822(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Deb822(SyntaxNode::new_root_mut(builder.finish()))
     }
 
     /// Provide a formatter that can handle indentation and trailing separators
@@ -439,7 +440,7 @@ impl Deb822 {
         }
 
         builder.finish_node();
-        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Self(SyntaxNode::new_root_mut(builder.finish()))
     }
 
     /// Returns an iterator over all paragraphs in the file.
@@ -456,11 +457,7 @@ impl Deb822 {
             builder.start_node(EMPTY_LINE.into());
             builder.token(NEWLINE.into(), "\n");
             builder.finish_node();
-            to_insert.push(
-                SyntaxNode::new_root(builder.finish())
-                    .clone_for_update()
-                    .into(),
-            );
+            to_insert.push(SyntaxNode::new_root_mut(builder.finish()).into());
         }
         to_insert.push(paragraph.0.clone().into());
         self.0.splice_children(
@@ -486,7 +483,7 @@ impl Deb822 {
 
     pub fn from_str_relaxed(s: &str) -> (Self, Vec<String>) {
         let parsed = parse(s);
-        (parsed.root().clone_for_update(), parsed.errors)
+        (parsed.root_mut(), parsed.errors)
     }
 
     pub fn read<R: std::io::Read>(mut r: R) -> Result<Self, Error> {
@@ -530,7 +527,7 @@ impl FromIterator<Paragraph> for Deb822 {
             inject(&mut builder, paragraph.0);
         }
         builder.finish_node();
-        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Self(SyntaxNode::new_root_mut(builder.finish()))
     }
 }
 
@@ -565,7 +562,7 @@ impl FromIterator<(String, String)> for Paragraph {
             builder.finish_node();
         }
         builder.finish_node();
-        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Self(SyntaxNode::new_root_mut(builder.finish()))
     }
 }
 
@@ -588,7 +585,7 @@ impl<'a> FromIterator<(&'a str, &'a str)> for Paragraph {
             builder.finish_node();
         }
         builder.finish_node();
-        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Self(SyntaxNode::new_root_mut(builder.finish()))
     }
 }
 
@@ -598,7 +595,7 @@ impl Paragraph {
 
         builder.start_node(PARAGRAPH.into());
         builder.finish_node();
-        Paragraph(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Paragraph(SyntaxNode::new_root_mut(builder.finish()))
     }
 
     /// Reformat this paragraph
@@ -671,7 +668,7 @@ impl Paragraph {
         }
 
         builder.finish_node();
-        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Self(SyntaxNode::new_root_mut(builder.finish()))
     }
 
     /// Returns the value of the given key in the paragraph.
@@ -731,15 +728,14 @@ impl Paragraph {
             if entry.key().as_deref() == Some(key) {
                 self.0.splice_children(
                     entry.0.index()..entry.0.index() + 1,
-                    vec![new_entry.0.clone_for_update().into()],
+                    vec![new_entry.0.into()],
                 );
                 return;
             }
         }
         let entry = Entry::new(key, value);
         let count = self.0.children_with_tokens().count();
-        self.0
-            .splice_children(count..count, vec![entry.0.clone_for_update().into()]);
+        self.0.splice_children(count..count, vec![entry.0.into()]);
     }
 
     /// Rename the given field in the paragraph.
@@ -748,10 +744,7 @@ impl Paragraph {
             if entry.key().as_deref() == Some(old_key) {
                 self.0.splice_children(
                     entry.0.index()..entry.0.index() + 1,
-                    vec![Entry::new(new_key, entry.value().as_str())
-                        .0
-                        .clone_for_update()
-                        .into()],
+                    vec![Entry::new(new_key, entry.value().as_str()).0.into()],
                 );
                 return true;
             }
@@ -820,7 +813,7 @@ impl Entry {
             builder.token(NEWLINE.into(), "\n");
         }
         builder.finish_node();
-        Entry(SyntaxNode::new_root(builder.finish()))
+        Entry(SyntaxNode::new_root_mut(builder.finish()))
     }
 
     #[must_use]
@@ -912,7 +905,7 @@ impl Entry {
         );
 
         builder.finish_node();
-        Self(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Self(SyntaxNode::new_root_mut(builder.finish()))
     }
 
     pub fn key(&self) -> Option<String> {
@@ -944,7 +937,7 @@ impl FromStr for Deb822 {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parsed = parse(s);
         if parsed.errors.is_empty() {
-            Ok(parsed.root().clone_for_update())
+            Ok(parsed.root_mut())
         } else {
             Err(ParseError(parsed.errors))
         }
@@ -1046,7 +1039,7 @@ Description: This is a description
     );
     assert_eq!(parsed.errors, Vec::<String>::new());
 
-    let root = parsed.root();
+    let root = parsed.root_mut();
     assert_eq!(root.paragraphs().count(), 2);
     let source = root.paragraphs().next().unwrap();
     assert_eq!(
@@ -1117,7 +1110,7 @@ Maintainer: Foo Bar <foo@example.com>
     );
     assert_eq!(parsed.errors, Vec::<String>::new());
 
-    let root = parsed.root();
+    let root = parsed.root_mut();
     assert_eq!(root.paragraphs().count(), 1);
     let source = root.paragraphs().next().unwrap();
     assert_eq!(
