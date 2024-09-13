@@ -398,12 +398,8 @@ type SyntaxToken = rowan::SyntaxToken<Lang>;
 type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
 
 impl Parse {
-    fn syntax(&self) -> SyntaxNode {
-        SyntaxNode::new_root(self.green_node.clone()).clone_for_update()
-    }
-
-    fn root(&self) -> Relations {
-        Relations::cast(self.syntax()).unwrap()
+    fn root_mut(&self) -> Relations {
+        Relations::cast(SyntaxNode::new_root_mut(self.green_node.clone())).unwrap()
     }
 }
 
@@ -626,14 +622,13 @@ impl Relations {
                 },
             )
         };
-        self.0 = SyntaxNode::new_root(
+        self.0 = SyntaxNode::new_root_mut(
             self.0.replace_with(
                 self.0
                     .green()
                     .splice_children(position..position, new_children),
             ),
-        )
-        .clone_for_update();
+        );
     }
 
     pub fn replace(&mut self, idx: usize, entry: Entry) {
@@ -658,7 +653,7 @@ impl Relations {
 
     pub fn parse_relaxed(s: &str, allow_substvar: bool) -> (Relations, Vec<String>) {
         let parse = parse(s, allow_substvar);
-        (parse.root(), parse.errors)
+        (parse.root_mut(), parse.errors)
     }
 
     pub fn satisfied_by(&self, package_version: impl crate::VersionLookup + Copy) -> bool {
@@ -688,7 +683,7 @@ impl From<Vec<Entry>> for Relations {
             inject(&mut builder, entry.0);
         }
         builder.finish_node();
-        Relations(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Relations(SyntaxNode::new_root_mut(builder.finish()))
     }
 }
 
@@ -741,7 +736,7 @@ impl Entry {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(SyntaxKind::ENTRY.into());
         builder.finish_node();
-        Entry(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Entry(SyntaxNode::new_root_mut(builder.finish()))
     }
 
     /// Replace the relation at the given index
@@ -1028,7 +1023,7 @@ impl From<Vec<Relation>> for Entry {
             inject(&mut builder, relation.0);
         }
         builder.finish_node();
-        Entry(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Entry(SyntaxNode::new_root_mut(builder.finish()))
     }
 }
 
@@ -1084,7 +1079,7 @@ impl Relation {
         }
 
         builder.finish_node();
-        Relation(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Relation(SyntaxNode::new_root_mut(builder.finish()))
     }
 
     /// Wrap and sort this relation
@@ -1160,7 +1155,7 @@ impl Relation {
             builder.finish_node();
         }
         builder.finish_node();
-        Relation(SyntaxNode::new_root(builder.finish()).clone_for_update())
+        Relation(SyntaxNode::new_root_mut(builder.finish()))
     }
 
     /// Create a new simple relation, without any version constraints.
@@ -1262,8 +1257,7 @@ impl Relation {
 
         let node_archqual = self.0.children().find(|n| n.kind() == ARCHQUAL);
         if let Some(node_archqual) = node_archqual {
-            self.0 = SyntaxNode::new_root(node_archqual.replace_with(builder.finish()))
-                .clone_for_update();
+            self.0 = SyntaxNode::new_root_mut(node_archqual.replace_with(builder.finish()));
         } else {
             let name_node = self.0.children_with_tokens().find(|n| n.kind() == IDENT);
             let idx = if let Some(name_node) = name_node {
@@ -1273,9 +1267,7 @@ impl Relation {
             };
             self.0.splice_children(
                 idx..idx,
-                vec![SyntaxNode::new_root(builder.finish())
-                    .clone_for_update()
-                    .into()],
+                vec![SyntaxNode::new_root_mut(builder.finish()).into()],
             );
         }
     }
@@ -1344,9 +1336,7 @@ impl Relation {
             if let Some(current_version) = current_version {
                 self.0.splice_children(
                     current_version.index()..current_version.index() + 1,
-                    vec![SyntaxNode::new_root(builder.finish())
-                        .clone_for_update()
-                        .into()],
+                    vec![SyntaxNode::new_root_mut(builder.finish()).into()],
                 );
             } else {
                 let name_node = self.0.children_with_tokens().find(|n| n.kind() == IDENT);
@@ -1359,9 +1349,9 @@ impl Relation {
                     GreenToken::new(WHITESPACE.into(), " ").into(),
                     builder.finish().into(),
                 ];
-                self.0 =
-                    SyntaxNode::new_root(self.0.green().splice_children(idx..idx, new_children))
-                        .clone_for_update();
+                self.0 = SyntaxNode::new_root_mut(
+                    self.0.green().splice_children(idx..idx, new_children),
+                );
             }
         } else if let Some(current_version) = current_version {
             // Remove any whitespace before the version token
@@ -1528,8 +1518,7 @@ impl Relation {
 
         let node_architectures = self.0.children().find(|n| n.kind() == ARCHITECTURES);
         if let Some(node_architectures) = node_architectures {
-            self.0 = SyntaxNode::new_root(node_architectures.replace_with(builder.finish()))
-                .clone_for_update();
+            self.0 = SyntaxNode::new_root_mut(node_architectures.replace_with(builder.finish()));
         } else {
             let profiles = self.0.children().find(|n| n.kind() == PROFILES);
             let idx = if let Some(profiles) = profiles {
@@ -1580,8 +1569,7 @@ impl Relation {
 
         let node_profiles = self.0.children().find(|n| n.kind() == PROFILES);
         if let Some(node_profiles) = node_profiles {
-            self.0 = SyntaxNode::new_root(node_profiles.replace_with(builder.finish()))
-                .clone_for_update();
+            self.0 = SyntaxNode::new_root_mut(node_profiles.replace_with(builder.finish()));
         } else {
             let idx = self.0.children_with_tokens().count();
             self.0 = SyntaxNode::new_root(self.0.green().splice_children(
@@ -1717,7 +1705,7 @@ impl std::str::FromStr for Relations {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parse = parse(s, false);
         if parse.errors.is_empty() {
-            Ok(parse.root())
+            Ok(parse.root_mut())
         } else {
             Err(parse.errors.join("\n"))
         }
