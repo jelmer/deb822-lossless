@@ -622,6 +622,7 @@ impl Relations {
                 },
             )
         };
+        // We can safely replace the root here since Relations is a root node
         self.0 = SyntaxNode::new_root_mut(
             self.0.replace_with(
                 self.0
@@ -985,13 +986,26 @@ impl Entry {
             )
         };
 
-        self.0 = SyntaxNode::new_root(
+        let new_root = SyntaxNode::new_root_mut(
             self.0.replace_with(
                 self.0
                     .green()
                     .splice_children(position..position, new_children),
             ),
-        )
+        );
+
+        if let Some(parent) = self.0.parent() {
+            parent.splice_children(self.0.index()..self.0.index() + 1, vec![new_root.into()]);
+            self.0 = parent
+                .children_with_tokens()
+                .nth(self.0.index())
+                .unwrap()
+                .clone()
+                .into_node()
+                .unwrap();
+        } else {
+            self.0 = new_root;
+        }
     }
 }
 
@@ -1257,7 +1271,10 @@ impl Relation {
 
         let node_archqual = self.0.children().find(|n| n.kind() == ARCHQUAL);
         if let Some(node_archqual) = node_archqual {
-            self.0 = SyntaxNode::new_root_mut(node_archqual.replace_with(builder.finish()));
+            self.0.splice_children(
+                node_archqual.index()..node_archqual.index() + 1,
+                vec![SyntaxNode::new_root_mut(builder.finish()).into()],
+            );
         } else {
             let name_node = self.0.children_with_tokens().find(|n| n.kind() == IDENT);
             let idx = if let Some(name_node) = name_node {
@@ -1349,9 +1366,22 @@ impl Relation {
                     GreenToken::new(WHITESPACE.into(), " ").into(),
                     builder.finish().into(),
                 ];
-                self.0 = SyntaxNode::new_root_mut(
+                let new_root = SyntaxNode::new_root_mut(
                     self.0.green().splice_children(idx..idx, new_children),
                 );
+                if let Some(parent) = self.0.parent() {
+                    parent
+                        .splice_children(self.0.index()..self.0.index() + 1, vec![new_root.into()]);
+                    self.0 = parent
+                        .children_with_tokens()
+                        .nth(self.0.index())
+                        .unwrap()
+                        .clone()
+                        .into_node()
+                        .unwrap();
+                } else {
+                    self.0 = new_root;
+                }
             }
         } else if let Some(current_version) = current_version {
             // Remove any whitespace before the version token
@@ -1518,7 +1548,11 @@ impl Relation {
 
         let node_architectures = self.0.children().find(|n| n.kind() == ARCHITECTURES);
         if let Some(node_architectures) = node_architectures {
-            self.0 = SyntaxNode::new_root_mut(node_architectures.replace_with(builder.finish()));
+            let new_root = SyntaxNode::new_root_mut(builder.finish());
+            self.0.splice_children(
+                node_architectures.index()..node_architectures.index() + 1,
+                vec![new_root.into()],
+            );
         } else {
             let profiles = self.0.children().find(|n| n.kind() == PROFILES);
             let idx = if let Some(profiles) = profiles {
@@ -1526,13 +1560,25 @@ impl Relation {
             } else {
                 self.0.children_with_tokens().count()
             };
-            self.0 = SyntaxNode::new_root(self.0.green().splice_children(
+            let new_root = SyntaxNode::new_root(self.0.green().splice_children(
                 idx..idx,
                 vec![
                     GreenToken::new(WHITESPACE.into(), " ").into(),
                     builder.finish().into(),
                 ],
             ));
+            if let Some(parent) = self.0.parent() {
+                parent.splice_children(self.0.index()..self.0.index() + 1, vec![new_root.into()]);
+                self.0 = parent
+                    .children_with_tokens()
+                    .nth(self.0.index())
+                    .unwrap()
+                    .clone()
+                    .into_node()
+                    .unwrap();
+            } else {
+                self.0 = new_root;
+            }
         }
     }
 
@@ -1569,16 +1615,32 @@ impl Relation {
 
         let node_profiles = self.0.children().find(|n| n.kind() == PROFILES);
         if let Some(node_profiles) = node_profiles {
-            self.0 = SyntaxNode::new_root_mut(node_profiles.replace_with(builder.finish()));
+            let new_root = SyntaxNode::new_root_mut(builder.finish());
+            self.0.splice_children(
+                node_profiles.index()..node_profiles.index() + 1,
+                vec![new_root.into()],
+            );
         } else {
             let idx = self.0.children_with_tokens().count();
-            self.0 = SyntaxNode::new_root(self.0.green().splice_children(
+            let new_root = SyntaxNode::new_root(self.0.green().splice_children(
                 idx..idx,
                 vec![
                     GreenToken::new(WHITESPACE.into(), " ").into(),
                     builder.finish().into(),
                 ],
             ));
+            if let Some(parent) = self.0.parent() {
+                parent.splice_children(self.0.index()..self.0.index() + 1, vec![new_root.into()]);
+                self.0 = parent
+                    .children_with_tokens()
+                    .nth(self.0.index())
+                    .unwrap()
+                    .clone()
+                    .into_node()
+                    .unwrap();
+            } else {
+                self.0 = new_root;
+            }
         }
     }
 
@@ -2393,11 +2455,16 @@ mod tests {
 
     #[test]
     fn test_entry_push_relation() {
-        let mut entry: Entry = "python3-dulwich (>= 0.20.21)".parse().unwrap();
+        let relations: Relations = "python3-dulwich (>= 0.20.21)".parse().unwrap();
         let new_rel = Relation::simple("python3-breezy");
+        let mut entry = relations.entries().next().unwrap();
         entry.push(new_rel);
         assert_eq!(
             entry.to_string(),
+            "python3-dulwich (>= 0.20.21) | python3-breezy"
+        );
+        assert_eq!(
+            relations.to_string(),
             "python3-dulwich (>= 0.20.21) | python3-breezy"
         );
     }
@@ -2433,5 +2500,19 @@ mod tests {
         let relations: Relations = "foo, , bar, ".parse().unwrap();
         let wrapped = relations.wrap_and_sort();
         assert_eq!(wrapped.to_string(), "bar, foo");
+    }
+
+    #[test]
+    fn test_set_archqual() {
+        let entry: Entry = "python3-dulwich | samba".parse().unwrap();
+        let mut rel = entry.relations().next().unwrap();
+        rel.set_archqual("amd64");
+        assert_eq!(rel.to_string(), "python3-dulwich:amd64");
+        assert_eq!(rel.archqual(), Some("amd64".to_string()));
+        assert_eq!(entry.to_string(), "python3-dulwich:amd64 | samba");
+        rel.set_archqual("i386");
+        assert_eq!(rel.to_string(), "python3-dulwich:i386");
+        assert_eq!(rel.archqual(), Some("i386".to_string()));
+        assert_eq!(entry.to_string(), "python3-dulwich:i386 | samba");
     }
 }
