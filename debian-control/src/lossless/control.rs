@@ -445,6 +445,15 @@ impl Source {
         self.0.get("Vcs-Browser")
     }
 
+    pub fn vcs(&self) -> Option<crate::vcs::Vcs> {
+        for (name, value) in self.0.items() {
+            if name.starts_with("Vcs-") && name != "Vcs-Browser" {
+                return crate::vcs::Vcs::from_field(&name, &value).ok();
+            }
+        }
+        None
+    }
+
     pub fn set_vcs_browser(&mut self, url: Option<&str>) {
         if let Some(url) = url {
             self.0.insert("Vcs-Browser", url);

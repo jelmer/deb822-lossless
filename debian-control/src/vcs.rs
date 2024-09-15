@@ -66,7 +66,7 @@ pub enum Vcs {
     },
     Bzr {
         repo_url: String,
-        subpath: String,
+        subpath: Option<String>,
     },
     Hg {
         repo_url: String,
@@ -74,6 +74,57 @@ pub enum Vcs {
     Svn {
         url: String,
     },
+    Cvs {
+        root: String,
+        module: Option<String>,
+    },
+}
+
+impl Vcs {
+    pub fn from_field(name: &str, value: &str) -> Result<Vcs, String> {
+        match name {
+            "Git" => {
+                let parsed_vcs: ParsedVcs =
+                    value.parse::<ParsedVcs>().map_err(|e| e.to_string())?;
+                Ok(Vcs::Git {
+                    repo_url: parsed_vcs.repo_url,
+                    branch: parsed_vcs.branch,
+                    subpath: parsed_vcs.subpath,
+                })
+            }
+            "Bzr" => {
+                let parsed_vcs: ParsedVcs =
+                    value.parse::<ParsedVcs>().map_err(|e| e.to_string())?;
+                if parsed_vcs.branch.is_some() {
+                    return Err("Invalid branch value for Vcs-Bzr".to_string());
+                }
+                Ok(Vcs::Bzr {
+                    repo_url: parsed_vcs.repo_url,
+                    subpath: parsed_vcs.subpath,
+                })
+            }
+            "Hg" => Ok(Vcs::Hg {
+                repo_url: value.to_string(),
+            }),
+            "Svn" => Ok(Vcs::Svn {
+                url: value.to_string(),
+            }),
+            "Cvs" => {
+                if let Some((root, module)) = value.split_once(' ') {
+                    Ok(Vcs::Cvs {
+                        root: root.to_string(),
+                        module: Some(module.to_string()),
+                    })
+                } else {
+                    Ok(Vcs::Cvs {
+                        root: value.to_string(),
+                        module: None,
+                    })
+                }
+            }
+            n => Err(format!("Unknown VCS: {}", n)),
+        }
+    }
 }
 
 #[cfg(test)]
