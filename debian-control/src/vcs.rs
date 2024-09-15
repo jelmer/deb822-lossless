@@ -125,6 +125,67 @@ impl Vcs {
             n => Err(format!("Unknown VCS: {}", n)),
         }
     }
+
+    pub fn to_field(&self) -> (&str, String) {
+        match self {
+            Vcs::Git {
+                repo_url,
+                branch,
+                subpath,
+            } => (
+                "Git",
+                ParsedVcs {
+                    repo_url: repo_url.to_string(),
+                    branch: branch.clone(),
+                    subpath: subpath.clone(),
+                }
+                .to_string(),
+            ),
+            Vcs::Bzr { repo_url, subpath } => (
+                "Bzr",
+                if let Some(subpath) = subpath {
+                    format!("{} [{}]", repo_url, subpath)
+                } else {
+                    repo_url.to_string()
+                },
+            ),
+            Vcs::Hg { repo_url } => ("Hg", repo_url.to_string()),
+            Vcs::Svn { url } => ("Svn", url.to_string()),
+            Vcs::Cvs { root, module } => ("Cvs", {
+                if let Some(module) = module {
+                    format!("{} {}", root, module)
+                } else {
+                    root.to_string()
+                }
+            }),
+        }
+    }
+
+    pub fn subpath(&self) -> Option<String> {
+        match self {
+            Vcs::Git { subpath, .. } => subpath.clone(),
+            Vcs::Bzr { subpath, .. } => subpath.clone(),
+            _ => None,
+        }
+    }
+
+    pub fn to_branch_url(&self) -> Option<String> {
+        match self {
+            Vcs::Git {
+                repo_url,
+                branch,
+                subpath: _,
+                // TODO: Proper URL encoding
+            } => Some(format!("{},branch={}", repo_url, branch.as_ref().unwrap())),
+            Vcs::Bzr {
+                repo_url,
+                subpath: _,
+            } => Some(repo_url.clone()),
+            Vcs::Hg { repo_url } => Some(repo_url.clone()),
+            Vcs::Svn { url } => Some(url.clone()),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
