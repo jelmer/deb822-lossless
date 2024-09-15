@@ -1,13 +1,13 @@
-use deb822_lossless::{FromDeb822, ToDeb822};
-use deb822_lossless::{FromDeb822Paragraph, ToDeb822Paragraph};
 use crate::fields::Priority;
 use crate::lossy::relations::Relations;
+use deb822_lossless::{FromDeb822, ToDeb822};
+use deb822_lossless::{FromDeb822Paragraph, ToDeb822Paragraph};
 
 fn deserialize_yesno(s: &str) -> Result<bool, String> {
     match s {
         "yes" => Ok(true),
         "no" => Ok(false),
-        _ => Err(format!("invalid value for yesno: {}", s))
+        _ => Err(format!("invalid value for yesno: {}", s)),
     }
 }
 
@@ -53,6 +53,10 @@ pub struct Source {
     pub rules_requires_root: Option<bool>,
     #[deb822(field = "Testsuite")]
     pub testsuite: Option<String>,
+    #[deb822(field = "Vcs-Git")]
+    pub vcs_git: Option<crate::vcs::ParsedVcs>,
+    #[deb822(field = "Vcs-Browser")]
+    pub vcs_browser: Option<url::Url>,
 }
 
 #[derive(FromDeb822, ToDeb822, Default)]
@@ -95,7 +99,7 @@ pub struct Binary {
 
 pub struct Control {
     pub source: Source,
-    pub binaries: Vec<Binary>
+    pub binaries: Vec<Binary>,
 }
 
 impl std::fmt::Display for Control {
@@ -113,8 +117,8 @@ impl std::str::FromStr for Control {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let deb822: deb822_lossless::Deb822 = s.parse()
-            .map_err(|e| format!("parse error: {}", e))?;
+        let deb822: deb822_lossless::Deb822 =
+            s.parse().map_err(|e| format!("parse error: {}", e))?;
 
         let mut source: Option<Source> = None;
         let mut binaries: Vec<Binary> = Vec::new();
@@ -134,8 +138,8 @@ impl std::str::FromStr for Control {
         }
 
         Ok(Control {
-            source: source.ok_or_else(||"no source paragraph".to_string())?,
-            binaries
+            source: source.ok_or_else(|| "no source paragraph".to_string())?,
+            binaries,
         })
     }
 }
@@ -150,7 +154,7 @@ impl Control {
     pub fn new() -> Self {
         Self {
             source: Source::default(),
-            binaries: Vec::new()
+            binaries: Vec::new(),
         }
     }
 
@@ -226,8 +230,10 @@ Description: this is the short description
         let binary = &control.binaries[0];
         assert_eq!(
             binary.description,
-            Some("this is the short description\nAnd the longer one\n.\nis on the next lines"
-                .to_owned())
+            Some(
+                "this is the short description\nAnd the longer one\n.\nis on the next lines"
+                    .to_owned()
+            )
         );
     }
 }
