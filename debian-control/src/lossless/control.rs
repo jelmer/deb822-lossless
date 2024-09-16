@@ -502,6 +502,13 @@ impl Source {
             })
     }
 
+    pub fn set_rules_requires_root(&mut self, requires_root: bool) {
+        self.0.insert(
+            "Rules-Requires-Root",
+            if requires_root { "yes" } else { "no" },
+        );
+    }
+
     pub fn testsuite(&self) -> Option<String> {
         self.0.get("Testsuite")
     }
