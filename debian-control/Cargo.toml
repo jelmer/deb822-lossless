@@ -2,12 +2,12 @@
 name = "debian-control"
 authors = ["Jelmer Vernooĳ <jelmer@debian.org>"]
 edition = "2021"
-version = "0.1.35"
+version = "0.1.36"
 license = "Apache-2.0"
 description = "A parser for Debian copyright files"
 repository = { workspace = true }
 homepage = { workspace = true }
-keywords = ["debian", "deb822", "control", "rfc822", "lossless", "edit"]
+keywords = ["debian", "deb822", "rfc822", "lossless", "edit"]
 categories = ["parser-implementations"]
 
 [dependencies]
