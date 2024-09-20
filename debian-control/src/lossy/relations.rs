@@ -573,4 +573,22 @@ mod tests {
             }
         }));
     }
+
+    #[test]
+    fn test_relation_satisfied_by() {
+        let input = "python3-dulwich (>= 0.20.21)";
+        let parsed: Relation = input.parse().unwrap();
+        assert!(parsed.satisfied_by(|name: &str| -> Option<debversion::Version> {
+            match name {
+                "python3-dulwich" => Some("0.20.21".parse().unwrap()),
+                _ => None
+            }
+        }));
+        assert!(!parsed.satisfied_by(|name: &str| -> Option<debversion::Version> {
+            match name {
+                "python3-dulwich" => Some("0.20.20".parse().unwrap()),
+                _ => None
+            }
+        }));
+    }
 }
