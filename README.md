@@ -6,12 +6,12 @@ Debian.
 
 Three related crates that build on this one are:
 
-* ``debian-control``
-* ``debian-copyright``
-* ``dep3``
-* ``r-description``
+* ``debian-control``: A parser and editor for Debian control files, apt lists.
+* ``debian-copyright``: A parser and editor for Debian copyright files.
+* ``dep3``: A parser and editor for Debian DEP-3 headers.
+* ``r-description``: A parser and editor for R DESCRIPTION files.
 
-Example
+# Example
 
 ```rust
 use deb822_lossless::Deb822;
