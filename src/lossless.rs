@@ -700,12 +700,6 @@ impl Paragraph {
             .filter_map(move |(k, v)| if k.as_str() == key { Some(v) } else { None })
     }
 
-    #[deprecated(note = "use `contains_key` instead")]
-    /// Returns true if the paragraph contains the given key.
-    pub fn contains(&self, key: &str) -> bool {
-        self.get_all(key).any(|_| true)
-    }
-
     /// Returns an iterator over all keys in the paragraph.
     pub fn keys(&self) -> impl Iterator<Item = String> + '_ {
         self.entries().filter_map(|e| e.key())
@@ -1180,6 +1174,7 @@ fn rebuild_value(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     #[test]
     fn test_parse() {
         let d: super::Deb822 = r#"Source: foo
@@ -1295,6 +1290,9 @@ Homepage: https://salsa.debian.org/debian/foo
             Some("https://salsa.debian.org/debian/foo")
         );
         assert_eq!(p.get("Vcs-Browser").as_deref(), None);
+
+        // Nonexistent field
+        assert!(!p.rename("Nonexistent", "Homepage"));
     }
 
     #[test]
@@ -1583,6 +1581,30 @@ Baz: Qux
 A: B
 C: D
 "#
+        );
+    }
+
+    #[test]
+    fn test_format_parse_error() {
+        assert_eq!(ParseError(vec!["foo".to_string()]).to_string(), "foo\n");
+    }
+
+    #[test]
+    fn test_format_error() {
+        assert_eq!(super::Error::ParseError(ParseError(vec!["foo".to_string()])).to_string(), "foo\n");
+    }
+
+    #[test]
+    fn test_get_all() {
+        let d: super::Deb822 = r#"Source: foo
+Maintainer: Foo Bar <foo@example.com>
+Maintainer: Bar Foo <bar@example.com>"#
+            .parse()
+            .unwrap();
+        let p = d.paragraphs().next().unwrap();
+        assert_eq!(
+            p.get_all("Maintainer").collect::<Vec<_>>(),
+            vec!["Foo Bar <foo@example.com>", "Bar Foo <bar@example.com>"]
         );
     }
 }
