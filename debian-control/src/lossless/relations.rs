@@ -2242,7 +2242,7 @@ mod tests {
     }
 
     #[test]
-    fn test_satisfied_by() {
+    fn test_relations_satisfied_by() {
         let rels: Relations = "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)"
             .parse()
             .unwrap();
@@ -2265,6 +2265,27 @@ mod tests {
             _ => None,
         };
         assert!(!rels.satisfied_by(satisfied));
+    }
+
+    #[test]
+    fn test_entry_satisfied_by() {
+        let entry: Entry = "python3-dulwich (>= 0.20.21) | python3-dulwich (<< 0.18)"
+            .parse()
+            .unwrap();
+        let satisfied = |name: &str| -> Option<debversion::Version> {
+            match name {
+                "python3-dulwich" => Some("0.20.21".parse().unwrap()),
+                _ => None,
+            }
+        };
+        assert!(entry.satisfied_by(satisfied));
+        let satisfied = |name: &str| -> Option<debversion::Version> {
+            match name {
+                "python3-dulwich" => Some("0.18".parse().unwrap()),
+                _ => None,
+            }
+        };
+        assert!(!entry.satisfied_by(satisfied));
     }
 
     #[test]
@@ -2514,5 +2535,12 @@ mod tests {
         assert_eq!(rel.to_string(), "python3-dulwich:i386");
         assert_eq!(rel.archqual(), Some("i386".to_string()));
         assert_eq!(entry.to_string(), "python3-dulwich:i386 | samba");
+    }
+
+    #[test]
+    fn test_set_architectures() {
+        let mut relation = Relation::simple("samba");
+        relation.set_architectures(vec!["amd64", "i386"].into_iter());
+        assert_eq!(relation.to_string(), "samba [amd64 i386]");
     }
 }

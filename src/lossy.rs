@@ -116,6 +116,10 @@ impl Deb822 {
     pub fn iter(&self) -> impl Iterator<Item = &Paragraph> {
         self.0.iter()
     }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Paragraph> {
+        self.0.iter_mut()
+    }
 }
 
 impl std::str::FromStr for Deb822 {
@@ -261,7 +265,7 @@ Another-Field: value
 
 "#;
 
-        let deb822: Deb822 = input.parse().unwrap();
+        let mut deb822: Deb822 = input.parse().unwrap();
         assert_eq!(
             deb822,
             Deb822 {
@@ -305,5 +309,36 @@ Another-Field: value
                 ],
             }
         );
+        assert_eq!(deb822.len(), 2);
+        assert_eq!(deb822.is_empty(), false);
+        assert_eq!(deb822.iter().count(), 2);
+
+        let para = deb822.iter().next().unwrap();
+        assert_eq!(para.get("Package"), Some("hello"));
+        assert_eq!(para.get("Version"), Some("2.10"));
+        assert_eq!(
+            para.get("Description"),
+            Some("A program that says hello\nSome more text")
+        );
+        assert_eq!(para.get("Another-Field"), None);
+        assert_eq!(para.is_empty(), false);
+        assert_eq!(para.len(), 3);
+        assert_eq!(
+            para.iter().collect::<Vec<_>>(),
+            vec![
+                ("Package", "hello"),
+                ("Version", "2.10"),
+                ("Description", "A program that says hello\nSome more text"),
+            ]
+        );
+        let para = deb822.iter_mut().next().unwrap();
+        para.insert("Another-Field", "value");
+        assert_eq!(para.get("Another-Field"), Some("value"));
+
+        let mut newpara = Paragraph {
+            fields: vec![]
+        };
+        newpara.insert("Package", "new");
+        assert_eq!(newpara.to_string(), "Package: new\n\n");
     }
 }
