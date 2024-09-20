@@ -382,4 +382,24 @@ Last-Update: 2010-03-29
             Some("Fix widget frobnication speeds".to_string())
         );
     }
+
+    #[test]
+    fn test_vendor_bugs() {
+        let text = r#"Description: Fix widget frobnication speeds
+Bug: http://bugs.example.com/123
+Bug-Debian: http://bugs.debian.org/123
+Bug-Ubuntu: http://bugs.launchpad.net/123
+"#;
+
+        let header = PatchHeader::from_str(&text).unwrap();
+
+        assert_eq!(
+            header.vendor_bugs("Debian").collect::<Vec<_>>(),
+            vec!["http://bugs.debian.org/123".to_string()]
+        );
+        assert_eq!(
+            header.vendor_bugs("Ubuntu").collect::<Vec<_>>(),
+            vec!["http://bugs.launchpad.net/123".to_string()]
+        );
+    }
 }
