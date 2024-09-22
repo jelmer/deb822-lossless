@@ -19,86 +19,126 @@ fn serialize_yesno(b: &bool) -> String {
     }
 }
 
+/// The source package.
 #[derive(FromDeb822, ToDeb822, Default)]
 pub struct Source {
     #[deb822(field = "Source")]
+    /// The name of the source package.
     pub name: String,
     #[deb822(field = "Build-Depends")]
+    /// The packages that this package depends on during build.
     pub build_depends: Option<Relations>,
     #[deb822(field = "Build-Depends-Indep")]
+    /// The packages that this package depends on during build.
     pub build_depends_indep: Option<Relations>,
     #[deb822(field = "Build-Depends-Arch")]
+    /// The packages that this package depends on during build.
     pub build_depends_arch: Option<Relations>,
     #[deb822(field = "Build-Conflicts")]
+    /// The packages that this package conflicts with during build.
     pub build_conflicts: Option<Relations>,
     #[deb822(field = "Build-Conflicts-Indep")]
+    /// The packages that this package conflicts with during build.
     pub build_conflicts_indep: Option<Relations>,
     #[deb822(field = "Build-Conflicts-Arch")]
+    /// The packages that this package conflicts with during build.
     pub build_conflicts_arch: Option<Relations>,
     #[deb822(field = "Standards-Version")]
+    /// The version of the Debian Policy Manual that the package complies with.
     pub standards_version: Option<String>,
     #[deb822(field = "Homepage")]
+    /// The homepage of the package.
     pub homepage: Option<url::Url>,
     #[deb822(field = "Section")]
+    /// The section of the package.
     pub section: Option<String>,
     #[deb822(field = "Priority")]
+    /// The priority of the package.
     pub priority: Option<Priority>,
     #[deb822(field = "Maintainer")]
+    /// The maintainer of the package.
     pub maintainer: Option<String>,
     #[deb822(field = "Uploaders")]
+    /// The uploaders of the package.
     pub uploaders: Option<String>,
     #[deb822(field = "Architecture")]
+    /// The architecture the package is built for.
     pub architecture: Option<String>,
     #[deb822(field = "Rules-Requires-Root", deserialize_with = deserialize_yesno, serialize_with = serialize_yesno)]
+    /// Whether the package's build rules require root.
     pub rules_requires_root: Option<bool>,
     #[deb822(field = "Testsuite")]
+    /// The name of the test suite.
     pub testsuite: Option<String>,
     #[deb822(field = "Vcs-Git")]
+    /// The URL of the Git repository.
     pub vcs_git: Option<crate::vcs::ParsedVcs>,
     #[deb822(field = "Vcs-Browser")]
+    /// The URL to the web interface of the VCS.
     pub vcs_browser: Option<url::Url>,
 }
 
+/// A binary package.
 #[derive(FromDeb822, ToDeb822, Default)]
 pub struct Binary {
     #[deb822(field = "Package")]
+    /// The name of the package.
     pub name: String,
     #[deb822(field = "Depends")]
+    /// The packages that this package depends on.
     pub depends: Option<Relations>,
     #[deb822(field = "Recommends")]
+    /// The packages that this package recommends.
     pub recommends: Option<Relations>,
     #[deb822(field = "Suggests")]
+    /// The packages that this package suggests.
     pub suggests: Option<Relations>,
     #[deb822(field = "Enhances")]
+    /// The packages that this package enhances.
     pub enhances: Option<Relations>,
     #[deb822(field = "Pre-Depends")]
+    /// The packages that this package depends on before it is installed.
     pub pre_depends: Option<Relations>,
     #[deb822(field = "Breaks")]
+    /// The packages that this package breaks.
     pub breaks: Option<Relations>,
     #[deb822(field = "Conflicts")]
+    /// The packages that this package conflicts with.
     pub conflicts: Option<Relations>,
     #[deb822(field = "Replaces")]
+    /// The packages that this package replaces.
     pub replaces: Option<Relations>,
     #[deb822(field = "Provides")]
+    /// The packages that this package provides.
     pub provides: Option<Relations>,
     #[deb822(field = "Built-Using")]
+    /// The packages that this package is built using.
     pub built_using: Option<Relations>,
     #[deb822(field = "Architecture")]
+    /// The architecture the package is built for.
     pub architecture: Option<String>,
     #[deb822(field = "Section")]
+    /// The section of the package.
     pub section: Option<String>,
     #[deb822(field = "Priority")]
+    /// The priority of the package.
     pub priority: Option<Priority>,
     #[deb822(field = "Multi-Arch")]
+    /// The multi-arch field.
     pub multi_arch: Option<crate::fields::MultiArch>,
     #[deb822(field = "Essential", deserialize_with = deserialize_yesno, serialize_with = serialize_yesno)]
+    /// Whether the package is essential.
     pub essential: Option<bool>,
     #[deb822(field = "Description")]
+    /// The description of the package. The first line is the short description, and the rest is the long description.
     pub description: Option<String>,
 }
 
+/// A control file.
 pub struct Control {
+    /// The source package.
     pub source: Source,
+    /// The binary packages.
     pub binaries: Vec<Binary>,
 }
 
@@ -151,6 +191,7 @@ impl Default for Control {
 }
 
 impl Control {
+    /// Create a new control file.
     pub fn new() -> Self {
         Self {
             source: Source::default(),
@@ -158,6 +199,7 @@ impl Control {
         }
     }
 
+    /// Add a new binary package to the control file.
     pub fn add_binary(&mut self, name: &str) -> &mut Binary {
         let binary = Binary {
             name: name.to_string(),

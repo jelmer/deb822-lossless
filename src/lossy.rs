@@ -133,6 +133,7 @@ impl Deb822 {
         self.0.iter()
     }
 
+    /// Iterate over the paragraphs in the document, mutably.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Paragraph> {
         self.0.iter_mut()
     }
@@ -349,9 +350,7 @@ Another-Field: value
         para.insert("Another-Field", "value");
         assert_eq!(para.get("Another-Field"), Some("value"));
 
-        let mut newpara = Paragraph {
-            fields: vec![]
-        };
+        let mut newpara = Paragraph { fields: vec![] };
         newpara.insert("Package", "new");
         assert_eq!(newpara.to_string(), "Package: new\n\n");
     }
