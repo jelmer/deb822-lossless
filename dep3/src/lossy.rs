@@ -37,43 +37,50 @@ fn serialize_origin((category, origin): &(Option<OriginCategory>, Origin)) -> St
     crate::fields::format_origin(category, origin)
 }
 
+/// A patch header.
 #[derive(Debug, Clone, PartialEq, FromDeb822, ToDeb822)]
 pub struct PatchHeader {
     #[deb822(field = "Origin", serialize_with = serialize_origin, deserialize_with = deserialize_origin)]
+    /// The origin of the patch.
     pub origin: Option<(Option<OriginCategory>, Origin)>,
 
     #[deb822(field = "Forwarded")]
+    /// Whether the patch has been forwarded upstream.
     pub forwarded: Option<Forwarded>,
 
     #[deb822(field = "Author")]
+    /// The author of the patch.
     pub author: Option<String>,
 
     #[deb822(field = "Reviewed-by")]
+    /// The person who reviewed the patch.
     pub reviewed_by: Option<String>,
 
     #[deb822(field = "Bug-Debian")]
+    /// The URL of the Debian bug report.
     pub bug_debian: Option<url::Url>,
 
-    #[deb822(field = "Bug")]
-    pub bugs: Option<url::Url>,
-
     #[deb822(field = "Last-Update", deserialize_with = deserialize_date, serialize_with = serialize_date)]
+    /// The date of the last update.
     pub last_update: Option<chrono::NaiveDate>,
 
     #[deb822(field = "Applied-Upstream")]
+    /// Whether the patch has been applied upstream.
     pub applied_upstream: Option<AppliedUpstream>,
 
     #[deb822(field = "Bug")]
+    /// The URL of the upstream bug report.
     pub bug: Option<url::Url>,
 
     #[deb822(field = "Description")]
+    /// The description of the patch.
     pub description: Option<String>,
 }
 
-impl ToString for PatchHeader {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for PatchHeader {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let paragraph = self.to_paragraph();
-        paragraph.to_string()
+        paragraph.fmt(f)
     }
 }
 
