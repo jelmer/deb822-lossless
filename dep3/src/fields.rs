@@ -1,7 +1,14 @@
+/// Whether the patch has been forwarded to the upstream project.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Forwarded {
+    /// The patch has not been forwarded to the upstream project.
     No,
+
+    /// The patch does not need to be forwarded to the upstream project.
     NotNeeded,
+
+    /// The patch has been forwarded to the upstream project, and the value
+    /// provides some reference to the forwarded patch.
     Yes(String),
 }
 
@@ -27,6 +34,7 @@ impl std::str::FromStr for Forwarded {
     }
 }
 
+/// The category of the origin
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum OriginCategory {
     /// an upstream patch that had to be modified to apply on the current version
@@ -35,6 +43,8 @@ pub enum OriginCategory {
     Vendor,
     /// a patch cherry-picked from the upstream VCS
     Upstream,
+
+    /// a patch that does not fit in any of the above categories
     Other,
 }
 
@@ -63,9 +73,13 @@ impl std::str::FromStr for OriginCategory {
     }
 }
 
+/// The origin of the patch
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Origin {
+    /// The patch was cherry-picked from the upstream VCS
     Commit(String),
+
+    /// Some other origin
     Other(String),
 }
 
@@ -90,9 +104,13 @@ impl std::str::FromStr for Origin {
     }
 }
 
+/// Whether the patch has been applied in the upstream project.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum AppliedUpstream {
+    /// The patch has not been applied in the upstream project, in the specified commit.
     Commit(String),
+
+    /// The patch has been applied in the upstream project, in the specified reference.
     Other(String),
 }
 
@@ -117,7 +135,7 @@ impl std::str::FromStr for AppliedUpstream {
     }
 }
 
-pub fn parse_origin(s: &str) -> (Option<OriginCategory>, Origin) {
+pub(crate) fn parse_origin(s: &str) -> (Option<OriginCategory>, Origin) {
     // if origin starts with "<category>, " then it is a category
 
     let mut parts = s.splitn(2, ", ");
@@ -136,7 +154,7 @@ pub fn parse_origin(s: &str) -> (Option<OriginCategory>, Origin) {
     }
 }
 
-pub fn format_origin(category: &Option<OriginCategory>, origin: &Origin) -> String {
+pub(crate) fn format_origin(category: &Option<OriginCategory>, origin: &Origin) -> String {
     format!(
         "{}{}",
         category.map(|c| c.to_string() + ", ").unwrap_or_default(),
