@@ -1,9 +1,14 @@
+//! Parsing of Debian relations strings.
 use std::iter::Peekable;
 use std::str::Chars;
 
+/// Build profile for a package.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BuildProfile {
+    /// A build profile that is enabled.
     Enabled(String),
+
+    /// A build profile that is disabled.
     Disabled(String),
 }
 
@@ -28,12 +33,18 @@ impl std::str::FromStr for BuildProfile {
     }
 }
 
+/// Constraint on a Debian package version.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum VersionConstraint {
-    LessThan,         // <<
-    LessThanEqual,    // <=
-    Equal,            // =
-    GreaterThan,      // >>
+    /// <<
+    LessThan, // <<
+    /// <=
+    LessThanEqual, // <=
+    /// =
+    Equal, // =
+    /// >>
+    GreaterThan, // >>
+    /// >=
     GreaterThanEqual, // >=
 }
 
@@ -69,6 +80,7 @@ impl std::fmt::Display for VersionConstraint {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
+#[allow(missing_docs)]
 pub enum SyntaxKind {
     IDENT = 0, // package name
     COLON,     // :
@@ -109,11 +121,13 @@ impl From<SyntaxKind> for rowan::SyntaxKind {
     }
 }
 
+/// A lexer for relations strings.
 pub struct Lexer<'a> {
     input: Peekable<Chars<'a>>,
 }
 
 impl<'a> Lexer<'a> {
+    /// Create a new lexer for the given input.
     pub fn new(input: &'a str) -> Self {
         Lexer {
             input: input.chars().peekable(),

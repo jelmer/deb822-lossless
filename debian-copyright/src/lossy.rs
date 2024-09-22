@@ -33,31 +33,36 @@
 //! assert_eq!(license.name(), Some("GPL-3+"));
 //! ```
 
-use deb822_lossless::{FromDeb822, ToDeb822, FromDeb822Paragraph, ToDeb822Paragraph};
-use crate::CURRENT_FORMAT;
-use std::path::Path;
 use crate::License;
+use crate::CURRENT_FORMAT;
+use deb822_lossless::{FromDeb822, FromDeb822Paragraph, ToDeb822, ToDeb822Paragraph};
+use std::path::Path;
 
 fn deserialize_file_list(text: &str) -> Result<Vec<String>, String> {
     Ok(text.split('\n').map(|x| x.to_string()).collect())
 }
 
-fn serialize_file_list(files: &Vec<String>) -> String {
+fn serialize_file_list(files: &[String]) -> String {
     files.join("\n")
 }
 
+/// A header paragraph.
 #[derive(FromDeb822, ToDeb822, Clone, PartialEq, Eq, Debug)]
 pub struct Header {
     #[deb822(field = "Format")]
+    /// The format of the file.
     format: String,
 
     #[deb822(field = "Files-Excluded", deserialize_with = deserialize_file_list, serialize_with = serialize_file_list)]
+    /// Files that are excluded from the copyright information, and should be excluded from the package.
     files_excluded: Option<Vec<String>>,
 
     #[deb822(field = "Source")]
+    /// The source of the package.
     source: Option<String>,
 
     #[deb822(field = "Upstream-Contact")]
+    /// Contact information for the upstream author.
     upstream_contact: Option<String>,
 }
 
@@ -67,15 +72,21 @@ impl Default for Header {
             format: CURRENT_FORMAT.to_string(),
             files_excluded: None,
             source: None,
-            upstream_contact: None
+            upstream_contact: None,
         }
     }
 }
 
+/// A copyright file.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Copyright {
+    /// The header paragraph.
     pub header: Header,
+
+    /// Files paragraphs.
     pub files: Vec<FilesParagraph>,
+
+    /// License paragraphs.
     pub licenses: Vec<LicenseParagraph>,
 }
 
@@ -87,7 +98,8 @@ impl std::str::FromStr for Copyright {
             return Err("Not machine readable".to_string());
         }
 
-        let deb822: deb822_lossless::Deb822 = s.parse()
+        let deb822: deb822_lossless::Deb822 = s
+            .parse()
             .map_err(|e: deb822_lossless::ParseError| e.to_string())?;
 
         let mut paragraphs = deb822.paragraphs();
@@ -121,19 +133,23 @@ impl std::str::FromStr for Copyright {
     }
 }
 
+/// A paragraph describing a license.
 #[derive(FromDeb822, ToDeb822, Clone, PartialEq, Eq, Debug)]
 pub struct LicenseParagraph {
-    #[deb822(field="License")]
+    /// The license text.
+    #[deb822(field = "License")]
     license: License,
-    #[deb822(field="Comment")]
-    comment: Option<String>
+
+    /// A comment.
+    #[deb822(field = "Comment")]
+    comment: Option<String>,
 }
 
 fn deserialize_copyrights(text: &str) -> Result<Vec<String>, String> {
     Ok(text.split('\n').map(ToString::to_string).collect())
 }
 
-fn serialize_copyrights(copyrights: &Vec<String>) -> String {
+fn serialize_copyrights(copyrights: &[String]) -> String {
     copyrights.join("\n")
 }
 
@@ -143,19 +159,21 @@ impl std::fmt::Display for LicenseParagraph {
     }
 }
 
+/// A paragraph describing a set of files.
 #[derive(FromDeb822, ToDeb822, Clone, PartialEq, Eq, Debug)]
 pub struct FilesParagraph {
     #[deb822(field="Files", deserialize_with = deserialize_file_list, serialize_with = serialize_file_list)]
     files: Vec<String>,
-    #[deb822(field="License")]
+    #[deb822(field = "License")]
     license: License,
     #[deb822(field="Copyright", deserialize_with = deserialize_copyrights, serialize_with = serialize_copyrights)]
     copyright: Vec<String>,
-    #[deb822(field="Comment")]
-    comment: Option<String>
+    #[deb822(field = "Comment")]
+    comment: Option<String>,
 }
 
 impl FilesParagraph {
+    /// Check if the given filename matches one of the file patterns in this paragraph.
     pub fn matches(&self, filename: &std::path::Path) -> bool {
         self.files
             .iter()
@@ -169,15 +187,28 @@ impl std::fmt::Display for FilesParagraph {
     }
 }
 
+impl Default for Copyright {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Copyright {
+    /// Create a new empty `Copyright` object.
     pub fn new() -> Self {
         Self {
             header: Header::default(),
             licenses: Vec::new(),
-            files: Vec::new()
+            files: Vec::new(),
         }
     }
 
+    /// Find the files paragraph that matches the given path.
+    ///
+    /// Returns `None` if no matching files paragraph is found.
+    ///
+    /// # Arguments
+    /// * `path` - The path to the file to find the license for.
     pub fn find_files(&self, path: &std::path::Path) -> Option<&FilesParagraph> {
         self.files.iter().filter(|f| f.matches(path)).last()
     }
@@ -191,6 +222,12 @@ impl Copyright {
         self.find_license_by_name(files.license.name().unwrap())
     }
 
+    /// Find a license by name.
+    ///
+    /// Returns `None` if no license with the given name is found.
+    ///
+    /// # Arguments
+    /// * `name` - The name of the license to find.
     pub fn find_license_by_name(&self, name: &str) -> Option<&License> {
         self.licenses
             .iter()
@@ -203,11 +240,11 @@ impl std::fmt::Display for Copyright {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.header.to_paragraph())?;
         for files in &self.files {
-            write!(f, "\n")?;
+            writeln!(f)?;
             write!(f, "{}", files.to_paragraph())?;
         }
         for license in &self.licenses {
-            write!(f, "\n")?;
+            writeln!(f)?;
             write!(f, "{}", license.to_paragraph())?;
         }
         Ok(())
@@ -281,10 +318,7 @@ License: GPL-3+
             "Debian packaging is licensed under the GPL-3+.",
             files[1].comment.as_ref().unwrap()
         );
-        assert_eq!(
-            vec!["2023 Jelmer Vernooij".to_string()],
-            files[1].copyright
-        );
+        assert_eq!(vec!["2023 Jelmer Vernooij".to_string()], files[1].copyright);
         assert_eq!("GPL-3+", files[1].license.name().unwrap());
         assert_eq!(files[1].license.text(), None);
 

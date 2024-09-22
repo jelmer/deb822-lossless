@@ -42,6 +42,7 @@ use rowan::ast::AstNode;
 use std::path::Path;
 use std::str::FromStr;
 
+/// List of encountered syntax errors.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParseError(Vec<String>);
 
@@ -56,9 +57,13 @@ impl std::fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
+/// Error parsing deb822 control files
 #[derive(Debug)]
 pub enum Error {
+    /// A syntax error was encountered while parsing the file.
     ParseError(ParseError),
+
+    /// An I/O error was encountered while reading the file.
     IoError(std::io::Error),
 }
 
@@ -299,6 +304,7 @@ impl Parse {
 
 macro_rules! ast_node {
     ($ast:ident, $kind:ident) => {
+        /// An AST node representing a $ast.
         #[derive(PartialEq, Eq, Hash)]
         #[repr(transparent)]
         pub struct $ast(SyntaxNode);
@@ -354,6 +360,7 @@ impl Default for Deb822 {
 }
 
 impl Deb822 {
+    /// Create a new empty deb822 file.
     pub fn new() -> Deb822 {
         let mut builder = GreenNodeBuilder::new();
 
@@ -481,17 +488,20 @@ impl Deb822 {
         Ok(Self::from_str_relaxed(&text))
     }
 
+    /// Parse a deb822 file from a string, allowing syntax errors.
     pub fn from_str_relaxed(s: &str) -> (Self, Vec<String>) {
         let parsed = parse(s);
         (parsed.root_mut(), parsed.errors)
     }
 
+    /// Read a deb822 file from a Read object.
     pub fn read<R: std::io::Read>(mut r: R) -> Result<Self, Error> {
         let mut buf = String::new();
         r.read_to_string(&mut buf)?;
         Ok(Self::from_str(&buf)?)
     }
 
+    /// Read a deb822 file from a Read object, allowing syntax errors.
     pub fn read_relaxed<R: std::io::Read>(mut r: R) -> Result<(Self, Vec<String>), std::io::Error> {
         let mut buf = String::new();
         r.read_to_string(&mut buf)?;
@@ -590,6 +600,7 @@ impl<'a> FromIterator<(&'a str, &'a str)> for Paragraph {
 }
 
 impl Paragraph {
+    /// Create a new empty paragraph.
     pub fn new() -> Paragraph {
         let mut builder = GreenNodeBuilder::new();
 
@@ -792,6 +803,7 @@ impl pyo3::FromPyObject<'_> for Paragraph {
 }
 
 impl Entry {
+    /// Create a new entry with the given key and value.
     pub fn new(key: &str, value: &str) -> Entry {
         let mut builder = GreenNodeBuilder::new();
 
@@ -811,6 +823,18 @@ impl Entry {
     }
 
     #[must_use]
+    /// Reformat this entry
+    ///
+    /// # Arguments
+    /// * `indentation` - The indentation to use
+    /// * `immediate_empty_line` - Whether multi-line values should always start with an empty line
+    /// * `max_line_length_one_liner` - If set, then this is the max length of the value if it is
+    ///    crammed into a "one-liner" value
+    /// * `format_value` - If set, then this function will format the value according to the given
+    ///    function
+    ///
+    /// # Returns
+    /// The reformatted entry
     pub fn wrap_and_sort(
         &self,
         mut indentation: Indentation,
@@ -902,6 +926,7 @@ impl Entry {
         Self(SyntaxNode::new_root_mut(builder.finish()))
     }
 
+    /// Returns the key of the entry.
     pub fn key(&self) -> Option<String> {
         self.0
             .children_with_tokens()
@@ -910,6 +935,7 @@ impl Entry {
             .map(|it| it.text().to_string())
     }
 
+    /// Returns the value of the entry.
     pub fn value(&self) -> String {
         self.0
             .children_with_tokens()
@@ -920,6 +946,7 @@ impl Entry {
             .join("\n")
     }
 
+    /// Detach this entry from the paragraph.
     pub fn detach(&mut self) {
         self.0.detach();
     }
@@ -1520,12 +1547,12 @@ Homepage: https://example.com/
         .unwrap();
         let result = d.wrap_and_sort(
             None,
-            Some(&mut |p: &super::Paragraph| -> super::Paragraph {
+            Some(&|p: &super::Paragraph| -> super::Paragraph {
                 p.wrap_and_sort(
                     crate::Indentation::FieldNameLength,
                     false,
                     None,
-                    Some(&mut |a: &super::Entry, b: &super::Entry| a.key().cmp(&b.key())),
+                    Some(&|a: &super::Entry, b: &super::Entry| a.key().cmp(&b.key())),
                     None,
                 )
             }),

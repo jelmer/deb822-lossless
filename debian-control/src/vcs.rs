@@ -1,11 +1,18 @@
+//! Version Control System information
 use regex::Regex;
 use std::borrow::Cow;
 use std::str::FromStr;
 
+/// Parsed VCS information
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParsedVcs {
+    /// URL of the repository
     pub repo_url: String,
+
+    /// Name of the branch, if not the default branch
     pub branch: Option<String>,
+
+    /// Subpath within the repository
     pub subpath: Option<String>,
 }
 
@@ -57,30 +64,55 @@ impl std::fmt::Display for ParsedVcs {
     }
 }
 
+/// Version Control System information
 #[derive(Debug, Clone)]
 pub enum Vcs {
+    /// Git repository
     Git {
+        /// URL of the repository
         repo_url: String,
+
+        /// Name of the branch, if not the default branch
         branch: Option<String>,
+
+        /// Subpath within the repository
         subpath: Option<String>,
     },
+    /// Bazaar branch
     Bzr {
+        /// URL of the repository
         repo_url: String,
+
+        /// Subpath within the repository
         subpath: Option<String>,
     },
+
+    /// Mercurial repository
     Hg {
+        /// URL of the repository
         repo_url: String,
     },
+    /// Subversion repository
     Svn {
+        /// URL of the repository, including branch path and subpath
         url: String,
     },
+    /// CVS repository
     Cvs {
+        /// Root of the CVS repository
         root: String,
+
+        /// Module within the CVS repository
         module: Option<String>,
     },
 }
 
 impl Vcs {
+    /// Parse a VCS field
+    ///
+    /// # Arguments
+    /// * `name` - Name of the VCS
+    /// * `value` - Value of the VCS field
     pub fn from_field(name: &str, value: &str) -> Result<Vcs, String> {
         match name {
             "Git" => {
@@ -123,6 +155,72 @@ impl Vcs {
                 }
             }
             n => Err(format!("Unknown VCS: {}", n)),
+        }
+    }
+
+    /// Convert the VCS information to a field
+    ///
+    /// Returns a tuple with the name of the VCS and the value of the field
+    pub fn to_field(&self) -> (&str, String) {
+        match self {
+            Vcs::Git {
+                repo_url,
+                branch,
+                subpath,
+            } => (
+                "Git",
+                ParsedVcs {
+                    repo_url: repo_url.to_string(),
+                    branch: branch.clone(),
+                    subpath: subpath.clone(),
+                }
+                .to_string(),
+            ),
+            Vcs::Bzr { repo_url, subpath } => (
+                "Bzr",
+                if let Some(subpath) = subpath {
+                    format!("{} [{}]", repo_url, subpath)
+                } else {
+                    repo_url.to_string()
+                },
+            ),
+            Vcs::Hg { repo_url } => ("Hg", repo_url.to_string()),
+            Vcs::Svn { url } => ("Svn", url.to_string()),
+            Vcs::Cvs { root, module } => ("Cvs", {
+                if let Some(module) = module {
+                    format!("{} {}", root, module)
+                } else {
+                    root.to_string()
+                }
+            }),
+        }
+    }
+
+    /// Extract the subpath from the VCS information
+    pub fn subpath(&self) -> Option<String> {
+        match self {
+            Vcs::Git { subpath, .. } => subpath.clone(),
+            Vcs::Bzr { subpath, .. } => subpath.clone(),
+            _ => None,
+        }
+    }
+
+    /// Convert the VCS information to a URL that is usable by Breezy
+    pub fn to_branch_url(&self) -> Option<String> {
+        match self {
+            Vcs::Git {
+                repo_url,
+                branch,
+                subpath: _,
+                // TODO: Proper URL encoding
+            } => Some(format!("{},branch={}", repo_url, branch.as_ref().unwrap())),
+            Vcs::Bzr {
+                repo_url,
+                subpath: _,
+            } => Some(repo_url.clone()),
+            Vcs::Hg { repo_url } => Some(repo_url.clone()),
+            Vcs::Svn { url } => Some(url.clone()),
+            _ => None,
         }
     }
 }

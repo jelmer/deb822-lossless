@@ -21,17 +21,34 @@ use deb822_lossless::Paragraph;
 
 use crate::fields::*;
 
+/// A Debian patch header.
 pub struct PatchHeader(Paragraph);
 
 impl PatchHeader {
+    /// Create a new, empty patch header.
     pub fn new() -> Self {
         PatchHeader(Paragraph::new())
     }
 
-    pub fn origin(&self) -> Option<(Option<OriginCategory>, Origin)> {
-        self.0.get("Origin").as_deref().map(crate::fields::parse_origin)
+    /// Get a reference to the underlying `Paragraph`.
+    pub fn as_deb822(&self) -> &Paragraph {
+        &self.0
     }
 
+    /// Get a mutable reference to the underlying `Paragraph`, mutably.
+    pub fn as_deb822_mut(&mut self) -> &mut Paragraph {
+        &mut self.0
+    }
+
+    /// The origin of the patch.
+    pub fn origin(&self) -> Option<(Option<OriginCategory>, Origin)> {
+        self.0
+            .get("Origin")
+            .as_deref()
+            .map(crate::fields::parse_origin)
+    }
+
+    /// Set the origin of the patch.
     pub fn set_origin(&mut self, category: Option<OriginCategory>, origin: Origin) {
         self.0.insert(
             "Origin",
@@ -39,6 +56,7 @@ impl PatchHeader {
         );
     }
 
+    /// The `Forwarded` field.
     pub fn forwarded(&self) -> Option<Forwarded> {
         self.0
             .get("Forwarded")
@@ -46,14 +64,17 @@ impl PatchHeader {
             .map(|s| s.parse().unwrap())
     }
 
+    /// Set the `Forwarded` field.
     pub fn set_forwarded(&mut self, forwarded: Forwarded) {
         self.0.insert("Forwarded", forwarded.to_string().as_str());
     }
 
+    /// The author of the patch.
     pub fn author(&self) -> Option<String> {
         self.0.get("Author").or_else(|| self.0.get("From"))
     }
 
+    /// Set the author of the patch.
     pub fn set_author(&mut self, author: &str) {
         if self.0.contains_key("From") {
             self.0.insert("From", author);
@@ -62,10 +83,12 @@ impl PatchHeader {
         }
     }
 
+    /// The `Reviewed-By` field.
     pub fn reviewed_by(&self) -> Vec<String> {
         self.0.get_all("Reviewed-By").collect()
     }
 
+    /// Get the last update date of the patch.
     pub fn last_update(&self) -> Option<chrono::NaiveDate> {
         self.0
             .get("Last-Update")
@@ -73,11 +96,13 @@ impl PatchHeader {
             .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
     }
 
+    /// Set the date of the last update
     pub fn set_last_update(&mut self, date: chrono::NaiveDate) {
         self.0
             .insert("Last-Update", date.format("%Y-%m-%d").to_string().as_str());
     }
 
+    /// The `Applied-Upstream` field.
     pub fn applied_upstream(&self) -> Option<AppliedUpstream> {
         self.0
             .get("Applied-Upstream")
@@ -85,11 +110,13 @@ impl PatchHeader {
             .map(|s| s.parse().unwrap())
     }
 
+    /// Set the `Applied-Upstream` field.
     pub fn set_applied_upstream(&mut self, applied_upstream: AppliedUpstream) {
         self.0
             .insert("Applied-Upstream", applied_upstream.to_string().as_str());
     }
 
+    /// Get the bugs associated with the patch.
     pub fn bugs(&self) -> impl Iterator<Item = (Option<String>, String)> + '_ {
         self.0.items().filter_map(|(k, v)| {
             if k.starts_with("Bug-") {
@@ -102,6 +129,7 @@ impl PatchHeader {
         })
     }
 
+    /// Get the bugs associated with a specific vendor.
     pub fn vendor_bugs<'a>(&'a self, vendor: &'a str) -> impl Iterator<Item = String> + '_ {
         self.bugs().filter_map(|(k, v)| {
             if k == Some(vendor.to_string()) {
@@ -112,24 +140,29 @@ impl PatchHeader {
         })
     }
 
+    /// Set the upstream bug associated with the patch.
     pub fn set_upstream_bug(&mut self, bug: &str) {
         self.0.insert("Bug", bug);
     }
 
+    /// Set the bug associated with a specific vendor.
     pub fn set_vendor_bug(&mut self, vendor: &str, bug: &str) {
         self.0.insert(format!("Bug-{}", vendor).as_str(), bug);
     }
 
+    /// Get the description or subject field.
     fn description_field(&self) -> Option<String> {
         self.0.get("Description").or_else(|| self.0.get("Subject"))
     }
 
+    /// Get the description of the patch.
     pub fn description(&self) -> Option<String> {
         self.description_field()
             .as_deref()
             .map(|s| s.split('\n').next().unwrap_or(s).to_string())
     }
 
+    /// Set the description of the patch.
     pub fn set_description(&mut self, description: &str) {
         if let Some(subject) = self.0.get("Subject") {
             // Replace the first line with ours
@@ -152,12 +185,14 @@ impl PatchHeader {
         }
     }
 
+    /// Get the long description of the patch.
     pub fn long_description(&self) -> Option<String> {
         self.description_field()
             .as_deref()
             .map(|s| s.split_once('\n').map(|x| x.1).unwrap_or("").to_string())
     }
 
+    /// Set the long description of the patch.
     pub fn set_long_description(&mut self, long_description: &str) {
         if let Some(subject) = self.0.get("Subject") {
             // Keep the first line, but replace the rest with our text
@@ -180,6 +215,7 @@ impl PatchHeader {
         }
     }
 
+    /// Write the patch header
     pub fn write<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_all(self.to_string().as_bytes())
     }

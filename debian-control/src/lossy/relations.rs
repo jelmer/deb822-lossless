@@ -21,15 +21,21 @@
 
 use std::iter::Peekable;
 
-use crate::relations::{BuildProfile, VersionConstraint, SyntaxKind, lex};
 use crate::relations::SyntaxKind::*;
+use crate::relations::{lex, BuildProfile, SyntaxKind, VersionConstraint};
 
+/// A relation entry in a relationship field.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Relation {
+    /// Package name.
     pub name: String,
+    /// Architecture qualifier.
     pub archqual: Option<String>,
+    /// Architectures that this relation is only valid for.
     pub architectures: Option<Vec<String>>,
+    /// Version constraint and version.
     pub version: Option<(VersionConstraint, debversion::Version)>,
+    /// Build profiles that this relation is only valid for.
     pub profiles: Vec<Vec<BuildProfile>>,
 }
 
@@ -40,6 +46,7 @@ impl Default for Relation {
 }
 
 impl Relation {
+    /// Create an empty relation.
     pub fn new() -> Self {
         Self {
             name: String::new(),
@@ -132,10 +139,11 @@ impl serde::Serialize for Relation {
     }
 }
 
+/// A collection of relation entries in a relationship field.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Relations(pub Vec<Vec<Relation>>);
 
-impl std::ops::Index <usize> for Relations {
+impl std::ops::Index<usize> for Relations {
     type Output = Vec<Relation>;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -143,7 +151,7 @@ impl std::ops::Index <usize> for Relations {
     }
 }
 
-impl std::ops::IndexMut <usize> for Relations {
+impl std::ops::IndexMut<usize> for Relations {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.0[index]
     }
@@ -168,28 +176,36 @@ impl Default for Relations {
 }
 
 impl Relations {
+    /// Create an empty relations.
     pub fn new() -> Self {
         Self(Vec::new())
     }
 
+    /// Remove an entry from the relations.
     pub fn remove(&mut self, index: usize) {
         self.0.remove(index);
     }
 
+    /// Iterate over the entries in the relations.
     pub fn iter(&self) -> impl Iterator<Item = Vec<&Relation>> {
         self.0.iter().map(|entry| entry.iter().collect())
     }
 
+    /// Number of entries in the relations.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Check if the relations are empty.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Check if the relations are satisfied by the given package versions.
     pub fn satisfied_by(&self, package_version: impl crate::VersionLookup + Copy) -> bool {
-        self.0.iter().all(|e| e.iter().any(|r| r.satisfied_by(package_version)))
+        self.0
+            .iter()
+            .all(|e| e.iter().any(|r| r.satisfied_by(package_version)))
     }
 }
 
@@ -247,17 +263,22 @@ impl std::str::FromStr for Relation {
             let mut constraint = String::new();
             while let Some((kind, t)) = tokens.peek() {
                 match kind {
-                    EQUAL | L_ANGLE | R_ANGLE => { constraint.push_str(t); tokens.next(); }
+                    EQUAL | L_ANGLE | R_ANGLE => {
+                        constraint.push_str(t);
+                        tokens.next();
+                    }
                     _ => break,
                 }
-            };
+            }
             let constraint = constraint.parse()?;
             eat_whitespace(&mut tokens);
             let version_str = match tokens.next() {
                 Some((IDENT, s)) => s,
                 _ => return Err("Expected version".to_string()),
             };
-            let version = version_str.parse().map_err(|e: debversion::ParseError| e.to_string())?;
+            let version = version_str
+                .parse()
+                .map_err(|e: debversion::ParseError| e.to_string())?;
             eat_whitespace(&mut tokens);
             if let Some((R_PARENS, _)) = tokens.next() {
             } else {
@@ -318,7 +339,7 @@ impl std::str::FromStr for Relation {
                     break;
                 }
             }
-        };
+        }
 
         eat_whitespace(&mut tokens);
 
@@ -331,7 +352,7 @@ impl std::str::FromStr for Relation {
             archqual,
             architectures,
             version,
-            profiles
+            profiles,
         })
     }
 }
@@ -377,7 +398,8 @@ impl<'de> serde::Deserialize<'de> for Relations {
 impl serde::Serialize for Relations {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer {
+        S: serde::Serializer,
+    {
         self.to_string().serialize(serializer)
     }
 }
@@ -514,7 +536,10 @@ mod tests {
         let input = "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)";
         let parsed: Relations = input.parse().unwrap();
         let serialized = serde_json::to_string(&parsed).unwrap();
-        assert_eq!(serialized, r#""python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)""#);
+        assert_eq!(
+            serialized,
+            r#""python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)""#
+        );
         let deserialized: Relations = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, parsed);
     }
@@ -560,35 +585,43 @@ mod tests {
     fn test_relations_satisfied_by() {
         let input = "python3-dulwich (>= 0.20.21), python3-dulwich (<< 0.21)";
         let parsed: Relations = input.parse().unwrap();
-        assert!(parsed.satisfied_by(|name: &str| -> Option<debversion::Version> {
-            match name {
-                "python3-dulwich" => Some("0.20.21".parse().unwrap()),
-                _ => None
-            }
-        }));
-        assert!(!parsed.satisfied_by(|name: &str| -> Option<debversion::Version> {
-            match name {
-                "python3-dulwich" => Some("0.21".parse().unwrap()),
-                _ => None
-            }
-        }));
+        assert!(
+            parsed.satisfied_by(|name: &str| -> Option<debversion::Version> {
+                match name {
+                    "python3-dulwich" => Some("0.20.21".parse().unwrap()),
+                    _ => None,
+                }
+            })
+        );
+        assert!(
+            !parsed.satisfied_by(|name: &str| -> Option<debversion::Version> {
+                match name {
+                    "python3-dulwich" => Some("0.21".parse().unwrap()),
+                    _ => None,
+                }
+            })
+        );
     }
 
     #[test]
     fn test_relation_satisfied_by() {
         let input = "python3-dulwich (>= 0.20.21)";
         let parsed: Relation = input.parse().unwrap();
-        assert!(parsed.satisfied_by(|name: &str| -> Option<debversion::Version> {
-            match name {
-                "python3-dulwich" => Some("0.20.21".parse().unwrap()),
-                _ => None
-            }
-        }));
-        assert!(!parsed.satisfied_by(|name: &str| -> Option<debversion::Version> {
-            match name {
-                "python3-dulwich" => Some("0.20.20".parse().unwrap()),
-                _ => None
-            }
-        }));
+        assert!(
+            parsed.satisfied_by(|name: &str| -> Option<debversion::Version> {
+                match name {
+                    "python3-dulwich" => Some("0.20.21".parse().unwrap()),
+                    _ => None,
+                }
+            })
+        );
+        assert!(
+            !parsed.satisfied_by(|name: &str| -> Option<debversion::Version> {
+                match name {
+                    "python3-dulwich" => Some("0.20.20".parse().unwrap()),
+                    _ => None,
+                }
+            })
+        );
     }
 }

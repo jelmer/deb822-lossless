@@ -1,3 +1,4 @@
+#![deny(missing_docs)]
 //! A library for parsing and manipulating debian/copyright files that
 //! use the DEP-5 format.
 //!
@@ -37,25 +38,34 @@
 //! allows partial parsing, parsing files with errors and unknown fields and editing while
 //! preserving formatting.
 
-pub mod lossy;
 pub mod lossless;
+pub mod lossy;
 pub use lossy::Copyright;
 
+/// The current version of the DEP-5 format.
 pub const CURRENT_FORMAT: &str =
     "https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/";
 
+/// The known versions of the DEP-5 format.
 pub const KNOWN_FORMATS: &[&str] = &[CURRENT_FORMAT];
 
 mod glob;
 
+/// A license, which can be just a name, a text or a named license.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum License {
+    /// A license with just a name.
     Name(String),
+
+    /// A license with just a text.
     Text(String),
+
+    /// A license with a name and a text.
     Named(String, String),
 }
 
 impl License {
+    /// Returns the name of the license, if any.
     pub fn name(&self) -> Option<&str> {
         match self {
             License::Name(name) => Some(name),
@@ -64,6 +74,7 @@ impl License {
         }
     }
 
+    /// Returns the text of the license, if any.
     pub fn text(&self) -> Option<&str> {
         match self {
             License::Name(_) => None,
@@ -94,9 +105,7 @@ impl std::fmt::Display for License {
         match self {
             License::Name(name) => f.write_str(name),
             License::Text(text) => write!(f, "\n{}", text),
-            License::Named(name, text) => write!(f, "{}\n{}", name, text)
+            License::Named(name, text) => write!(f, "{}\n{}", name, text),
         }
     }
 }
-
-
