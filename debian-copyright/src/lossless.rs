@@ -35,14 +35,16 @@
 //! assert_eq!(license.name(), Some("GPL-3+"));
 //! ```
 
+use crate::{License, CURRENT_FORMAT, KNOWN_FORMATS};
 use deb822_lossless::{Deb822, Paragraph};
 use std::path::Path;
-use crate::{CURRENT_FORMAT, KNOWN_FORMATS, License};
 
+/// A copyright file
 #[derive(Debug)]
 pub struct Copyright(Deb822);
 
 impl Copyright {
+    /// Create a new copyright file, with the current format
     pub fn new() -> Self {
         let mut deb822 = Deb822::new();
         let mut header = deb822.add_paragraph();
@@ -50,14 +52,19 @@ impl Copyright {
         Copyright(deb822)
     }
 
+    /// Create a new empty copyright file
+    ///
+    /// The difference with `new` is that this does not add the `Format` field.
     pub fn empty() -> Self {
         Self(Deb822::new())
     }
 
+    /// Return the header paragraph
     pub fn header(&self) -> Option<Header> {
         self.0.paragraphs().next().map(Header)
     }
 
+    /// Iterate over all files paragraphs
     pub fn iter_files(&self) -> impl Iterator<Item = FilesParagraph> {
         self.0
             .paragraphs()
@@ -65,6 +72,7 @@ impl Copyright {
             .map(FilesParagraph)
     }
 
+    /// Iter over all license paragraphs
     pub fn iter_licenses(&self) -> impl Iterator<Item = LicenseParagraph> {
         self.0
             .paragraphs()
@@ -80,6 +88,9 @@ impl Copyright {
         self.iter_files().filter(|p| p.matches(filename)).last()
     }
 
+    /// Find license by name
+    ///
+    /// This will return the first license paragraph that has the given name.
     pub fn find_license_by_name(&self, name: &str) -> Option<License> {
         self.iter_licenses()
             .find(|p| p.name().as_deref() == Some(name))
@@ -96,6 +107,7 @@ impl Copyright {
         self.find_license_by_name(license.name()?)
     }
 
+    /// Read copyright file from a string, allowing syntax errors
     pub fn from_str_relaxed(s: &str) -> Result<(Self, Vec<String>), Error> {
         if !s.starts_with("Format:") {
             return Err(Error::NotMachineReadable);
@@ -105,11 +117,13 @@ impl Copyright {
         Ok((Self(deb822), errors))
     }
 
+    /// Read copyright file from a file, allowing syntax errors
     pub fn from_file_relaxed<P: AsRef<Path>>(path: P) -> Result<(Self, Vec<String>), Error> {
         let text = std::fs::read_to_string(path)?;
         Self::from_str_relaxed(&text)
     }
 
+    /// Read copyright file from a file
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         let text = std::fs::read_to_string(path)?;
         use std::str::FromStr;
@@ -117,10 +131,16 @@ impl Copyright {
     }
 }
 
+/// Error parsing copyright files
 #[derive(Debug)]
 pub enum Error {
+    /// Parse error
     ParseError(deb822_lossless::ParseError),
+
+    /// IO error
     IoError(std::io::Error),
+
+    /// The file is not machine readable
     NotMachineReadable,
 }
 
@@ -180,6 +200,7 @@ impl std::fmt::Display for Copyright {
     }
 }
 
+/// A header paragraph
 pub struct Header(Paragraph);
 
 impl Header {
@@ -190,28 +211,42 @@ impl Header {
             .or_else(|| self.0.get("Format-Specification"))
     }
 
-    pub fn get(&self, key: &str) -> Option<String> {
-        self.0.get(key)
+    /// Return the underlying Deb822 paragraph
+    pub fn as_deb822(&self) -> &Paragraph {
+        &self.0
     }
 
+    /// Return the underlying Deb822 paragraph, mutably
+    pub fn as_mut_deb822(&mut self) -> &mut Paragraph {
+        &mut self.0
+    }
+
+    /// Upstream name
     pub fn upstream_name(&self) -> Option<String> {
         self.0.get("Upstream-Name")
     }
 
+    /// Upstream contact
     pub fn upstream_contact(&self) -> Option<String> {
         self.0.get("Upstream-Contact")
     }
 
+    /// Source
     pub fn source(&self) -> Option<String> {
         self.0.get("Source")
     }
 
+    /// List of files excluded from the copyright information, as well as the source package
     pub fn files_excluded(&self) -> Option<Vec<String>> {
         self.0
             .get("Files-Excluded")
             .map(|x| x.split('\n').map(|x| x.to_string()).collect::<Vec<_>>())
     }
 
+    /// Fix the the header paragraph
+    ///
+    /// Currently this just renames `Format-Specification` to `Format` and replaces older format
+    /// strings with the current format string.
     pub fn fix(&mut self) {
         if self.0.contains_key("Format-Specification") {
             self.0.rename("Format-Specification", "Format");
@@ -235,9 +270,11 @@ impl Header {
     }
 }
 
+/// A files paragraph
 pub struct FilesParagraph(Paragraph);
 
 impl FilesParagraph {
+    /// List of file patterns in the paragraph
     pub fn files(&self) -> Vec<String> {
         self.0
             .get("Files")
@@ -247,12 +284,14 @@ impl FilesParagraph {
             .collect::<Vec<_>>()
     }
 
+    /// Check whether the paragraph matches the given filename
     pub fn matches(&self, filename: &std::path::Path) -> bool {
         self.files()
             .iter()
             .any(|f| crate::glob::glob_to_regex(f).is_match(filename.to_str().unwrap()))
     }
 
+    /// Copyright holders in the paragraph
     pub fn copyright(&self) -> Vec<String> {
         self.0
             .get("Copyright")
@@ -262,10 +301,12 @@ impl FilesParagraph {
             .collect::<Vec<_>>()
     }
 
+    /// Comment associated with the files paragraph
     pub fn comment(&self) -> Option<String> {
         self.0.get("Comment")
     }
 
+    /// License in the paragraph
     pub fn license(&self) -> Option<License> {
         self.0.get("License").map(|x| {
             x.split_once('\n').map_or_else(
@@ -282,6 +323,7 @@ impl FilesParagraph {
     }
 }
 
+/// A paragraph that contains a license
 pub struct LicenseParagraph(Paragraph);
 
 impl From<LicenseParagraph> for License {
@@ -301,16 +343,19 @@ impl From<LicenseParagraph> for License {
 }
 
 impl LicenseParagraph {
+    /// Comment associated with the license
     pub fn comment(&self) -> Option<String> {
         self.0.get("Comment")
     }
 
+    /// Name of the license
     pub fn name(&self) -> Option<String> {
         self.0
             .get("License")
             .and_then(|x| x.split_once('\n').map(|(name, _)| name.to_string()))
     }
 
+    /// Text of the license
     pub fn text(&self) -> Option<String> {
         self.0
             .get("License")

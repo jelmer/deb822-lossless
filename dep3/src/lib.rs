@@ -1,3 +1,4 @@
+#![deny(missing_docs)]
 //! A library for parsing and generating Debian patch headers.
 //!
 //! # Examples

@@ -1,3 +1,4 @@
+#![deny(missing_docs)]
 #![allow(clippy::type_complexity)]
 //! Parser for deb822 style files.
 //!
@@ -33,15 +34,16 @@
 //! assert_eq!(homepage.as_deref(), Some("https://github.com/jelmer/deb822-lossless"));
 //! ```
 
-mod lex;
 mod convert;
+mod lex;
 pub mod lossless;
 pub mod lossy;
-pub use lossless::{Deb822, Paragraph, ParseError, Error};
 pub use convert::{FromDeb822Paragraph, ToDeb822Paragraph};
 #[cfg(feature = "derive")]
 pub use deb822_derive::{FromDeb822, ToDeb822};
+pub use lossless::{Deb822, Error, Paragraph, ParseError};
 
+/// The indentation to use when writing a deb822 file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Indentation {
     /// Use the same indentation as the original line for the value.

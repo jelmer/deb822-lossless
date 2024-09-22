@@ -1,10 +1,14 @@
 use crate::Paragraph;
 
+/// Convert a paragraph to this object.
 pub trait FromDeb822Paragraph {
     /// Convert a paragraph to this object.
-    fn from_paragraph(paragraph: &Paragraph) -> Result<Self, String> where Self: Sized;
+    fn from_paragraph(paragraph: &Paragraph) -> Result<Self, String>
+    where
+        Self: Sized;
 }
 
+/// Convert this object to a paragraph.
 pub trait ToDeb822Paragraph {
     /// Convert this object to a paragraph.
     fn to_paragraph(&self) -> Paragraph;
@@ -20,9 +24,9 @@ mod tests {
 
     #[cfg(feature = "derive")]
     mod derive {
-        use crate as deb822_lossless;
-        use crate::{FromDeb822,ToDeb822};
         use super::*;
+        use crate as deb822_lossless;
+        use crate::{FromDeb822, ToDeb822};
 
         #[test]
         fn test_derive() {

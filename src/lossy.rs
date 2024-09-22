@@ -4,9 +4,13 @@
 //! in the input.
 use crate::lex::SyntaxKind;
 
+/// Error type for the parser.
 #[derive(Debug)]
 pub enum Error {
+    /// An unexpected token was encountered.
     UnexpectedToken(SyntaxKind, String),
+
+    /// Unexpected end-of-file.
     UnexpectedEof,
 }
 
@@ -19,14 +23,20 @@ impl std::fmt::Display for Error {
     }
 }
 
+/// A field in a deb822 paragraph.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Field {
+    /// The name of the field.
     pub name: String,
+
+    /// The value of the field.
     pub value: String,
 }
 
+/// A deb822 paragraph.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Paragraph {
+    /// Fields in the paragraph.
     pub fields: Vec<Field>,
 }
 
@@ -60,12 +70,14 @@ impl Paragraph {
             .map(|field| (field.name.as_str(), field.value.as_str()))
     }
 
+    /// Iterate over the fields in the paragraph, mutably.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&str, &mut String)> {
         self.fields
             .iter_mut()
             .map(|field| (field.name.as_str(), &mut field.value))
     }
 
+    /// Insert a field into the paragraph.
     pub fn insert(&mut self, name: &str, value: &str) {
         self.fields.push(Field {
             name: name.to_string(),
@@ -101,22 +113,27 @@ impl std::fmt::Display for Deb822 {
     }
 }
 
+/// A deb822 document.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Deb822(pub Vec<Paragraph>);
 
 impl Deb822 {
+    /// Number of paragraphs in the document.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Check if the document is empty.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Iterate over the paragraphs in the document.
     pub fn iter(&self) -> impl Iterator<Item = &Paragraph> {
         self.0.iter()
     }
 
+    /// Iterate over the paragraphs in the document, mutably.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Paragraph> {
         self.0.iter_mut()
     }
@@ -268,46 +285,44 @@ Another-Field: value
         let mut deb822: Deb822 = input.parse().unwrap();
         assert_eq!(
             deb822,
-            Deb822 {
-                0: vec![
-                    Paragraph {
-                        fields: vec![
-                            Field {
-                                name: "Package".to_string(),
-                                value: "hello".to_string(),
-                            },
-                            Field {
-                                name: "Version".to_string(),
-                                value: "2.10".to_string(),
-                            },
-                            Field {
-                                name: "Description".to_string(),
-                                value: "A program that says hello\nSome more text".to_string(),
-                            },
-                        ],
-                    },
-                    Paragraph {
-                        fields: vec![
-                            Field {
-                                name: "Package".to_string(),
-                                value: "world".to_string(),
-                            },
-                            Field {
-                                name: "Version".to_string(),
-                                value: "1.0".to_string(),
-                            },
-                            Field {
-                                name: "Description".to_string(),
-                                value: "A program that says world\nAnd some more text".to_string(),
-                            },
-                            Field {
-                                name: "Another-Field".to_string(),
-                                value: "value".to_string(),
-                            },
-                        ],
-                    },
-                ],
-            }
+            Deb822(vec![
+                Paragraph {
+                    fields: vec![
+                        Field {
+                            name: "Package".to_string(),
+                            value: "hello".to_string(),
+                        },
+                        Field {
+                            name: "Version".to_string(),
+                            value: "2.10".to_string(),
+                        },
+                        Field {
+                            name: "Description".to_string(),
+                            value: "A program that says hello\nSome more text".to_string(),
+                        },
+                    ],
+                },
+                Paragraph {
+                    fields: vec![
+                        Field {
+                            name: "Package".to_string(),
+                            value: "world".to_string(),
+                        },
+                        Field {
+                            name: "Version".to_string(),
+                            value: "1.0".to_string(),
+                        },
+                        Field {
+                            name: "Description".to_string(),
+                            value: "A program that says world\nAnd some more text".to_string(),
+                        },
+                        Field {
+                            name: "Another-Field".to_string(),
+                            value: "value".to_string(),
+                        },
+                    ],
+                },
+            ])
         );
         assert_eq!(deb822.len(), 2);
         assert_eq!(deb822.is_empty(), false);
@@ -335,9 +350,7 @@ Another-Field: value
         para.insert("Another-Field", "value");
         assert_eq!(para.get("Another-Field"), Some("value"));
 
-        let mut newpara = Paragraph {
-            fields: vec![]
-        };
+        let mut newpara = Paragraph { fields: vec![] };
         newpara.insert("Package", "new");
         assert_eq!(newpara.to_string(), "Package: new\n\n");
     }

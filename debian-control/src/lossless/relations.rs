@@ -24,6 +24,7 @@ use debversion::Version;
 use rowan::{Direction, NodeOrToken};
 use std::collections::HashSet;
 
+/// Error type for parsing relations fields
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParseError(Vec<String>);
 
@@ -405,6 +406,7 @@ impl Parse {
 
 macro_rules! ast_node {
     ($ast:ident, $kind:ident) => {
+        /// A node in the syntax tree representing a $ast
         #[repr(transparent)]
         pub struct $ast(SyntaxNode);
         impl $ast {
@@ -551,6 +553,7 @@ impl Default for Relations {
 }
 
 impl Relations {
+    /// Create a new relations field
     pub fn new() -> Self {
         Self::from(vec![])
     }
@@ -567,10 +570,12 @@ impl Relations {
         Self::from(entries)
     }
 
+    /// Iterate over the entries in this relations field
     pub fn entries(&self) -> impl Iterator<Item = Entry> + '_ {
         self.0.children().filter_map(Entry::cast)
     }
 
+    /// Iterate over the entries in this relations field
     pub fn iter(&self) -> impl Iterator<Item = Entry> + '_ {
         self.entries()
     }
@@ -578,11 +583,6 @@ impl Relations {
     /// Remove the entry at the given index
     pub fn get_entry(&self, idx: usize) -> Option<Entry> {
         self.entries().nth(idx)
-    }
-
-    #[deprecated = "Use `remove_entry` instead"]
-    pub fn remove(&mut self, idx: usize) -> Entry {
-        self.remove_entry(idx)
     }
 
     /// Remove the entry at the given index
@@ -632,6 +632,7 @@ impl Relations {
         );
     }
 
+    /// Replace the entry at the given index
     pub fn replace(&mut self, idx: usize, entry: Entry) {
         let current_entry = self.get_entry(idx).unwrap();
         self.0.splice_children(
@@ -640,11 +641,13 @@ impl Relations {
         );
     }
 
+    /// Push a new entry to the relations field
     pub fn push(&mut self, entry: Entry) {
         let pos = self.entries().count();
         self.insert(pos, entry);
     }
 
+    /// Return the names of substvars in this relations field
     pub fn substvars(&self) -> impl Iterator<Item = String> + '_ {
         self.0
             .children()
@@ -652,11 +655,13 @@ impl Relations {
             .map(|s| s.to_string())
     }
 
+    /// Parse a relations field from a string, allowing syntax errors
     pub fn parse_relaxed(s: &str, allow_substvar: bool) -> (Relations, Vec<String>) {
         let parse = parse(s, allow_substvar);
         (parse.root_mut(), parse.errors)
     }
 
+    /// Check if this relations field is satisfied by the given package versions.
     pub fn satisfied_by(&self, package_version: impl crate::VersionLookup + Copy) -> bool {
         self.entries().all(|e| e.satisfied_by(package_version))
     }
@@ -800,6 +805,7 @@ impl Entry {
             .splice_children(index..index + 1, vec![new_root.into()]);
     }
 
+    /// Wrap and sort the relations in this entry
     #[must_use]
     pub fn wrap_and_sort(&self) -> Self {
         let mut relations = self
@@ -931,10 +937,12 @@ impl Entry {
         self.0.detach();
     }
 
+    /// Check if this entry is empty
     pub fn is_empty(&self) -> bool {
         self.relations().count() == 0
     }
 
+    /// Get the number of relations in this entry
     pub fn len(&self) -> usize {
         self.relations().count()
     }
@@ -1644,6 +1652,7 @@ impl Relation {
         }
     }
 
+    /// Build a new relation
     pub fn build(name: &str) -> RelationBuilder {
         RelationBuilder::new(name)
     }
