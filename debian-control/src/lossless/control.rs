@@ -62,21 +62,26 @@ fn format_field(name: &str, value: &str) -> String {
     }
 }
 
+/// A Debian control file
 pub struct Control(deb822_lossless::Deb822);
 
 impl Control {
+    /// Create a new control file
     pub fn new() -> Self {
         Control(deb822_lossless::Deb822::new())
     }
 
+    /// Return the underlying deb822 object, mutable
     pub fn as_mut_deb822(&mut self) -> &mut deb822_lossless::Deb822 {
         &mut self.0
     }
 
+    /// Return the underlying deb822 object
     pub fn as_deb822(&self) -> &deb822_lossless::Deb822 {
         &self.0
     }
 
+    /// Return the source package
     pub fn source(&self) -> Option<Source> {
         self.0
             .paragraphs()
@@ -84,6 +89,7 @@ impl Control {
             .map(Source)
     }
 
+    /// Iterate over all binary packages
     pub fn binaries(&self) -> impl Iterator<Item = Binary> {
         self.0
             .paragraphs()
@@ -133,10 +139,12 @@ impl Control {
         Binary(p)
     }
 
+    /// Read a control file from a file
     pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self, deb822_lossless::Error> {
         Ok(Control(deb822_lossless::Deb822::from_file(path)?))
     }
 
+    /// Read a control file from a file, allowing syntax errors
     pub fn from_file_relaxed<P: AsRef<std::path::Path>>(
         path: P,
     ) -> Result<(Self, Vec<String>), std::io::Error> {
@@ -144,10 +152,12 @@ impl Control {
         Ok((Control(control), errors))
     }
 
+    /// Read a control file from a reader
     pub fn read<R: std::io::Read>(mut r: R) -> Result<Self, deb822_lossless::Error> {
         Ok(Control(deb822_lossless::Deb822::read(&mut r)?))
     }
 
+    /// Read a control file from a reader, allowing syntax errors
     pub fn read_relaxed<R: std::io::Read>(
         mut r: R,
     ) -> Result<(Self, Vec<String>), deb822_lossless::Error> {
@@ -229,6 +239,7 @@ impl std::str::FromStr for Control {
     }
 }
 
+/// A source package paragraph
 pub struct Source(deb822_lossless::Paragraph);
 
 impl From<Source> for deb822_lossless::Paragraph {
@@ -255,6 +266,7 @@ impl Source {
         self.0.get("Source")
     }
 
+    /// Wrap and sort the control file paragraph
     pub fn wrap_and_sort(
         &mut self,
         indentation: deb822_lossless::Indentation,
@@ -270,14 +282,17 @@ impl Source {
         );
     }
 
+    /// Return the underlying deb822 paragraph, mutable
     pub fn as_mut_deb822(&mut self) -> &mut deb822_lossless::Paragraph {
         &mut self.0
     }
 
+    /// Return the underlying deb822 paragraph
     pub fn as_deb822(&self) -> &deb822_lossless::Paragraph {
         &self.0
     }
 
+    /// Set the name of the source package.
     pub fn set_name(&mut self, name: &str) {
         self.0.insert("Source", name);
     }
@@ -287,6 +302,7 @@ impl Source {
         self.0.get("Section")
     }
 
+    /// Set the section of the source package
     pub fn set_section(&mut self, section: Option<&str>) {
         if let Some(section) = section {
             self.0.insert("Section", section);
@@ -300,6 +316,7 @@ impl Source {
         self.0.get("Priority").and_then(|v| v.parse().ok())
     }
 
+    /// Set the priority of the source package
     pub fn set_priority(&mut self, priority: Option<Priority>) {
         if let Some(priority) = priority {
             self.0.insert("Priority", priority.to_string().as_str());
@@ -313,6 +330,7 @@ impl Source {
         self.0.get("Maintainer")
     }
 
+    /// Set the maintainer of the package
     pub fn set_maintainer(&mut self, maintainer: &str) {
         self.0.insert("Maintainer", maintainer);
     }
@@ -322,129 +340,159 @@ impl Source {
         self.0.get("Build-Depends").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Build-Depends field
     pub fn set_build_depends(&mut self, relations: &Relations) {
         self.0
             .insert("Build-Depends", relations.to_string().as_str());
     }
 
+    /// Return the Build-Depends-Indep field
     pub fn build_depends_indep(&self) -> Option<Relations> {
         self.0
             .get("Build-Depends-Indep")
             .map(|s| s.parse().unwrap())
     }
 
+    /// Return the Build-Depends-Arch field
     pub fn build_depends_arch(&self) -> Option<Relations> {
         self.0.get("Build-Depends-Arch").map(|s| s.parse().unwrap())
     }
 
+    /// The build conflicts of the package.
     pub fn build_conflicts(&self) -> Option<Relations> {
         self.0.get("Build-Conflicts").map(|s| s.parse().unwrap())
     }
 
+    /// Return the Build-Conflicts-Indep field
     pub fn build_conflicts_indep(&self) -> Option<Relations> {
         self.0
             .get("Build-Conflicts-Indep")
             .map(|s| s.parse().unwrap())
     }
 
+    /// Return the Build-Conflicts-Arch field
     pub fn build_conflicts_arch(&self) -> Option<Relations> {
         self.0
             .get("Build-Conflicts-Arch")
             .map(|s| s.parse().unwrap())
     }
 
+    /// Return the standards version
     pub fn standards_version(&self) -> Option<String> {
         self.0.get("Standards-Version")
     }
 
+    /// Set the Standards-Version field
     pub fn set_standards_version(&mut self, version: &str) {
         self.0.insert("Standards-Version", version);
     }
 
+    /// Return the upstrea mHomepage
     pub fn homepage(&self) -> Option<url::Url> {
         self.0.get("Homepage").and_then(|s| s.parse().ok())
     }
 
+    /// Set the Homepage field
     pub fn set_homepage(&mut self, homepage: &url::Url) {
         self.0.insert("Homepage", homepage.to_string().as_str());
     }
 
+    /// Return the Vcs-Git field
     pub fn vcs_git(&self) -> Option<String> {
         self.0.get("Vcs-Git")
     }
 
+    /// Set the Vcs-Git field
     pub fn set_vcs_git(&mut self, url: &str) {
         self.0.insert("Vcs-Git", url);
     }
 
+    /// Return the Vcs-Browser field
     pub fn vcs_svn(&self) -> Option<String> {
         self.0.get("Vcs-Svn").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Svn field
     pub fn set_vcs_svn(&mut self, url: &str) {
         self.0.insert("Vcs-Svn", url);
     }
 
+    /// Return the Vcs-Bzr field
     pub fn vcs_bzr(&self) -> Option<String> {
         self.0.get("Vcs-Bzr").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Bzr field
     pub fn set_vcs_bzr(&mut self, url: &str) {
         self.0.insert("Vcs-Bzr", url);
     }
 
+    /// Return the Vcs-Arch field
     pub fn vcs_arch(&self) -> Option<String> {
         self.0.get("Vcs-Arch").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Arch field
     pub fn set_vcs_arch(&mut self, url: &str) {
         self.0.insert("Vcs-Arch", url);
     }
 
+    /// Return the Vcs-Svk field
     pub fn vcs_svk(&self) -> Option<String> {
         self.0.get("Vcs-Svk").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Svk field
     pub fn set_vcs_svk(&mut self, url: &str) {
         self.0.insert("Vcs-Svk", url);
     }
 
+    /// Return the Vcs-Darcs field
     pub fn vcs_darcs(&self) -> Option<String> {
         self.0.get("Vcs-Darcs").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Darcs field
     pub fn set_vcs_darcs(&mut self, url: &str) {
         self.0.insert("Vcs-Darcs", url);
     }
 
+    /// Return the Vcs-Mtn field
     pub fn vcs_mtn(&self) -> Option<String> {
         self.0.get("Vcs-Mtn").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Mtn field
     pub fn set_vcs_mtn(&mut self, url: &str) {
         self.0.insert("Vcs-Mtn", url);
     }
 
+    /// Return the Vcs-Cvs field
     pub fn vcs_cvs(&self) -> Option<String> {
         self.0.get("Vcs-Cvs").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Cvs field
     pub fn set_vcs_cvs(&mut self, url: &str) {
         self.0.insert("Vcs-Cvs", url);
     }
 
+    /// Return the Vcs-Hg field
     pub fn vcs_hg(&self) -> Option<String> {
         self.0.get("Vcs-Hg").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Hg field
     pub fn set_vcs_hg(&mut self, url: &str) {
         self.0.insert("Vcs-Hg", url);
     }
 
+    /// Return the Vcs-Browser field
     pub fn vcs_browser(&self) -> Option<String> {
         self.0.get("Vcs-Browser")
     }
 
+    /// Return the Vcs used by the package
     pub fn vcs(&self) -> Option<crate::vcs::Vcs> {
         for (name, value) in self.0.items() {
             if name.starts_with("Vcs-") && name != "Vcs-Browser" {
@@ -454,6 +502,7 @@ impl Source {
         None
     }
 
+    /// Set the Vcs-Browser field
     pub fn set_vcs_browser(&mut self, url: Option<&str>) {
         if let Some(url) = url {
             self.0.insert("Vcs-Browser", url);
@@ -462,12 +511,14 @@ impl Source {
         }
     }
 
+    /// Return the Uploaders field
     pub fn uploaders(&self) -> Option<Vec<String>> {
         self.0
             .get("Uploaders")
             .map(|s| s.split(',').map(|s| s.trim().to_owned()).collect())
     }
 
+    /// Set the uploaders field
     pub fn set_uploaders(&mut self, uploaders: &[&str]) {
         self.0.insert(
             "Uploaders",
@@ -480,10 +531,12 @@ impl Source {
         );
     }
 
+    /// Return the architecture field
     pub fn architecture(&self) -> Option<String> {
         self.0.get("Architecture")
     }
 
+    /// Set the architecture field
     pub fn set_architecture(&mut self, arch: Option<&str>) {
         if let Some(arch) = arch {
             self.0.insert("Architecture", arch);
@@ -492,6 +545,7 @@ impl Source {
         }
     }
 
+    /// Return the Rules-Requires-Root field
     pub fn rules_requires_root(&self) -> Option<bool> {
         self.0
             .get("Rules-Requires-Root")
@@ -502,6 +556,7 @@ impl Source {
             })
     }
 
+    /// Set the Rules-Requires-Root field
     pub fn set_rules_requires_root(&mut self, requires_root: bool) {
         self.0.insert(
             "Rules-Requires-Root",
@@ -509,10 +564,12 @@ impl Source {
         );
     }
 
+    /// Return the Testsuite field
     pub fn testsuite(&self) -> Option<String> {
         self.0.get("Testsuite")
     }
 
+    /// Set the Testsuite field
     pub fn set_testsuite(&mut self, testsuite: &str) {
         self.0.insert("Testsuite", testsuite);
     }
@@ -539,6 +596,7 @@ impl std::fmt::Display for Control {
     }
 }
 
+/// A binary package paragraph
 pub struct Binary(deb822_lossless::Paragraph);
 
 impl From<Binary> for deb822_lossless::Paragraph {
@@ -575,18 +633,22 @@ impl Default for Binary {
 }
 
 impl Binary {
+    /// Create a new binary package control file
     pub fn new() -> Self {
         Binary(deb822_lossless::Paragraph::new())
     }
 
+    /// Return the underlying deb822 paragraph, mutable
     pub fn as_mut_deb822(&mut self) -> &mut deb822_lossless::Paragraph {
         &mut self.0
     }
 
+    /// Return the underlying deb822 paragraph
     pub fn as_deb822(&self) -> &deb822_lossless::Paragraph {
         &self.0
     }
 
+    /// Wrap and sort the control file
     pub fn wrap_and_sort(
         &mut self,
         indentation: deb822_lossless::Indentation,
@@ -607,6 +669,7 @@ impl Binary {
         self.0.get("Package")
     }
 
+    /// Set the name of the package
     pub fn set_name(&mut self, name: &str) {
         self.0.insert("Package", name);
     }
@@ -616,6 +679,7 @@ impl Binary {
         self.0.get("Section")
     }
 
+    /// Set the section
     pub fn set_section(&mut self, section: Option<&str>) {
         if let Some(section) = section {
             self.0.insert("Section", section);
@@ -629,6 +693,7 @@ impl Binary {
         self.0.get("Priority").and_then(|v| v.parse().ok())
     }
 
+    /// Set the priority of the package
     pub fn set_priority(&mut self, priority: Option<Priority>) {
         if let Some(priority) = priority {
             self.0.insert("Priority", priority.to_string().as_str());
@@ -642,6 +707,7 @@ impl Binary {
         self.0.get("Architecture")
     }
 
+    /// Set the architecture of the package
     pub fn set_architecture(&mut self, arch: Option<&str>) {
         if let Some(arch) = arch {
             self.0.insert("Architecture", arch);
@@ -655,6 +721,7 @@ impl Binary {
         self.0.get("Depends").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Depends field
     pub fn set_depends(&mut self, depends: Option<&Relations>) {
         if let Some(depends) = depends {
             self.0.insert("Depends", depends.to_string().as_str());
@@ -663,10 +730,12 @@ impl Binary {
         }
     }
 
+    /// The package that this package recommends
     pub fn recommends(&self) -> Option<Relations> {
         self.0.get("Recommends").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Recommends field
     pub fn set_recommends(&mut self, recommends: Option<&Relations>) {
         if let Some(recommends) = recommends {
             self.0.insert("Recommends", recommends.to_string().as_str());
@@ -675,10 +744,12 @@ impl Binary {
         }
     }
 
+    /// Packages that this package suggests
     pub fn suggests(&self) -> Option<Relations> {
         self.0.get("Suggests").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Suggests field
     pub fn set_suggests(&mut self, suggests: Option<&Relations>) {
         if let Some(suggests) = suggests {
             self.0.insert("Suggests", suggests.to_string().as_str());
@@ -687,10 +758,12 @@ impl Binary {
         }
     }
 
+    /// The package that this package enhances
     pub fn enhances(&self) -> Option<Relations> {
         self.0.get("Enhances").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Enhances field
     pub fn set_enhances(&mut self, enhances: Option<&Relations>) {
         if let Some(enhances) = enhances {
             self.0.insert("Enhances", enhances.to_string().as_str());
@@ -699,10 +772,12 @@ impl Binary {
         }
     }
 
+    /// The package that this package pre-depends on
     pub fn pre_depends(&self) -> Option<Relations> {
         self.0.get("Pre-Depends").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Pre-Depends field
     pub fn set_pre_depends(&mut self, pre_depends: Option<&Relations>) {
         if let Some(pre_depends) = pre_depends {
             self.0
@@ -712,10 +787,12 @@ impl Binary {
         }
     }
 
+    /// The package that this package breaks
     pub fn breaks(&self) -> Option<Relations> {
         self.0.get("Breaks").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Breaks field
     pub fn set_breaks(&mut self, breaks: Option<&Relations>) {
         if let Some(breaks) = breaks {
             self.0.insert("Breaks", breaks.to_string().as_str());
@@ -724,10 +801,12 @@ impl Binary {
         }
     }
 
+    /// The package that this package conflicts with
     pub fn conflicts(&self) -> Option<Relations> {
         self.0.get("Conflicts").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Conflicts field
     pub fn set_conflicts(&mut self, conflicts: Option<&Relations>) {
         if let Some(conflicts) = conflicts {
             self.0.insert("Conflicts", conflicts.to_string().as_str());
@@ -736,10 +815,12 @@ impl Binary {
         }
     }
 
+    /// The package that this package replaces
     pub fn replaces(&self) -> Option<Relations> {
         self.0.get("Replaces").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Replaces field
     pub fn set_replaces(&mut self, replaces: Option<&Relations>) {
         if let Some(replaces) = replaces {
             self.0.insert("Replaces", replaces.to_string().as_str());
@@ -748,10 +829,12 @@ impl Binary {
         }
     }
 
+    /// Return the Provides field
     pub fn provides(&self) -> Option<Relations> {
         self.0.get("Provides").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Provides field
     pub fn set_provides(&mut self, provides: Option<&Relations>) {
         if let Some(provides) = provides {
             self.0.insert("Provides", provides.to_string().as_str());
@@ -760,10 +843,12 @@ impl Binary {
         }
     }
 
+    /// Return the Built-Using field
     pub fn built_using(&self) -> Option<Relations> {
         self.0.get("Built-Using").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Built-Using field
     pub fn set_built_using(&mut self, built_using: Option<&Relations>) {
         if let Some(built_using) = built_using {
             self.0
@@ -773,10 +858,12 @@ impl Binary {
         }
     }
 
+    /// The Multi-Arch field
     pub fn multi_arch(&self) -> Option<MultiArch> {
         self.0.get("Multi-Arch").map(|s| s.parse().unwrap())
     }
 
+    /// Set the Multi-Arch field
     pub fn set_multi_arch(&mut self, multi_arch: Option<MultiArch>) {
         if let Some(multi_arch) = multi_arch {
             self.0.insert("Multi-Arch", multi_arch.to_string().as_str());
@@ -785,10 +872,12 @@ impl Binary {
         }
     }
 
+    /// Whether the package is essential
     pub fn essential(&self) -> bool {
         self.0.get("Essential").map(|s| s == "yes").unwrap_or(false)
     }
 
+    /// Set whether the package is essential
     pub fn set_essential(&mut self, essential: bool) {
         if essential {
             self.0.insert("Essential", "yes");
@@ -802,6 +891,7 @@ impl Binary {
         self.0.get("Description")
     }
 
+    /// Set the binary package description
     pub fn set_description(&mut self, description: Option<&str>) {
         if let Some(description) = description {
             self.0.insert("Description", description);
@@ -810,10 +900,12 @@ impl Binary {
         }
     }
 
+    /// Return the upstream homepage
     pub fn homepage(&self) -> Option<url::Url> {
         self.0.get("Homepage").and_then(|s| s.parse().ok())
     }
 
+    /// Set the upstream homepage
     pub fn set_homepage(&mut self, url: &url::Url) {
         self.0.insert("Homepage", url.as_str());
     }

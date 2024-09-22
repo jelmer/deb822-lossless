@@ -1,3 +1,4 @@
+#![deny(missing_docs)]
 //! Parser for Debian control files.
 //!
 //! This crate provides a parser for Debian control files.
@@ -45,8 +46,10 @@ pub mod vcs;
 
 use std::borrow::Cow;
 
+/// Error type for parsing an identity string.
 #[derive(Debug, PartialEq)]
 pub enum ParseIdentityError {
+    /// No email address found.
     NoEmail,
 }
 

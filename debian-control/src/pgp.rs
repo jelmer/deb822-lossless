@@ -1,8 +1,18 @@
+//! PGP signature parsing.
+
+/// Error during PGP signature parsing.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
+    /// Missing PGP signature.
     MissingPgpSignature,
+
+    /// Payload missing in the signed message.
     MissingPayload,
+
+    /// Truncated PGP signature.
     TruncatedPgpSignature,
+
+    /// Junk after PGP signature.
     JunkAfterPgpSignature,
 }
 
@@ -121,7 +131,9 @@ mod tests {
 
         let (output, signature) = super::strip_pgp_signature(input).unwrap();
 
-        assert_eq!(output, r###"Origin: Debian
+        assert_eq!(
+            output,
+            r###"Origin: Debian
 Label: Debian
 Suite: experimental
 Codename: rc-buggy
@@ -134,9 +146,13 @@ No-Support-for-Architecture-all: Packages
 Architectures: all amd64 arm64 armel armhf i386 mips64el ppc64el riscv64 s390x
 Components: main contrib non-free-firmware non-free
 Description: Experimental packages - not released; use at your own risk.
-"###);
+"###
+        );
 
-        assert_eq!(signature.as_deref(), Some(r###"iQIzBAEBCAAdFiEEpyNohvPMyq0Uiif4DphATThvodkFAmbJ6swACgkQDphATThv
+        assert_eq!(
+            signature.as_deref(),
+            Some(
+                r###"iQIzBAEBCAAdFiEEpyNohvPMyq0Uiif4DphATThvodkFAmbJ6swACgkQDphATThv
 odkUiw//VDVOwHGRVxpvyIjSvH0AMQmANOvolJ5EoCu1I5UG2x98UPiMV5oTNv1r
 B79A3nb+FL2toeuHUJBN3G1WNg6xeH0vD43hGcxhCgVn6NADogv8pBEpyynn1qC0
 iketp6kEiHvGMpEj4JqOUEcq2Mafq2TTf9zEqYuTr8NqL9hC/pG8YqPKT3rhPdc3
@@ -161,7 +177,11 @@ XqsogWqW/nbOxTdudMn+qjd7gVsLtNIDKA42Csyac5Hwl9YDqgicyOMGBY88gocV
 8fDXnyUhX5Es35AgO25Sh8CbISC29479o4/MdZXCGMIJEocjPx46Dy+hP1sIcFyp
 KYQwHDLf3TLHWF9z0lvGFYSAq1H8gOwchDISGA==
 =olY7
-"###.replace('\n', "").as_ref()));
+"###
+                .replace('\n', "")
+                .as_ref()
+            )
+        );
     }
 
     #[test]

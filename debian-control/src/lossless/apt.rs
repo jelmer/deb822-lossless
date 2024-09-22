@@ -1,13 +1,18 @@
+//! APT package manager files
 use crate::fields::{MultiArch, Priority, Sha1Checksum, Sha256Checksum, Sha512Checksum};
 use crate::lossless::relations::Relations;
 
 /// A source package in the APT package manager.
 pub struct Source(deb822_lossless::Paragraph);
 
+/// An MD5 checksum of a file
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
 pub struct MD5Checksum {
+    /// The MD5 checksum
     pub md5sum: String,
+    /// The size of the file
     pub size: usize,
+    /// The filename
     pub filename: String,
 }
 
@@ -54,35 +59,55 @@ impl pyo3::FromPyObject<'_> for Source {
     }
 }
 
-impl Source {
-    pub fn new(paragraph: deb822_lossless::Paragraph) -> Self {
+impl From<deb822_lossless::Paragraph> for Source {
+    fn from(paragraph: deb822_lossless::Paragraph) -> Self {
         Self(paragraph)
     }
+}
 
+impl Default for Source {
+    fn default() -> Self {
+        Self(deb822_lossless::Paragraph::new())
+    }
+}
+
+impl Source {
+    /// Create a new source package
+    pub fn new() -> Self {
+        Self(deb822_lossless::Paragraph::new())
+    }
+
+    /// Get the source name
     pub fn package(&self) -> Option<String> {
         self.0.get("Package").map(|s| s.to_string())
     }
 
+    /// Set the package name
     pub fn set_package(&mut self, package: &str) {
         self.0.insert("Package", package);
     }
 
+    /// Get the version of the package
     pub fn version(&self) -> Option<debversion::Version> {
         self.0.get("Version").map(|s| s.parse().unwrap())
     }
 
+    /// Set the version of the package
     pub fn set_version(&mut self, version: debversion::Version) {
         self.0.insert("Version", &version.to_string());
     }
 
+    /// Get the maintainer of the package
     pub fn maintainer(&self) -> Option<String> {
         self.0.get("Maintainer").map(|s| s.to_string())
     }
 
+    /// Set the maintainer of the package
     pub fn set_maintainer(&mut self, maintainer: &str) {
         self.0.insert("Maintainer", maintainer);
     }
 
+    /// Get the uploaders of the package
     pub fn uploaders(&self) -> Option<Vec<String>> {
         self.0.get("Uploaders").map(|s| {
             s.split(',')
@@ -91,191 +116,236 @@ impl Source {
         })
     }
 
+    /// Set the uploaders of the package
     pub fn set_uploaders(&mut self, uploaders: Vec<String>) {
         self.0.insert("Uploaders", &uploaders.join(", "));
     }
 
+    /// Get the standards version of the package
     pub fn standards_version(&self) -> Option<String> {
         self.0.get("Standards-Version").map(|s| s.to_string())
     }
 
+    /// Set the standards version of the package
     pub fn set_standards_version(&mut self, version: &str) {
         self.0.insert("Standards-Version", version);
     }
 
+    /// Get the source format of the package
     pub fn format(&self) -> Option<String> {
         self.0.get("Format").map(|s| s.to_string())
     }
 
+    /// Set the format of the package
     pub fn set_format(&mut self, format: &str) {
         self.0.insert("Format", format);
     }
 
+    /// Get the Vcs-Browser field
     pub fn vcs_browser(&self) -> Option<String> {
         self.0.get("Vcs-Browser").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Browser field
     pub fn set_vcs_browser(&mut self, url: &str) {
         self.0.insert("Vcs-Browser", url);
     }
 
+    /// Get the Vcs-Git field
     pub fn vcs_git(&self) -> Option<String> {
         self.0.get("Vcs-Git").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Git field
     pub fn set_vcs_git(&mut self, url: &str) {
         self.0.insert("Vcs-Git", url);
     }
 
+    /// Get the Vcs-Svn field
     pub fn vcs_svn(&self) -> Option<String> {
         self.0.get("Vcs-Svn").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Svn field
     pub fn set_vcs_svn(&mut self, url: &str) {
         self.0.insert("Vcs-Svn", url);
     }
 
+    /// Get the Vcs-Hg field
     pub fn vcs_hg(&self) -> Option<String> {
         self.0.get("Vcs-Hg").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Hg field
     pub fn set_vcs_hg(&mut self, url: &str) {
         self.0.insert("Vcs-Hg", url);
     }
 
+    /// Get the Vcs-Bzr field
     pub fn vcs_bzr(&self) -> Option<String> {
         self.0.get("Vcs-Bzr").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Bzr field
     pub fn set_vcs_bzr(&mut self, url: &str) {
         self.0.insert("Vcs-Bzr", url);
     }
 
+    /// Get the Vcs-Arch field
     pub fn vcs_arch(&self) -> Option<String> {
         self.0.get("Vcs-Arch").map(|s| s.to_string())
     }
 
+    /// Set the Vcs-Arch field
     pub fn set_vcs_arch(&mut self, url: &str) {
         self.0.insert("Vcs-Arch", url);
     }
 
+    /// Get the Vcs-Svk field
     pub fn vcs_svk(&self) -> Option<String> {
         self.0.get("Vcs-Svk").map(|s| s.to_string())
     }
 
+    /// Set the Svk VCS
     pub fn set_vcs_svk(&mut self, url: &str) {
         self.0.insert("Vcs-Svk", url);
     }
 
+    /// Get the Darcs VCS
     pub fn vcs_darcs(&self) -> Option<String> {
         self.0.get("Vcs-Darcs").map(|s| s.to_string())
     }
 
+    /// Set the Darcs VCS
     pub fn set_vcs_darcs(&mut self, url: &str) {
         self.0.insert("Vcs-Darcs", url);
     }
 
+    /// Get the Mtn VCS
     pub fn vcs_mtn(&self) -> Option<String> {
         self.0.get("Vcs-Mtn").map(|s| s.to_string())
     }
 
+    /// Set the Mtn VCS
     pub fn set_vcs_mtn(&mut self, url: &str) {
         self.0.insert("Vcs-Mtn", url);
     }
 
+    /// Get the Cvs VCS
     pub fn vcs_cvs(&self) -> Option<String> {
         self.0.get("Vcs-Cvs").map(|s| s.to_string())
     }
 
+    /// Set the Cvs VCS
     pub fn set_vcs_cvs(&mut self, url: &str) {
         self.0.insert("Vcs-Cvs", url);
     }
 
+    /// Get the build depends
     pub fn build_depends(&self) -> Option<Relations> {
         self.0.get("Build-Depends").map(|s| s.parse().unwrap())
     }
 
+    /// Set the build depends
     pub fn set_build_depends(&mut self, relations: Relations) {
         self.0
             .insert("Build-Depends", relations.to_string().as_str());
     }
 
+    /// Get the arch-independent build depends
     pub fn build_depends_indep(&self) -> Option<Relations> {
         self.0
             .get("Build-Depends-Indep")
             .map(|s| s.parse().unwrap())
     }
 
+    /// Set the arch-independent build depends
     pub fn set_build_depends_indep(&mut self, relations: Relations) {
         self.0.insert("Build-Depends-Indep", &relations.to_string());
     }
 
+    /// Get the arch-dependent build depends
     pub fn build_depends_arch(&self) -> Option<Relations> {
         self.0.get("Build-Depends-Arch").map(|s| s.parse().unwrap())
     }
 
+    /// Set the arch-dependent build depends
     pub fn set_build_depends_arch(&mut self, relations: Relations) {
         self.0.insert("Build-Depends-Arch", &relations.to_string());
     }
 
+    /// Get the build conflicts
     pub fn build_conflicts(&self) -> Option<Relations> {
         self.0.get("Build-Conflicts").map(|s| s.parse().unwrap())
     }
 
+    /// Set the build conflicts
     pub fn set_build_conflicts(&mut self, relations: Relations) {
         self.0.insert("Build-Conflicts", &relations.to_string());
     }
 
+    /// Get the build conflicts indep
     pub fn build_conflicts_indep(&self) -> Option<Relations> {
         self.0
             .get("Build-Conflicts-Indep")
             .map(|s| s.parse().unwrap())
     }
 
+    /// Set the build conflicts indep
     pub fn set_build_conflicts_indep(&mut self, relations: Relations) {
         self.0
             .insert("Build-Conflicts-Indep", &relations.to_string());
     }
 
+    /// Get the build conflicts arch
     pub fn build_conflicts_arch(&self) -> Option<Relations> {
         self.0
             .get("Build-Conflicts-Arch")
             .map(|s| s.parse().unwrap())
     }
 
+    /// Set the build conflicts arch
     pub fn set_build_conflicts_arch(&mut self, relations: Relations) {
         self.0
             .insert("Build-Conflicts-Arch", &relations.to_string());
     }
 
+    /// Get the binary relations
     pub fn binary(&self) -> Option<Relations> {
         self.0.get("Binary").map(|s| s.parse().unwrap())
     }
 
+    /// Set the binary relations
     pub fn set_binary(&mut self, relations: Relations) {
         self.0.insert("Binary", &relations.to_string());
     }
 
+    /// Get the homepage of the package.
     pub fn homepage(&self) -> Option<String> {
         self.0.get("Homepage").map(|s| s.to_string())
     }
 
+    /// Set the homepage of the package.
     pub fn set_homepage(&mut self, url: &str) {
         self.0.insert("Homepage", url);
     }
 
+    /// Get the section of the package.
     pub fn section(&self) -> Option<String> {
         self.0.get("Section").map(|s| s.to_string())
     }
 
+    /// Set the section of the package.
     pub fn set_section(&mut self, section: &str) {
         self.0.insert("Section", section);
     }
 
+    /// Get the priority of the package.
     pub fn priority(&self) -> Option<Priority> {
         self.0.get("Priority").and_then(|v| v.parse().ok())
     }
 
+    /// Set the priority of the package.
     pub fn set_priority(&mut self, priority: Priority) {
         self.0.insert("Priority", priority.to_string().as_str());
     }
@@ -285,26 +355,32 @@ impl Source {
         self.0.get("Architecture")
     }
 
+    /// Set the architecture of the package.
     pub fn set_architecture(&mut self, arch: &str) {
         self.0.insert("Architecture", arch);
     }
 
+    /// Get the directory
     pub fn directory(&self) -> Option<String> {
         self.0.get("Directory").map(|s| s.to_string())
     }
 
+    /// Set the directory
     pub fn set_directory(&mut self, dir: &str) {
         self.0.insert("Directory", dir);
     }
 
+    /// Get the test suite
     pub fn testsuite(&self) -> Option<String> {
         self.0.get("Testsuite").map(|s| s.to_string())
     }
 
+    /// Set the testsuite
     pub fn set_testsuite(&mut self, testsuite: &str) {
         self.0.insert("Testsuite", testsuite);
     }
 
+    /// Get the files
     pub fn files(&self) -> Vec<MD5Checksum> {
         self.0
             .get("Files")
@@ -316,6 +392,7 @@ impl Source {
             .unwrap_or_default()
     }
 
+    /// Set the files
     pub fn set_files(&mut self, files: Vec<MD5Checksum>) {
         self.0.insert(
             "Files",
@@ -327,6 +404,7 @@ impl Source {
         );
     }
 
+    /// Get the SHA1 checksums
     pub fn checksums_sha1(&self) -> Vec<Sha1Checksum> {
         self.0
             .get("Checksums-Sha1")
@@ -338,6 +416,7 @@ impl Source {
             .unwrap_or_default()
     }
 
+    /// Set the SHA1 checksums
     pub fn set_checksums_sha1(&mut self, checksums: Vec<Sha1Checksum>) {
         self.0.insert(
             "Checksums-Sha1",
@@ -349,6 +428,7 @@ impl Source {
         );
     }
 
+    /// Get the SHA256 checksums
     pub fn checksums_sha256(&self) -> Vec<Sha256Checksum> {
         self.0
             .get("Checksums-Sha256")
@@ -360,6 +440,7 @@ impl Source {
             .unwrap_or_default()
     }
 
+    /// Set the SHA256 checksums
     pub fn set_checksums_sha256(&mut self, checksums: Vec<Sha256Checksum>) {
         self.0.insert(
             "Checksums-Sha256",
@@ -371,6 +452,7 @@ impl Source {
         );
     }
 
+    /// Get the SHA512 checksums
     pub fn checksums_sha512(&self) -> Vec<Sha512Checksum> {
         self.0
             .get("Checksums-Sha512")
@@ -382,6 +464,7 @@ impl Source {
             .unwrap_or_default()
     }
 
+    /// Set the SHA512 checksums
     pub fn set_checksums_sha512(&mut self, checksums: Vec<Sha512Checksum>) {
         self.0.insert(
             "Checksums-Sha512",
@@ -402,6 +485,7 @@ impl std::str::FromStr for Source {
     }
 }
 
+/// A package in the APT package manager.
 pub struct Package(deb822_lossless::Paragraph);
 
 #[cfg(feature = "python-debian")]
@@ -426,216 +510,269 @@ impl pyo3::FromPyObject<'_> for Package {
 }
 
 impl Package {
+    /// Create a new package.
     pub fn new(paragraph: deb822_lossless::Paragraph) -> Self {
         Self(paragraph)
     }
 
+    /// Get the name of the package.
     pub fn name(&self) -> Option<String> {
         self.0.get("Package").map(|s| s.to_string())
     }
 
+    /// Set the name of the package.
     pub fn set_name(&mut self, name: &str) {
         self.0.insert("Package", name);
     }
 
+    /// Get the version of the package.
     pub fn version(&self) -> Option<debversion::Version> {
         self.0.get("Version").map(|s| s.parse().unwrap())
     }
 
+    /// Set the version of the package.
     pub fn set_version(&mut self, version: debversion::Version) {
         self.0.insert("Version", &version.to_string());
     }
 
+    /// Get the installed size of the package in bytes.
     pub fn installed_size(&self) -> Option<usize> {
         self.0.get("Installed-Size").map(|s| s.parse().unwrap())
     }
 
+    /// Set the installed size of the package in bytes.
     pub fn set_installed_size(&mut self, size: usize) {
         self.0.insert("Installed-Size", &size.to_string());
     }
 
+    /// Get the maintainer of the package.
     pub fn maintainer(&self) -> Option<String> {
         self.0.get("Maintainer").map(|s| s.to_string())
     }
 
+    /// Set the maintainer of the package.
     pub fn set_maintainer(&mut self, maintainer: &str) {
         self.0.insert("Maintainer", maintainer);
     }
 
+    /// Get the architecture of the package.
     pub fn architecture(&self) -> Option<String> {
         self.0.get("Architecture").map(|s| s.to_string())
     }
 
+    /// Set the architecture of the package.
     pub fn set_architecture(&mut self, arch: &str) {
         self.0.insert("Architecture", arch);
     }
 
+    /// Get the packages that this package depends on.
     pub fn depends(&self) -> Option<Relations> {
         self.0.get("Depends").map(|s| s.parse().unwrap())
     }
 
+    /// Set the packages that this package depends on.
     pub fn set_depends(&mut self, relations: Relations) {
         self.0.insert("Depends", &relations.to_string());
     }
 
+    /// Get the packages that this package suggests.
     pub fn recommends(&self) -> Option<Relations> {
         self.0.get("Recommends").map(|s| s.parse().unwrap())
     }
 
+    /// Set the packages that this package recommends.
     pub fn set_recommends(&mut self, relations: Relations) {
         self.0.insert("Recommends", &relations.to_string());
     }
 
+    /// Get the packages that this package suggests.
     pub fn suggests(&self) -> Option<Relations> {
         self.0.get("Suggests").map(|s| s.parse().unwrap())
     }
 
+    /// Set the packages that this package suggests.
     pub fn set_suggests(&mut self, relations: Relations) {
         self.0.insert("Suggests", &relations.to_string());
     }
 
+    /// Get the packages that this package enhances.
     pub fn enhances(&self) -> Option<Relations> {
         self.0.get("Enhances").map(|s| s.parse().unwrap())
     }
 
+    /// Set the packages that this package enhances.
     pub fn set_enhances(&mut self, relations: Relations) {
         self.0.insert("Enhances", &relations.to_string());
     }
 
+    /// Get the relations that this package pre-depends on.
     pub fn pre_depends(&self) -> Option<Relations> {
         self.0.get("Pre-Depends").map(|s| s.parse().unwrap())
     }
 
+    /// Set the relations that this package pre-depends on.
     pub fn set_pre_depends(&mut self, relations: Relations) {
         self.0.insert("Pre-Depends", &relations.to_string());
     }
 
+    /// Get the relations that this package breaks.
     pub fn breaks(&self) -> Option<Relations> {
         self.0.get("Breaks").map(|s| s.parse().unwrap())
     }
 
+    /// Set the relations that this package breaks.
     pub fn set_breaks(&mut self, relations: Relations) {
         self.0.insert("Breaks", &relations.to_string());
     }
 
+    /// Get the relations that this package conflicts with.
     pub fn conflicts(&self) -> Option<Relations> {
         self.0.get("Conflicts").map(|s| s.parse().unwrap())
     }
 
+    /// Set the relations that this package conflicts with.
     pub fn set_conflicts(&mut self, relations: Relations) {
         self.0.insert("Conflicts", &relations.to_string());
     }
 
+    /// Get the relations that this package replaces.
     pub fn replaces(&self) -> Option<Relations> {
         self.0.get("Replaces").map(|s| s.parse().unwrap())
     }
 
+    /// Set the relations that this package replaces.
     pub fn set_replaces(&mut self, relations: Relations) {
         self.0.insert("Replaces", &relations.to_string());
     }
 
+    /// Get the relations that this package provides.
     pub fn provides(&self) -> Option<Relations> {
         self.0.get("Provides").map(|s| s.parse().unwrap())
     }
 
+    /// Set the relations that the package provides.
     pub fn set_provides(&mut self, relations: Relations) {
         self.0.insert("Provides", &relations.to_string());
     }
 
+    /// Get the section of the package.
     pub fn section(&self) -> Option<String> {
         self.0.get("Section").map(|s| s.to_string())
     }
 
+    /// Set the section of the package.
     pub fn set_section(&mut self, section: &str) {
         self.0.insert("Section", section);
     }
 
+    /// Get the priority of the package.
     pub fn priority(&self) -> Option<Priority> {
         self.0.get("Priority").and_then(|v| v.parse().ok())
     }
 
+    /// Set the priority of the package.
     pub fn set_priority(&mut self, priority: Priority) {
         self.0.insert("Priority", priority.to_string().as_str());
     }
 
+    /// Get the description of the package.
     pub fn description(&self) -> Option<String> {
         self.0.get("Description").map(|s| s.to_string())
     }
 
+    /// Set the description of the package.
     pub fn set_description(&mut self, description: &str) {
         self.0.insert("Description", description);
     }
 
+    /// Get the upstream homepage of the package.
     pub fn homepage(&self) -> Option<url::Url> {
         self.0.get("Homepage").map(|s| s.parse().unwrap())
     }
 
+    /// Set the upstream homepage of the package.
     pub fn set_homepage(&mut self, url: &url::Url) {
         self.0.insert("Homepage", url.as_ref());
     }
 
+    /// Get the source of the package.
     pub fn source(&self) -> Option<String> {
         self.0.get("Source").map(|s| s.to_string())
     }
 
+    /// Set the source of the package.
     pub fn set_source(&mut self, source: &str) {
         self.0.insert("Source", source);
     }
 
+    /// Get the MD5 checksum of the description.
     pub fn description_md5(&self) -> Option<String> {
         self.0.get("Description-md5").map(|s| s.to_string())
     }
 
+    /// Set the MD5 checksum of the description.
     pub fn set_description_md5(&mut self, md5: &str) {
         self.0.insert("Description-md5", md5);
     }
 
+    /// Get the tags of the package.
     pub fn tags(&self, tag: &str) -> Option<Vec<String>> {
         self.0
             .get(tag)
             .map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
     }
 
+    /// Set the tags of the package.
     pub fn set_tags(&mut self, tag: &str, tags: Vec<String>) {
         self.0.insert(tag, &tags.join(", "));
     }
 
+    /// Get the filename of the package.
     pub fn filename(&self) -> Option<String> {
         self.0.get("Filename").map(|s| s.to_string())
     }
 
+    /// Set the filename of the package.
     pub fn set_filename(&mut self, filename: &str) {
         self.0.insert("Filename", filename);
     }
 
+    /// Get the size of the package.
     pub fn size(&self) -> Option<usize> {
         self.0.get("Size").map(|s| s.parse().unwrap())
     }
 
+    /// Set the size of the package.
     pub fn set_size(&mut self, size: usize) {
         self.0.insert("Size", &size.to_string());
     }
 
+    /// Get the MD5 checksum.
     pub fn md5sum(&self) -> Option<String> {
         self.0.get("MD5sum").map(|s| s.to_string())
     }
 
+    /// Set the MD5 checksum.
     pub fn set_md5sum(&mut self, md5sum: &str) {
         self.0.insert("MD5sum", md5sum);
     }
 
+    /// Get the SHA256 checksum.
     pub fn sha256(&self) -> Option<String> {
         self.0.get("SHA256").map(|s| s.to_string())
     }
 
+    /// Set the SHA256 checksum.
     pub fn set_sha256(&mut self, sha256: &str) {
         self.0.insert("SHA256", sha256);
     }
 
+    /// Get the multi-arch field.
     pub fn multi_arch(&self) -> Option<MultiArch> {
         self.0.get("Multi-Arch").map(|s| s.parse().unwrap())
     }
 
+    /// Set the multi-arch field.
     pub fn set_multi_arch(&mut self, arch: MultiArch) {
         self.0.insert("Multi-Arch", arch.to_string().as_str());
     }
@@ -649,6 +786,7 @@ impl std::str::FromStr for Package {
     }
 }
 
+/// A release in the APT package manager.
 pub struct Release(deb822_lossless::Paragraph);
 
 #[cfg(feature = "python-debian")]
@@ -672,43 +810,53 @@ impl pyo3::FromPyObject<'_> for Release {
     }
 }
 
-impl Release{
+impl Release {
+    /// Create a new release
     pub fn new(paragraph: deb822_lossless::Paragraph) -> Self {
         Self(paragraph)
     }
 
+    /// Get the origin of the release
     pub fn origin(&self) -> Option<String> {
         self.0.get("Origin").map(|s| s.to_string())
     }
 
+    /// Set the origin of the release
     pub fn set_origin(&mut self, origin: &str) {
         self.0.insert("Origin", origin);
     }
 
+    /// Get the label of the release
     pub fn label(&self) -> Option<String> {
         self.0.get("Label").map(|s| s.to_string())
     }
 
+    /// Set the label of the release
     pub fn set_label(&mut self, label: &str) {
         self.0.insert("Label", label);
     }
 
+    /// Get the suite of the release
     pub fn suite(&self) -> Option<String> {
         self.0.get("Suite").map(|s| s.to_string())
     }
 
+    /// Set the suite of the release
     pub fn set_suite(&mut self, suite: &str) {
         self.0.insert("Suite", suite);
     }
 
+    /// Get the codename of the release
     pub fn codename(&self) -> Option<String> {
         self.0.get("Codename").map(|s| s.to_string())
     }
 
+    /// Set the codename of the release
     pub fn set_codename(&mut self, codename: &str) {
         self.0.insert("Codename", codename);
     }
 
+    /// Get the URLs at which the changelogs can be found
     pub fn changelogs(&self) -> Option<Vec<String>> {
         self.0.get("Changelogs").map(|s| {
             s.split(',')
@@ -717,46 +865,78 @@ impl Release{
         })
     }
 
+    /// Set the URLs at which the changelogs can be found
     pub fn set_changelogs(&mut self, changelogs: Vec<String>) {
         self.0.insert("Changelogs", &changelogs.join(", "));
     }
 
     #[cfg(feature = "chrono")]
+    /// Get the date of the release
     pub fn date(&self) -> Option<chrono::DateTime<chrono::FixedOffset>> {
-        self.0.get("Date").as_ref().map(|s| chrono::DateTime::parse_from_rfc2822(s).unwrap())
+        self.0
+            .get("Date")
+            .as_ref()
+            .map(|s| chrono::DateTime::parse_from_rfc2822(s).unwrap())
     }
 
     #[cfg(feature = "chrono")]
+    /// Set the date of the release
     pub fn set_date(&mut self, date: chrono::DateTime<chrono::FixedOffset>) {
         self.0.insert("Date", date.to_rfc2822().as_str());
     }
 
     #[cfg(feature = "chrono")]
+    /// Get the date until the release is valid
     pub fn valid_until(&self) -> Option<chrono::DateTime<chrono::FixedOffset>> {
-        self.0.get("Valid-Until").as_ref().map(|s| chrono::DateTime::parse_from_rfc2822(s).unwrap())
+        self.0
+            .get("Valid-Until")
+            .as_ref()
+            .map(|s| chrono::DateTime::parse_from_rfc2822(s).unwrap())
     }
 
     #[cfg(feature = "chrono")]
+    /// Set the date until the release is valid
     pub fn set_valid_until(&mut self, date: chrono::DateTime<chrono::FixedOffset>) {
         self.0.insert("Valid-Until", date.to_rfc2822().as_str());
     }
 
+    /// Get whether acquire by hash is enabled
     pub fn acquire_by_hash(&self) -> bool {
-        self.0.get("Acquire-By-Hash").map(|s| s == "yes").unwrap_or(false)
+        self.0
+            .get("Acquire-By-Hash")
+            .map(|s| s == "yes")
+            .unwrap_or(false)
     }
 
+    /// Set whether acquire by hash is enabled
     pub fn set_acquire_by_hash(&mut self, acquire_by_hash: bool) {
-        self.0.insert("Acquire-By-Hash", if acquire_by_hash { "yes" } else { "no" });
+        self.0.insert(
+            "Acquire-By-Hash",
+            if acquire_by_hash { "yes" } else { "no" },
+        );
     }
 
+    /// Get whether the release has no support for architecture all
     pub fn no_support_for_architecture_all(&self) -> bool {
-        self.0.get("No-Support-For-Architecture-All").map(|s| s == "yes").unwrap_or(false)
+        self.0
+            .get("No-Support-For-Architecture-All")
+            .map(|s| s == "yes")
+            .unwrap_or(false)
     }
 
+    /// Set whether the release has no support for architecture all
     pub fn set_no_support_for_architecture_all(&mut self, no_support_for_architecture_all: bool) {
-        self.0.insert("No-Support-For-Architecture-All", if no_support_for_architecture_all { "yes" } else { "no" });
+        self.0.insert(
+            "No-Support-For-Architecture-All",
+            if no_support_for_architecture_all {
+                "yes"
+            } else {
+                "no"
+            },
+        );
     }
 
+    /// Get the architectures
     pub fn architectures(&self) -> Option<Vec<String>> {
         self.0.get("Architectures").map(|s| {
             s.split_whitespace()
@@ -765,10 +945,12 @@ impl Release{
         })
     }
 
+    /// Set the architectures
     pub fn set_architectures(&mut self, architectures: Vec<String>) {
         self.0.insert("Architectures", &architectures.join(" "));
     }
 
+    /// Get the components
     pub fn components(&self) -> Option<Vec<String>> {
         self.0.get("Components").map(|s| {
             s.split_whitespace()
@@ -777,18 +959,22 @@ impl Release{
         })
     }
 
+    /// Set the components
     pub fn set_components(&mut self, components: Vec<String>) {
         self.0.insert("Components", &components.join(" "));
     }
 
+    /// Get the description
     pub fn description(&self) -> Option<String> {
         self.0.get("Description").map(|s| s.to_string())
     }
 
+    /// Set the description
     pub fn set_description(&mut self, description: &str) {
         self.0.insert("Description", description);
     }
 
+    /// Get the MD5 checksums
     pub fn checksums_md5(&self) -> Vec<MD5Checksum> {
         self.0
             .get("MD5Sum")
@@ -800,6 +986,7 @@ impl Release{
             .unwrap_or_default()
     }
 
+    /// Set the MD5 checksums
     pub fn set_checksums_md5(&mut self, files: Vec<MD5Checksum>) {
         self.0.insert(
             "MD5Sum",
@@ -811,6 +998,7 @@ impl Release{
         );
     }
 
+    /// Get the SHA1 checksums
     pub fn checksums_sha1(&self) -> Vec<Sha1Checksum> {
         self.0
             .get("SHA1")
@@ -822,6 +1010,7 @@ impl Release{
             .unwrap_or_default()
     }
 
+    /// Set the SHA1 checksums
     pub fn set_checksums_sha1(&mut self, checksums: Vec<Sha1Checksum>) {
         self.0.insert(
             "SHA1",
@@ -833,6 +1022,7 @@ impl Release{
         );
     }
 
+    /// Get the SHA256 checksums
     pub fn checksums_sha256(&self) -> Vec<Sha256Checksum> {
         self.0
             .get("SHA256")
@@ -844,6 +1034,7 @@ impl Release{
             .unwrap_or_default()
     }
 
+    /// Set the SHA256 checksums
     pub fn set_checksums_sha256(&mut self, checksums: Vec<Sha256Checksum>) {
         self.0.insert(
             "SHA256",
@@ -855,6 +1046,7 @@ impl Release{
         );
     }
 
+    /// Get the SHA512 checksums
     pub fn checksums_sha512(&self) -> Vec<Sha512Checksum> {
         self.0
             .get("SHA512")
@@ -866,6 +1058,7 @@ impl Release{
             .unwrap_or_default()
     }
 
+    /// Set the SHA512 checksums
     pub fn set_checksums_sha512(&mut self, checksums: Vec<Sha512Checksum>) {
         self.0.insert(
             "SHA512",
@@ -876,8 +1069,6 @@ impl Release{
                 .join("\n"),
         );
     }
-
-
 }
 
 impl std::str::FromStr for Release {
@@ -919,7 +1110,7 @@ mod tests {
     #[test]
     fn test_files() {
         let s = "md5sum 1234 filename";
-        let f: super::MD5Checksum= s.parse().unwrap();
+        let f: super::MD5Checksum = s.parse().unwrap();
         assert_eq!(f.md5sum, "md5sum");
         assert_eq!(f.size, 1234);
         assert_eq!(f.filename, "filename");
@@ -1101,9 +1292,31 @@ Multi-Arch: same
         assert_eq!(release.origin(), Some("Debian".to_string()));
         assert_eq!(release.label(), Some("Debian".to_string()));
         assert_eq!(release.suite(), Some("testing".to_string()));
-        assert_eq!(release.architectures(), vec!["all".to_string(), "amd64".to_string(), "arm64".to_string(), "armel".to_string(), "armhf".to_string()].into());
-        assert_eq!(release.components(), vec!["main".to_string(), "contrib".to_string(), "non-free-firmware".to_string(), "non-free".to_string()].into());
-        assert_eq!(release.description(), Some("Debian x.y Testing distribution - Not Released".to_string()));
+        assert_eq!(
+            release.architectures(),
+            vec![
+                "all".to_string(),
+                "amd64".to_string(),
+                "arm64".to_string(),
+                "armel".to_string(),
+                "armhf".to_string()
+            ]
+            .into()
+        );
+        assert_eq!(
+            release.components(),
+            vec![
+                "main".to_string(),
+                "contrib".to_string(),
+                "non-free-firmware".to_string(),
+                "non-free".to_string()
+            ]
+            .into()
+        );
+        assert_eq!(
+            release.description(),
+            Some("Debian x.y Testing distribution - Not Released".to_string())
+        );
         assert_eq!(318, release.checksums_md5().len());
     }
 }
