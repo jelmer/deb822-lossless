@@ -52,3 +52,9 @@ pub enum Indentation {
     /// The number of spaces to use for indentation.
     Spaces(u32),
 }
+
+impl Default for Indentation {
+    fn default() -> Self {
+        Indentation::Spaces(4)
+    }
+}
