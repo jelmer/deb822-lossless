@@ -2,11 +2,11 @@
 name = "dep3"
 edition = "2021"
 license = "Apache-2.0"
-version = "0.1.26"
+version = "0.1.27"
 description = "A library for parsing and generating DEP-3 headers."
 homepage = "https://github.com/jelmer/deb822-lossless"
 repository = "https://github.com/jelmer/deb822-lossless"
-keywords = ["debian", "deb822", "dep3", "rfc822", "lossless", "edit", "r"]
+keywords = ["debian", "patch", "dep3", "lossless"]
 categories = ["parser-implementations"]
 
 [dependencies]
