@@ -90,7 +90,7 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.1.26"
+version = "0.1.27"
 dependencies = [
  "deb822-derive",
  "pyo3",

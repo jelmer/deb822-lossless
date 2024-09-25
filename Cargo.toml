@@ -6,8 +6,8 @@ license = "Apache-2.0"
 description = "A lossless parser for deb822 files"
 repository = { workspace = true }
 homepage = { workspace = true }
-version = "0.1.26"
-keywords = ["debian", "deb822", "control", "rfc822", "lossless", "edit"]
+version = "0.1.27"
+keywords = ["debian", "deb822", "control", "rfc822", "edit"]
 categories = ["parser-implementations"]
 
 [workspace]
