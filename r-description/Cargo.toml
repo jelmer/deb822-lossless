@@ -2,11 +2,11 @@
 name = "r-description"
 description = "Rust library for parsing and generating R DESCRIPTION files"
 edition = "2021"
-version = "0.1.1"
+version = "0.1.2"
 repository.workspace = true
 homepage.workspace = true
 license = "Apache-2.0"
-keywords = ["debian", "deb822", "r-description", "rfc822", "lossless", "edit", "r"]
+keywords = ["r-description", "rfc822", "lossless", "edit", "r"]
 categories = ["parser-implementations"]
 
 [dependencies]
