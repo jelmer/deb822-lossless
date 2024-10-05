@@ -57,6 +57,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_whitespace(c: char) -> bool {
+        // deb822(5) says that continuation lines
+        // start with a space (U+0020) or a tab (U+0009).
         c == ' ' || c == '\t'
     }
 
@@ -65,7 +67,11 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_valid_key_char(c: char) -> bool {
-        c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '@'
+        // deb822(5) says valid field characters are US-ASCII
+        // characters excluding control characters, space and colon
+        // (i.e. characters in the ranges U+0021 to U+0039 and U+003B to U+007E).
+        // I.e. printable characters except for space and colon.
+        c.is_ascii_graphic() && c != ':' && c != ' '
     }
 
     fn read_while<F>(&mut self, predicate: F) -> String
@@ -115,7 +121,11 @@ impl<'a> Lexer<'a> {
                     self.colon_count = 0;
                     Some((SyntaxKind::COMMENT, format!("#{}", comment)))
                 }
-                _ if Self::is_valid_key_char(c) && self.start_of_line && self.indent == 0 => {
+                _ if Self::is_valid_key_char(c)
+                    && c != '-'
+                    && self.start_of_line
+                    && self.indent == 0 =>
+                {
                     let key = self.read_while(Self::is_valid_key_char);
                     self.start_of_line = false;
                     Some((SyntaxKind::KEY, key))
@@ -321,6 +331,27 @@ Section: vcs
                 .map(|(kind, text)| (*kind, text.as_str()))
                 .collect::<Vec<_>>(),
             vec![(VALUE, "syncthing-gtk")]
+        );
+    }
+
+    #[test]
+    fn test_lex_odd_key_characters() {
+        let text = "foo-bar: baz\n";
+
+        let tokens = super::lex(text);
+
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|(kind, text)| (*kind, text.as_str()))
+                .collect::<Vec<_>>(),
+            vec![
+                (KEY, "foo-bar"),
+                (COLON, ":"),
+                (WHITESPACE, " "),
+                (VALUE, "baz"),
+                (NEWLINE, "\n")
+            ]
         );
     }
 }
