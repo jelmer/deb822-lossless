@@ -1,20 +1,60 @@
-use crate::Paragraph;
+//! Conversion between Deb822-like paragraphs and Rust objects.
+
+/// Abstract trait for accessing and modifying key-value pairs in a paragraph.
+pub trait Deb822LikeParagraph: FromIterator<(String, String)> {
+    /// Get the value for the given key.
+    fn get(&self, key: &str) -> Option<String>;
+
+    /// Insert a key-value pair.
+    fn set(&mut self, key: &str, value: &str);
+
+    /// Remove a key-value pair.
+    fn remove(&mut self, key: &str);
+}
+
+impl Deb822LikeParagraph for crate::lossy::Paragraph {
+    fn get(&self, key: &str) -> Option<String> {
+        crate::lossy::Paragraph::get(self, key).map(|v| v.to_string())
+    }
+
+    fn set(&mut self, key: &str, value: &str) {
+        crate::lossy::Paragraph::set(self, key, value);
+    }
+
+    fn remove(&mut self, key: &str) {
+        crate::lossy::Paragraph::remove(self, key);
+    }
+}
+
+impl Deb822LikeParagraph for crate::lossless::Paragraph {
+    fn get(&self, key: &str) -> Option<String> {
+        crate::lossless::Paragraph::get(self, key).map(|v| v.to_string())
+    }
+
+    fn set(&mut self, key: &str, value: &str) {
+        crate::lossless::Paragraph::set(self, key, value);
+    }
+
+    fn remove(&mut self, key: &str) {
+        crate::lossless::Paragraph::remove(self, key);
+    }
+}
 
 /// Convert a paragraph to this object.
-pub trait FromDeb822Paragraph {
+pub trait FromDeb822Paragraph<P: Deb822LikeParagraph> {
     /// Convert a paragraph to this object.
-    fn from_paragraph(paragraph: &Paragraph) -> Result<Self, String>
+    fn from_paragraph(paragraph: &P) -> Result<Self, String>
     where
         Self: Sized;
 }
 
 /// Convert this object to a paragraph.
-pub trait ToDeb822Paragraph {
+pub trait ToDeb822Paragraph<P: Deb822LikeParagraph> {
     /// Convert this object to a paragraph.
-    fn to_paragraph(&self) -> Paragraph;
+    fn to_paragraph(&self) -> P;
 
     /// Update the given paragraph with the values from this object.
-    fn update_paragraph(&self, paragraph: &mut Paragraph);
+    fn update_paragraph(&self, paragraph: &mut P);
 }
 
 #[cfg(test)]
@@ -43,9 +83,9 @@ mod tests {
                 blah: None,
             };
 
-            let paragraph = foo.to_paragraph();
-            assert_eq!(paragraph.get("bar"), Some("hello".to_string()));
-            assert_eq!(paragraph.get("baz"), Some("42".to_string()));
+            let paragraph: crate::lossy::Paragraph = foo.to_paragraph();
+            assert_eq!(paragraph.get("bar"), Some("hello"));
+            assert_eq!(paragraph.get("baz"), Some("42"));
             assert_eq!(paragraph.get("blah"), None);
         }
 
@@ -62,8 +102,8 @@ mod tests {
                 baz: None,
             };
 
-            let paragraph = foo.to_paragraph();
-            assert_eq!(paragraph.get("bar"), Some("hello".to_string()));
+            let paragraph: crate::lossy::Paragraph = foo.to_paragraph();
+            assert_eq!(paragraph.get("bar"), Some("hello"));
             assert_eq!(paragraph.get("baz"), None);
 
             assert_eq!("bar: hello\n", paragraph.to_string());
@@ -71,7 +111,8 @@ mod tests {
 
         #[test]
         fn test_update_preserve_comments() {
-            let mut para: Paragraph = "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
+            let mut para: crate::lossless::Paragraph =
+                "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
 
             #[derive(FromDeb822, ToDeb822)]
             struct Foo {
@@ -94,7 +135,8 @@ mod tests {
 
         #[test]
         fn test_deserialize_with() {
-            let mut para: Paragraph = "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
+            let mut para: crate::lossless::Paragraph =
+                "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
 
             fn to_bool(s: &str) -> Result<bool, String> {
                 Ok(s == "ja")
@@ -117,7 +159,7 @@ mod tests {
 
             let mut foo: Foo = Foo::from_paragraph(&para).unwrap();
             assert_eq!(foo.bar, "bar");
-            assert_eq!(foo.baz, false);
+            assert!(!foo.baz);
 
             foo.bar = "new".to_string();
 
@@ -126,6 +168,30 @@ mod tests {
             assert_eq!(para.get("bar"), Some("new".to_string()));
             assert_eq!(para.get("baz"), Some("nee".to_string()));
             assert_eq!(para.to_string(), "bar: new\n# comment\nbaz: nee\n");
+        }
+
+        #[test]
+        fn test_update_remove() {
+            let mut para: crate::lossy::Paragraph =
+                "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
+
+            #[derive(FromDeb822, ToDeb822)]
+            struct Foo {
+                bar: Option<String>,
+                baz: String,
+            }
+
+            let mut foo: Foo = Foo::from_paragraph(&para).unwrap();
+            assert_eq!(foo.bar, Some("bar".to_string()));
+            assert_eq!(foo.baz, "blah");
+
+            foo.bar = None;
+
+            foo.update_paragraph(&mut para);
+
+            assert_eq!(para.get("bar"), None);
+            assert_eq!(para.get("baz"), Some("blah"));
+            assert_eq!(para.to_string(), "baz: blah\n");
         }
     }
 }

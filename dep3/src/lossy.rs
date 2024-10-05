@@ -79,7 +79,7 @@ pub struct PatchHeader {
 
 impl std::fmt::Display for PatchHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let paragraph = self.to_paragraph();
+        let paragraph: deb822_lossless::lossy::Paragraph = self.to_paragraph();
         paragraph.fmt(f)
     }
 }
