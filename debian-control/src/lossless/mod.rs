@@ -5,6 +5,7 @@
 //! preserves all formatting as well as any possible errors in the files.
 
 pub mod apt;
+pub mod buildinfo;
 pub mod changes;
 pub mod control;
 pub mod relations;

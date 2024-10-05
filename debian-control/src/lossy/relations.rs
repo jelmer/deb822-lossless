@@ -272,17 +272,23 @@ impl std::str::FromStr for Relation {
             }
             let constraint = constraint.parse()?;
             eat_whitespace(&mut tokens);
-            let version_str = match tokens.next() {
-                Some((IDENT, s)) => s,
-                _ => return Err("Expected version".to_string()),
-            };
-            let version = version_str
+            // Read IDENT and COLON tokens until we see R_PARENS
+            let mut version_string = String::new();
+            while let Some((kind, s)) = tokens.peek() {
+                match kind {
+                    R_PARENS => break,
+                    IDENT | COLON => version_string.push_str(s),
+                    n => return Err(format!("Unexpected token: {:?}", n)),
+                }
+                tokens.next();
+            }
+            let version = version_string
                 .parse()
                 .map_err(|e: debversion::ParseError| e.to_string())?;
             eat_whitespace(&mut tokens);
             if let Some((R_PARENS, _)) = tokens.next() {
             } else {
-                return Err("Expected ')'".to_string());
+                return Err(format!("Expected ')', found {:?}", tokens.next()));
             }
             Some((constraint, version))
         } else {
@@ -368,7 +374,8 @@ impl std::str::FromStr for Relations {
         for entry in s.split(',') {
             let entry = entry.trim();
             if entry.is_empty() {
-                return Err("Empty entry".to_string());
+                // Ignore empty entries.
+                continue;
             }
             let entry_relations = entry.split('|').map(|relation| {
                 let relation = relation.trim();

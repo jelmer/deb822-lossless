@@ -12,6 +12,18 @@ pub enum Error {
 
     /// Unexpected end-of-file.
     UnexpectedEof,
+
+    /// Expected end-of-file.
+    ExpectedEof,
+
+    /// IO error.
+    Io(std::io::Error),
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Self::Io(e)
+    }
 }
 
 impl std::fmt::Display for Error {
@@ -19,6 +31,8 @@ impl std::fmt::Display for Error {
         match self {
             Self::UnexpectedToken(_k, t) => write!(f, "Unexpected token: {}", t),
             Self::UnexpectedEof => f.write_str("Unexpected end-of-file"),
+            Self::Io(e) => write!(f, "IO error: {}", e),
+            Self::ExpectedEof => f.write_str("Expected end-of-file"),
         }
     }
 }
@@ -113,6 +127,21 @@ impl std::fmt::Display for Deb822 {
     }
 }
 
+impl std::str::FromStr for Paragraph {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let doc: Deb822 = s.parse().map_err(|_| Error::ExpectedEof)?;
+        if doc.len() == 0 {
+            return Err(Error::UnexpectedEof);
+        } else if doc.len() > 1 {
+            return Err(Error::ExpectedEof);
+        } else {
+            Ok(doc.0.into_iter().next().unwrap())
+        }
+    }
+}
+
 /// A deb822 document.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Deb822(pub Vec<Paragraph>);
@@ -136,6 +165,13 @@ impl Deb822 {
     /// Iterate over the paragraphs in the document, mutably.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Paragraph> {
         self.0.iter_mut()
+    }
+
+    /// Read from a reader.
+    pub fn from_reader<R: std::io::Read>(mut r: R) -> Result<Self, Error> {
+        let mut buf = String::new();
+        r.read_to_string(&mut buf)?;
+        buf.parse()
     }
 }
 
