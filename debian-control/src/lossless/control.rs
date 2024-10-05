@@ -114,7 +114,7 @@ impl Control {
     /// ```
     pub fn add_source(&mut self, name: &str) -> Source {
         let mut p = self.0.add_paragraph();
-        p.insert("Source", name);
+        p.set("Source", name);
         self.source().unwrap()
     }
 
@@ -135,7 +135,7 @@ impl Control {
     /// ```
     pub fn add_binary(&mut self, name: &str) -> Binary {
         let mut p = self.0.add_paragraph();
-        p.insert("Package", name);
+        p.set("Package", name);
         Binary(p)
     }
 
@@ -294,7 +294,7 @@ impl Source {
 
     /// Set the name of the source package.
     pub fn set_name(&mut self, name: &str) {
-        self.0.insert("Source", name);
+        self.0.set("Source", name);
     }
 
     /// The default section of the packages built from this source package.
@@ -305,7 +305,7 @@ impl Source {
     /// Set the section of the source package
     pub fn set_section(&mut self, section: Option<&str>) {
         if let Some(section) = section {
-            self.0.insert("Section", section);
+            self.0.set("Section", section);
         } else {
             self.0.remove("Section");
         }
@@ -319,7 +319,7 @@ impl Source {
     /// Set the priority of the source package
     pub fn set_priority(&mut self, priority: Option<Priority>) {
         if let Some(priority) = priority {
-            self.0.insert("Priority", priority.to_string().as_str());
+            self.0.set("Priority", priority.to_string().as_str());
         } else {
             self.0.remove("Priority");
         }
@@ -332,7 +332,7 @@ impl Source {
 
     /// Set the maintainer of the package
     pub fn set_maintainer(&mut self, maintainer: &str) {
-        self.0.insert("Maintainer", maintainer);
+        self.0.set("Maintainer", maintainer);
     }
 
     /// The build dependencies of the package.
@@ -342,8 +342,7 @@ impl Source {
 
     /// Set the Build-Depends field
     pub fn set_build_depends(&mut self, relations: &Relations) {
-        self.0
-            .insert("Build-Depends", relations.to_string().as_str());
+        self.0.set("Build-Depends", relations.to_string().as_str());
     }
 
     /// Return the Build-Depends-Indep field
@@ -384,7 +383,7 @@ impl Source {
 
     /// Set the Standards-Version field
     pub fn set_standards_version(&mut self, version: &str) {
-        self.0.insert("Standards-Version", version);
+        self.0.set("Standards-Version", version);
     }
 
     /// Return the upstrea mHomepage
@@ -394,7 +393,7 @@ impl Source {
 
     /// Set the Homepage field
     pub fn set_homepage(&mut self, homepage: &url::Url) {
-        self.0.insert("Homepage", homepage.to_string().as_str());
+        self.0.set("Homepage", homepage.to_string().as_str());
     }
 
     /// Return the Vcs-Git field
@@ -404,7 +403,7 @@ impl Source {
 
     /// Set the Vcs-Git field
     pub fn set_vcs_git(&mut self, url: &str) {
-        self.0.insert("Vcs-Git", url);
+        self.0.set("Vcs-Git", url);
     }
 
     /// Return the Vcs-Browser field
@@ -414,7 +413,7 @@ impl Source {
 
     /// Set the Vcs-Svn field
     pub fn set_vcs_svn(&mut self, url: &str) {
-        self.0.insert("Vcs-Svn", url);
+        self.0.set("Vcs-Svn", url);
     }
 
     /// Return the Vcs-Bzr field
@@ -424,7 +423,7 @@ impl Source {
 
     /// Set the Vcs-Bzr field
     pub fn set_vcs_bzr(&mut self, url: &str) {
-        self.0.insert("Vcs-Bzr", url);
+        self.0.set("Vcs-Bzr", url);
     }
 
     /// Return the Vcs-Arch field
@@ -434,7 +433,7 @@ impl Source {
 
     /// Set the Vcs-Arch field
     pub fn set_vcs_arch(&mut self, url: &str) {
-        self.0.insert("Vcs-Arch", url);
+        self.0.set("Vcs-Arch", url);
     }
 
     /// Return the Vcs-Svk field
@@ -444,7 +443,7 @@ impl Source {
 
     /// Set the Vcs-Svk field
     pub fn set_vcs_svk(&mut self, url: &str) {
-        self.0.insert("Vcs-Svk", url);
+        self.0.set("Vcs-Svk", url);
     }
 
     /// Return the Vcs-Darcs field
@@ -454,7 +453,7 @@ impl Source {
 
     /// Set the Vcs-Darcs field
     pub fn set_vcs_darcs(&mut self, url: &str) {
-        self.0.insert("Vcs-Darcs", url);
+        self.0.set("Vcs-Darcs", url);
     }
 
     /// Return the Vcs-Mtn field
@@ -464,7 +463,7 @@ impl Source {
 
     /// Set the Vcs-Mtn field
     pub fn set_vcs_mtn(&mut self, url: &str) {
-        self.0.insert("Vcs-Mtn", url);
+        self.0.set("Vcs-Mtn", url);
     }
 
     /// Return the Vcs-Cvs field
@@ -474,7 +473,7 @@ impl Source {
 
     /// Set the Vcs-Cvs field
     pub fn set_vcs_cvs(&mut self, url: &str) {
-        self.0.insert("Vcs-Cvs", url);
+        self.0.set("Vcs-Cvs", url);
     }
 
     /// Return the Vcs-Hg field
@@ -484,7 +483,7 @@ impl Source {
 
     /// Set the Vcs-Hg field
     pub fn set_vcs_hg(&mut self, url: &str) {
-        self.0.insert("Vcs-Hg", url);
+        self.0.set("Vcs-Hg", url);
     }
 
     /// Return the Vcs-Browser field
@@ -505,7 +504,7 @@ impl Source {
     /// Set the Vcs-Browser field
     pub fn set_vcs_browser(&mut self, url: Option<&str>) {
         if let Some(url) = url {
-            self.0.insert("Vcs-Browser", url);
+            self.0.set("Vcs-Browser", url);
         } else {
             self.0.remove("Vcs-Browser");
         }
@@ -520,7 +519,7 @@ impl Source {
 
     /// Set the uploaders field
     pub fn set_uploaders(&mut self, uploaders: &[&str]) {
-        self.0.insert(
+        self.0.set(
             "Uploaders",
             uploaders
                 .iter()
@@ -539,7 +538,7 @@ impl Source {
     /// Set the architecture field
     pub fn set_architecture(&mut self, arch: Option<&str>) {
         if let Some(arch) = arch {
-            self.0.insert("Architecture", arch);
+            self.0.set("Architecture", arch);
         } else {
             self.0.remove("Architecture");
         }
@@ -558,7 +557,7 @@ impl Source {
 
     /// Set the Rules-Requires-Root field
     pub fn set_rules_requires_root(&mut self, requires_root: bool) {
-        self.0.insert(
+        self.0.set(
             "Rules-Requires-Root",
             if requires_root { "yes" } else { "no" },
         );
@@ -571,7 +570,7 @@ impl Source {
 
     /// Set the Testsuite field
     pub fn set_testsuite(&mut self, testsuite: &str) {
-        self.0.insert("Testsuite", testsuite);
+        self.0.set("Testsuite", testsuite);
     }
 }
 
@@ -671,7 +670,7 @@ impl Binary {
 
     /// Set the name of the package
     pub fn set_name(&mut self, name: &str) {
-        self.0.insert("Package", name);
+        self.0.set("Package", name);
     }
 
     /// The section of the package.
@@ -682,7 +681,7 @@ impl Binary {
     /// Set the section
     pub fn set_section(&mut self, section: Option<&str>) {
         if let Some(section) = section {
-            self.0.insert("Section", section);
+            self.0.set("Section", section);
         } else {
             self.0.remove("Section");
         }
@@ -696,7 +695,7 @@ impl Binary {
     /// Set the priority of the package
     pub fn set_priority(&mut self, priority: Option<Priority>) {
         if let Some(priority) = priority {
-            self.0.insert("Priority", priority.to_string().as_str());
+            self.0.set("Priority", priority.to_string().as_str());
         } else {
             self.0.remove("Priority");
         }
@@ -710,7 +709,7 @@ impl Binary {
     /// Set the architecture of the package
     pub fn set_architecture(&mut self, arch: Option<&str>) {
         if let Some(arch) = arch {
-            self.0.insert("Architecture", arch);
+            self.0.set("Architecture", arch);
         } else {
             self.0.remove("Architecture");
         }
@@ -724,7 +723,7 @@ impl Binary {
     /// Set the Depends field
     pub fn set_depends(&mut self, depends: Option<&Relations>) {
         if let Some(depends) = depends {
-            self.0.insert("Depends", depends.to_string().as_str());
+            self.0.set("Depends", depends.to_string().as_str());
         } else {
             self.0.remove("Depends");
         }
@@ -738,7 +737,7 @@ impl Binary {
     /// Set the Recommends field
     pub fn set_recommends(&mut self, recommends: Option<&Relations>) {
         if let Some(recommends) = recommends {
-            self.0.insert("Recommends", recommends.to_string().as_str());
+            self.0.set("Recommends", recommends.to_string().as_str());
         } else {
             self.0.remove("Recommends");
         }
@@ -752,7 +751,7 @@ impl Binary {
     /// Set the Suggests field
     pub fn set_suggests(&mut self, suggests: Option<&Relations>) {
         if let Some(suggests) = suggests {
-            self.0.insert("Suggests", suggests.to_string().as_str());
+            self.0.set("Suggests", suggests.to_string().as_str());
         } else {
             self.0.remove("Suggests");
         }
@@ -766,7 +765,7 @@ impl Binary {
     /// Set the Enhances field
     pub fn set_enhances(&mut self, enhances: Option<&Relations>) {
         if let Some(enhances) = enhances {
-            self.0.insert("Enhances", enhances.to_string().as_str());
+            self.0.set("Enhances", enhances.to_string().as_str());
         } else {
             self.0.remove("Enhances");
         }
@@ -780,8 +779,7 @@ impl Binary {
     /// Set the Pre-Depends field
     pub fn set_pre_depends(&mut self, pre_depends: Option<&Relations>) {
         if let Some(pre_depends) = pre_depends {
-            self.0
-                .insert("Pre-Depends", pre_depends.to_string().as_str());
+            self.0.set("Pre-Depends", pre_depends.to_string().as_str());
         } else {
             self.0.remove("Pre-Depends");
         }
@@ -795,7 +793,7 @@ impl Binary {
     /// Set the Breaks field
     pub fn set_breaks(&mut self, breaks: Option<&Relations>) {
         if let Some(breaks) = breaks {
-            self.0.insert("Breaks", breaks.to_string().as_str());
+            self.0.set("Breaks", breaks.to_string().as_str());
         } else {
             self.0.remove("Breaks");
         }
@@ -809,7 +807,7 @@ impl Binary {
     /// Set the Conflicts field
     pub fn set_conflicts(&mut self, conflicts: Option<&Relations>) {
         if let Some(conflicts) = conflicts {
-            self.0.insert("Conflicts", conflicts.to_string().as_str());
+            self.0.set("Conflicts", conflicts.to_string().as_str());
         } else {
             self.0.remove("Conflicts");
         }
@@ -823,7 +821,7 @@ impl Binary {
     /// Set the Replaces field
     pub fn set_replaces(&mut self, replaces: Option<&Relations>) {
         if let Some(replaces) = replaces {
-            self.0.insert("Replaces", replaces.to_string().as_str());
+            self.0.set("Replaces", replaces.to_string().as_str());
         } else {
             self.0.remove("Replaces");
         }
@@ -837,7 +835,7 @@ impl Binary {
     /// Set the Provides field
     pub fn set_provides(&mut self, provides: Option<&Relations>) {
         if let Some(provides) = provides {
-            self.0.insert("Provides", provides.to_string().as_str());
+            self.0.set("Provides", provides.to_string().as_str());
         } else {
             self.0.remove("Provides");
         }
@@ -851,8 +849,7 @@ impl Binary {
     /// Set the Built-Using field
     pub fn set_built_using(&mut self, built_using: Option<&Relations>) {
         if let Some(built_using) = built_using {
-            self.0
-                .insert("Built-Using", built_using.to_string().as_str());
+            self.0.set("Built-Using", built_using.to_string().as_str());
         } else {
             self.0.remove("Built-Using");
         }
@@ -866,7 +863,7 @@ impl Binary {
     /// Set the Multi-Arch field
     pub fn set_multi_arch(&mut self, multi_arch: Option<MultiArch>) {
         if let Some(multi_arch) = multi_arch {
-            self.0.insert("Multi-Arch", multi_arch.to_string().as_str());
+            self.0.set("Multi-Arch", multi_arch.to_string().as_str());
         } else {
             self.0.remove("Multi-Arch");
         }
@@ -880,7 +877,7 @@ impl Binary {
     /// Set whether the package is essential
     pub fn set_essential(&mut self, essential: bool) {
         if essential {
-            self.0.insert("Essential", "yes");
+            self.0.set("Essential", "yes");
         } else {
             self.0.remove("Essential");
         }
@@ -894,7 +891,7 @@ impl Binary {
     /// Set the binary package description
     pub fn set_description(&mut self, description: Option<&str>) {
         if let Some(description) = description {
-            self.0.insert("Description", description);
+            self.0.set("Description", description);
         } else {
             self.0.remove("Description");
         }
@@ -907,7 +904,7 @@ impl Binary {
 
     /// Set the upstream homepage
     pub fn set_homepage(&mut self, url: &url::Url) {
-        self.0.insert("Homepage", url.as_str());
+        self.0.set("Homepage", url.as_str());
     }
 }
 
@@ -985,7 +982,7 @@ Description: this is the short description
         let mut control = Control::new();
         let deb822 = control.as_mut_deb822();
         let mut p = deb822.add_paragraph();
-        p.insert("Source", "foo");
+        p.set("Source", "foo");
         assert_eq!(control.source().unwrap().name(), Some("foo".to_owned()));
     }
 

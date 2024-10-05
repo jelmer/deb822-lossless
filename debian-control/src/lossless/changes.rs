@@ -87,7 +87,7 @@ impl Changes {
 
     /// Set the format of the Changes file.
     pub fn set_format(&mut self, value: &str) {
-        self.0.insert("Format", value);
+        self.0.set("Format", value);
     }
 
     /// Returns the name of the source package.

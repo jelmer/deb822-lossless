@@ -725,8 +725,15 @@ impl Paragraph {
         }
     }
 
-    /// Add a new field to the paragraph.
+    /// Insert a new field
     pub fn insert(&mut self, key: &str, value: &str) {
+        let entry = Entry::new(key, value);
+        let count = self.0.children_with_tokens().count();
+        self.0.splice_children(count..count, vec![entry.0.into()]);
+    }
+
+    /// Set a field in the paragraph
+    pub fn set(&mut self, key: &str, value: &str) {
         let new_entry = Entry::new(key, value);
 
         for entry in self.entries() {
@@ -738,9 +745,9 @@ impl Paragraph {
                 return;
             }
         }
-        let entry = Entry::new(key, value);
         let count = self.0.children_with_tokens().count();
-        self.0.splice_children(count..count, vec![entry.0.into()]);
+        self.0
+            .splice_children(count..count, vec![new_entry.0.into()]);
     }
 
     /// Rename the given field in the paragraph.
@@ -1281,7 +1288,7 @@ Description: This is a description
         .unwrap();
         let mut ps = d.paragraphs();
         let mut p = ps.next().unwrap();
-        p.insert("Foo", "Bar");
+        p.set("Foo", "Bar");
         p.remove("Section");
         p.remove("Nonexistant");
         assert_eq!(p.get("Foo").as_deref(), Some("Bar"));
@@ -1331,7 +1338,7 @@ Maintainer: Foo Bar <joe@example.com>
         .unwrap();
         let mut ps = d.paragraphs();
         let mut p = ps.next().unwrap();
-        p.insert("Maintainer", "Somebody Else <jane@example.com>");
+        p.set("Maintainer", "Somebody Else <jane@example.com>");
         assert_eq!(
             p.get("Maintainer").as_deref(),
             Some("Somebody Else <jane@example.com>")
@@ -1352,7 +1359,7 @@ Maintainer: Somebody Else <jane@example.com>
         .unwrap();
         let mut ps = d.paragraphs();
         let mut p = ps.next().unwrap();
-        p.insert("Maintainer", "Somebody <joe@example.com>");
+        p.set("Maintainer", "Somebody <joe@example.com>");
         assert_eq!(
             p.get("Maintainer").as_deref(),
             Some("Somebody <joe@example.com>")
@@ -1369,7 +1376,7 @@ Maintainer: Somebody <joe@example.com>
     fn test_add_paragraph() {
         let mut d = super::Deb822::new();
         let mut p = d.add_paragraph();
-        p.insert("Foo", "Bar");
+        p.set("Foo", "Bar");
         assert_eq!(p.get("Foo").as_deref(), Some("Bar"));
         assert_eq!(
             p.to_string(),
@@ -1383,7 +1390,7 @@ Maintainer: Somebody <joe@example.com>
         );
 
         let mut p = d.add_paragraph();
-        p.insert("Foo", "Blah");
+        p.set("Foo", "Blah");
         assert_eq!(p.get("Foo").as_deref(), Some("Blah"));
         assert_eq!(
             d.to_string(),
