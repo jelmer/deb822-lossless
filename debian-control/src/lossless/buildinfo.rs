@@ -19,7 +19,7 @@ impl From<deb822_lossless::Paragraph> for Buildinfo {
 impl Default for Buildinfo {
     fn default() -> Self {
         let mut para = deb822_lossless::Paragraph::new();
-        para.insert("Format", "1.0");
+        para.set("Format", "1.0");
         Self(para)
     }
 }
@@ -37,7 +37,7 @@ impl Buildinfo {
 
     /// Set the package name
     pub fn set_source(&mut self, package: &str) {
-        self.0.insert("Source", package);
+        self.0.set("Source", package);
     }
 
     /// Get the binary package names
@@ -51,7 +51,7 @@ impl Buildinfo {
 
     /// Set the binary package names
     pub fn set_binaries(&mut self, binaries: Vec<String>) {
-        self.0.insert("Binary", &binaries.join(" "));
+        self.0.set("Binary", &binaries.join(" "));
     }
 
     /// Get the version of the package
@@ -61,7 +61,7 @@ impl Buildinfo {
 
     /// Set the version of the package
     pub fn set_version(&mut self, version: debversion::Version) {
-        self.0.insert("Version", &version.to_string());
+        self.0.set("Version", &version.to_string());
     }
 
     /// Get the build architecture
@@ -71,7 +71,7 @@ impl Buildinfo {
 
     /// Set the build architecture
     pub fn set_build_architecture(&mut self, arch: &str) {
-        self.0.insert("Build-Architecture", arch);
+        self.0.set("Build-Architecture", arch);
     }
 
     /// Get the architecture
@@ -81,7 +81,7 @@ impl Buildinfo {
 
     /// Set the architecture
     pub fn set_architecture(&mut self, arch: &str) {
-        self.0.insert("Architecture", arch);
+        self.0.set("Architecture", arch);
     }
 
     /// Get Sha256 checksums
@@ -98,7 +98,7 @@ impl Buildinfo {
 
     /// Set Sha256 checksums
     pub fn set_checksums_sha256(&mut self, checksums: Vec<Sha256Checksum>) {
-        self.0.insert(
+        self.0.set(
             "Checksums-Sha256",
             &checksums
                 .iter()
@@ -122,7 +122,7 @@ impl Buildinfo {
 
     /// Set SHA1 checksums
     pub fn set_checksums_sha1(&mut self, checksums: Vec<Sha1Checksum>) {
-        self.0.insert(
+        self.0.set(
             "Checksums-Sha1",
             &checksums
                 .iter()
@@ -146,7 +146,7 @@ impl Buildinfo {
 
     /// Set MD5 checksums
     pub fn set_checksums_md5(&mut self, checksums: Vec<Md5Checksum>) {
-        self.0.insert(
+        self.0.set(
             "Checksums-Md5",
             &checksums
                 .iter()
@@ -163,7 +163,7 @@ impl Buildinfo {
 
     /// Set the build origin
     pub fn set_build_origin(&mut self, origin: &str) {
-        self.0.insert("Build-Origin", origin);
+        self.0.set("Build-Origin", origin);
     }
 
     /// Date on which the package was built
@@ -173,7 +173,7 @@ impl Buildinfo {
 
     /// Set the build date
     pub fn set_build_date(&mut self, date: &str) {
-        self.0.insert("Build-Date", date);
+        self.0.set("Build-Date", date);
     }
 
     /// Get the build tainted by field list
@@ -185,7 +185,7 @@ impl Buildinfo {
 
     /// Set the build tainted by field list
     pub fn set_build_tainted_by(&mut self, tainted_by: Vec<String>) {
-        self.0.insert("Build-Tainted-By", &tainted_by.join(" "));
+        self.0.set("Build-Tainted-By", &tainted_by.join(" "));
     }
 
     /// Get the source format of the package
@@ -195,7 +195,7 @@ impl Buildinfo {
 
     /// Set the format of the package
     pub fn set_format(&mut self, format: &str) {
-        self.0.insert("Format", format);
+        self.0.set("Format", format);
     }
 
     /// Get the build path
@@ -205,7 +205,7 @@ impl Buildinfo {
 
     /// Set the build path
     pub fn set_build_path(&mut self, path: &str) {
-        self.0.insert("Build-Path", path);
+        self.0.set("Build-Path", path);
     }
 
     /// Get the build environment
@@ -226,7 +226,7 @@ impl Buildinfo {
         for (key, value) in env {
             s.push_str(&format!("{}={}\n", key, value));
         }
-        self.0.insert("Environment", &s);
+        self.0.set("Environment", &s);
     }
 
     /// Get the list of installed build depends
@@ -238,8 +238,7 @@ impl Buildinfo {
 
     /// Set the list of installed build depends
     pub fn set_installed_build_depends(&mut self, depends: Relations) {
-        self.0
-            .insert("Installed-Build-Depends", &depends.to_string());
+        self.0.set("Installed-Build-Depends", &depends.to_string());
     }
 }
 

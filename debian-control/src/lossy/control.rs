@@ -78,6 +78,14 @@ pub struct Source {
     pub vcs_browser: Option<url::Url>,
 }
 
+impl std::fmt::Display for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let para: deb822_lossless::lossy::Paragraph = self.to_paragraph();
+        write!(f, "{}", para)?;
+        Ok(())
+    }
+}
+
 /// A binary package.
 #[derive(FromDeb822, ToDeb822, Default)]
 pub struct Binary {
@@ -134,6 +142,14 @@ pub struct Binary {
     pub description: Option<String>,
 }
 
+impl std::fmt::Display for Binary {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let para: deb822_lossless::lossy::Paragraph = self.to_paragraph();
+        write!(f, "{}", para)?;
+        Ok(())
+    }
+}
+
 /// A control file.
 pub struct Control {
     /// The source package.
@@ -144,10 +160,10 @@ pub struct Control {
 
 impl std::fmt::Display for Control {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.source.to_paragraph())?;
+        write!(f, "{}", self.source)?;
         for binary in &self.binaries {
             f.write_str("\n")?;
-            write!(f, "{}", binary.to_paragraph())?;
+            write!(f, "{}", binary)?;
         }
         Ok(())
     }
