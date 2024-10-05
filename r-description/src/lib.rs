@@ -1,3 +1,4 @@
+pub mod lossless;
 /// A library for parsing and manipulating R DESCRIPTION files.
 ///
 /// See https://r-pkgs.org/description.html for more information.
@@ -23,11 +24,9 @@
 /// "#).unwrap();
 /// assert_eq!(desc.name, "foo");
 /// assert_eq!(desc.title, "A Foo Package");
-/// assert_eq!(desc.version, Some("0.1.0".to_string()));
+/// assert_eq!(desc.version, "0.1.0".to_string());
 /// ```
-
 pub mod lossy;
-pub mod lossless;
 
 pub use lossy::RDescription;
 
