@@ -398,7 +398,9 @@ impl std::str::FromStr for RDescription {
 
 impl std::fmt::Display for RDescription {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.to_paragraph().fmt(f)
+        let para: deb822_lossless::lossy::Paragraph = self.to_paragraph();
+        f.write_str(&para.to_string())?;
+        Ok(())
     }
 }
 
@@ -452,11 +454,13 @@ comment = c(ORCID = "YOUR-ORCID-ID"))"#
             r###"Package: mypackage
 Description: What the package does (one paragraph).
 Title: What the Package Does (One Line, Title Case)
-Authors@R: person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
+Authors@R:
+ person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
  comment = c(ORCID = "YOUR-ORCID-ID"))
 Version: 0.0.0.9000
 Encoding: UTF-8
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
+License:
+ `use_mit_license()`, `use_gpl3_license()` or friends to pick a
  license
 "###
         );

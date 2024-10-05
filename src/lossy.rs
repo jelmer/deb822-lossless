@@ -92,24 +92,55 @@ impl Paragraph {
     }
 
     /// Insert a field into the paragraph.
+    ///
+    /// If a field with the same name already exists, a
+    /// new field will be added.
     pub fn insert(&mut self, name: &str, value: &str) {
         self.fields.push(Field {
             name: name.to_string(),
             value: value.to_string(),
         });
     }
+
+    /// Set the value of a field.
+    ///
+    /// If a field with the same name already exists, its value
+    /// will be updated.
+    pub fn set(&mut self, name: &str, value: &str) {
+        for field in &mut self.fields {
+            if field.name == name {
+                field.value = value.to_string();
+                return;
+            }
+        }
+        self.insert(name, value);
+    }
+
+    /// Remove a field from the paragraph.
+    pub fn remove(&mut self, name: &str) {
+        self.fields.retain(|field| field.name != name);
+    }
 }
 
 impl std::fmt::Display for Field {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}: {}", self.name, self.value)
+        let lines = self.value.lines().collect::<Vec<_>>();
+        if lines.len() > 1 {
+            writeln!(f, "{}:", self.name)?;
+            for line in lines {
+                writeln!(f, " {}", line)?;
+            }
+            Ok(())
+        } else {
+            writeln!(f, "{}: {}", self.name, self.value)
+        }
     }
 }
 
 impl std::fmt::Display for Paragraph {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for field in &self.fields {
-            writeln!(f, "{}: {}\n", field.name, field.value)?;
+            f.write_str(&field.to_string())?;
         }
         Ok(())
     }
@@ -132,13 +163,29 @@ impl std::str::FromStr for Paragraph {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let doc: Deb822 = s.parse().map_err(|_| Error::ExpectedEof)?;
-        if doc.len() == 0 {
-            return Err(Error::UnexpectedEof);
+        if doc.is_empty() {
+            Err(Error::UnexpectedEof)
         } else if doc.len() > 1 {
-            return Err(Error::ExpectedEof);
+            Err(Error::ExpectedEof)
         } else {
             Ok(doc.0.into_iter().next().unwrap())
         }
+    }
+}
+
+impl From<Vec<(String, String)>> for Paragraph {
+    fn from(fields: Vec<(String, String)>) -> Self {
+        fields.into_iter().collect()
+    }
+}
+
+impl FromIterator<(String, String)> for Paragraph {
+    fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
+        let fields = iter
+            .into_iter()
+            .map(|(name, value)| Field { name, value })
+            .collect();
+        Paragraph { fields }
     }
 }
 
@@ -361,7 +408,7 @@ Another-Field: value
             ])
         );
         assert_eq!(deb822.len(), 2);
-        assert_eq!(deb822.is_empty(), false);
+        assert!(!deb822.is_empty());
         assert_eq!(deb822.iter().count(), 2);
 
         let para = deb822.iter().next().unwrap();
@@ -372,7 +419,7 @@ Another-Field: value
             Some("A program that says hello\nSome more text")
         );
         assert_eq!(para.get("Another-Field"), None);
-        assert_eq!(para.is_empty(), false);
+        assert!(!para.is_empty());
         assert_eq!(para.len(), 3);
         assert_eq!(
             para.iter().collect::<Vec<_>>(),
@@ -388,6 +435,6 @@ Another-Field: value
 
         let mut newpara = Paragraph { fields: vec![] };
         newpara.insert("Package", "new");
-        assert_eq!(newpara.to_string(), "Package: new\n\n");
+        assert_eq!(newpara.to_string(), "Package: new\n");
     }
 }

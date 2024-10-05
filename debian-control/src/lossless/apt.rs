@@ -53,7 +53,7 @@ impl Source {
 
     /// Set the package name
     pub fn set_package(&mut self, package: &str) {
-        self.0.insert("Package", package);
+        self.0.set("Package", package);
     }
 
     /// Get the version of the package
@@ -63,7 +63,7 @@ impl Source {
 
     /// Set the version of the package
     pub fn set_version(&mut self, version: debversion::Version) {
-        self.0.insert("Version", &version.to_string());
+        self.0.set("Version", &version.to_string());
     }
 
     /// Get the maintainer of the package
@@ -73,7 +73,7 @@ impl Source {
 
     /// Set the maintainer of the package
     pub fn set_maintainer(&mut self, maintainer: &str) {
-        self.0.insert("Maintainer", maintainer);
+        self.0.set("Maintainer", maintainer);
     }
 
     /// Get the uploaders of the package
@@ -87,7 +87,7 @@ impl Source {
 
     /// Set the uploaders of the package
     pub fn set_uploaders(&mut self, uploaders: Vec<String>) {
-        self.0.insert("Uploaders", &uploaders.join(", "));
+        self.0.set("Uploaders", &uploaders.join(", "));
     }
 
     /// Get the standards version of the package
@@ -97,7 +97,7 @@ impl Source {
 
     /// Set the standards version of the package
     pub fn set_standards_version(&mut self, version: &str) {
-        self.0.insert("Standards-Version", version);
+        self.0.set("Standards-Version", version);
     }
 
     /// Get the source format of the package
@@ -107,7 +107,7 @@ impl Source {
 
     /// Set the format of the package
     pub fn set_format(&mut self, format: &str) {
-        self.0.insert("Format", format);
+        self.0.set("Format", format);
     }
 
     /// Get the Vcs-Browser field
@@ -117,7 +117,7 @@ impl Source {
 
     /// Set the Vcs-Browser field
     pub fn set_vcs_browser(&mut self, url: &str) {
-        self.0.insert("Vcs-Browser", url);
+        self.0.set("Vcs-Browser", url);
     }
 
     /// Get the Vcs-Git field
@@ -127,7 +127,7 @@ impl Source {
 
     /// Set the Vcs-Git field
     pub fn set_vcs_git(&mut self, url: &str) {
-        self.0.insert("Vcs-Git", url);
+        self.0.set("Vcs-Git", url);
     }
 
     /// Get the Vcs-Svn field
@@ -137,7 +137,7 @@ impl Source {
 
     /// Set the Vcs-Svn field
     pub fn set_vcs_svn(&mut self, url: &str) {
-        self.0.insert("Vcs-Svn", url);
+        self.0.set("Vcs-Svn", url);
     }
 
     /// Get the Vcs-Hg field
@@ -147,7 +147,7 @@ impl Source {
 
     /// Set the Vcs-Hg field
     pub fn set_vcs_hg(&mut self, url: &str) {
-        self.0.insert("Vcs-Hg", url);
+        self.0.set("Vcs-Hg", url);
     }
 
     /// Get the Vcs-Bzr field
@@ -157,7 +157,7 @@ impl Source {
 
     /// Set the Vcs-Bzr field
     pub fn set_vcs_bzr(&mut self, url: &str) {
-        self.0.insert("Vcs-Bzr", url);
+        self.0.set("Vcs-Bzr", url);
     }
 
     /// Get the Vcs-Arch field
@@ -167,7 +167,7 @@ impl Source {
 
     /// Set the Vcs-Arch field
     pub fn set_vcs_arch(&mut self, url: &str) {
-        self.0.insert("Vcs-Arch", url);
+        self.0.set("Vcs-Arch", url);
     }
 
     /// Get the Vcs-Svk field
@@ -177,7 +177,7 @@ impl Source {
 
     /// Set the Svk VCS
     pub fn set_vcs_svk(&mut self, url: &str) {
-        self.0.insert("Vcs-Svk", url);
+        self.0.set("Vcs-Svk", url);
     }
 
     /// Get the Darcs VCS
@@ -187,7 +187,7 @@ impl Source {
 
     /// Set the Darcs VCS
     pub fn set_vcs_darcs(&mut self, url: &str) {
-        self.0.insert("Vcs-Darcs", url);
+        self.0.set("Vcs-Darcs", url);
     }
 
     /// Get the Mtn VCS
@@ -197,7 +197,7 @@ impl Source {
 
     /// Set the Mtn VCS
     pub fn set_vcs_mtn(&mut self, url: &str) {
-        self.0.insert("Vcs-Mtn", url);
+        self.0.set("Vcs-Mtn", url);
     }
 
     /// Get the Cvs VCS
@@ -207,7 +207,7 @@ impl Source {
 
     /// Set the Cvs VCS
     pub fn set_vcs_cvs(&mut self, url: &str) {
-        self.0.insert("Vcs-Cvs", url);
+        self.0.set("Vcs-Cvs", url);
     }
 
     /// Get the build depends
@@ -217,8 +217,7 @@ impl Source {
 
     /// Set the build depends
     pub fn set_build_depends(&mut self, relations: Relations) {
-        self.0
-            .insert("Build-Depends", relations.to_string().as_str());
+        self.0.set("Build-Depends", relations.to_string().as_str());
     }
 
     /// Get the arch-independent build depends
@@ -230,7 +229,7 @@ impl Source {
 
     /// Set the arch-independent build depends
     pub fn set_build_depends_indep(&mut self, relations: Relations) {
-        self.0.insert("Build-Depends-Indep", &relations.to_string());
+        self.0.set("Build-Depends-Indep", &relations.to_string());
     }
 
     /// Get the arch-dependent build depends
@@ -240,7 +239,7 @@ impl Source {
 
     /// Set the arch-dependent build depends
     pub fn set_build_depends_arch(&mut self, relations: Relations) {
-        self.0.insert("Build-Depends-Arch", &relations.to_string());
+        self.0.set("Build-Depends-Arch", &relations.to_string());
     }
 
     /// Get the build conflicts
@@ -250,7 +249,7 @@ impl Source {
 
     /// Set the build conflicts
     pub fn set_build_conflicts(&mut self, relations: Relations) {
-        self.0.insert("Build-Conflicts", &relations.to_string());
+        self.0.set("Build-Conflicts", &relations.to_string());
     }
 
     /// Get the build conflicts indep
@@ -262,8 +261,7 @@ impl Source {
 
     /// Set the build conflicts indep
     pub fn set_build_conflicts_indep(&mut self, relations: Relations) {
-        self.0
-            .insert("Build-Conflicts-Indep", &relations.to_string());
+        self.0.set("Build-Conflicts-Indep", &relations.to_string());
     }
 
     /// Get the build conflicts arch
@@ -275,8 +273,7 @@ impl Source {
 
     /// Set the build conflicts arch
     pub fn set_build_conflicts_arch(&mut self, relations: Relations) {
-        self.0
-            .insert("Build-Conflicts-Arch", &relations.to_string());
+        self.0.set("Build-Conflicts-Arch", &relations.to_string());
     }
 
     /// Get the binary relations
@@ -286,7 +283,7 @@ impl Source {
 
     /// Set the binary relations
     pub fn set_binary(&mut self, relations: Relations) {
-        self.0.insert("Binary", &relations.to_string());
+        self.0.set("Binary", &relations.to_string());
     }
 
     /// Get the homepage of the package.
@@ -296,7 +293,7 @@ impl Source {
 
     /// Set the homepage of the package.
     pub fn set_homepage(&mut self, url: &str) {
-        self.0.insert("Homepage", url);
+        self.0.set("Homepage", url);
     }
 
     /// Get the section of the package.
@@ -306,7 +303,7 @@ impl Source {
 
     /// Set the section of the package.
     pub fn set_section(&mut self, section: &str) {
-        self.0.insert("Section", section);
+        self.0.set("Section", section);
     }
 
     /// Get the priority of the package.
@@ -316,7 +313,7 @@ impl Source {
 
     /// Set the priority of the package.
     pub fn set_priority(&mut self, priority: Priority) {
-        self.0.insert("Priority", priority.to_string().as_str());
+        self.0.set("Priority", priority.to_string().as_str());
     }
 
     /// The architecture of the package.
@@ -326,7 +323,7 @@ impl Source {
 
     /// Set the architecture of the package.
     pub fn set_architecture(&mut self, arch: &str) {
-        self.0.insert("Architecture", arch);
+        self.0.set("Architecture", arch);
     }
 
     /// Get the directory
@@ -336,7 +333,7 @@ impl Source {
 
     /// Set the directory
     pub fn set_directory(&mut self, dir: &str) {
-        self.0.insert("Directory", dir);
+        self.0.set("Directory", dir);
     }
 
     /// Get the test suite
@@ -346,7 +343,7 @@ impl Source {
 
     /// Set the testsuite
     pub fn set_testsuite(&mut self, testsuite: &str) {
-        self.0.insert("Testsuite", testsuite);
+        self.0.set("Testsuite", testsuite);
     }
 
     /// Get the files
@@ -363,7 +360,7 @@ impl Source {
 
     /// Set the files
     pub fn set_files(&mut self, files: Vec<Md5Checksum>) {
-        self.0.insert(
+        self.0.set(
             "Files",
             &files
                 .iter()
@@ -387,7 +384,7 @@ impl Source {
 
     /// Set the SHA1 checksums
     pub fn set_checksums_sha1(&mut self, checksums: Vec<Sha1Checksum>) {
-        self.0.insert(
+        self.0.set(
             "Checksums-Sha1",
             &checksums
                 .iter()
@@ -411,7 +408,7 @@ impl Source {
 
     /// Set the SHA256 checksums
     pub fn set_checksums_sha256(&mut self, checksums: Vec<Sha256Checksum>) {
-        self.0.insert(
+        self.0.set(
             "Checksums-Sha256",
             &checksums
                 .iter()
@@ -435,7 +432,7 @@ impl Source {
 
     /// Set the SHA512 checksums
     pub fn set_checksums_sha512(&mut self, checksums: Vec<Sha512Checksum>) {
-        self.0.insert(
+        self.0.set(
             "Checksums-Sha512",
             &checksums
                 .iter()
@@ -491,7 +488,7 @@ impl Package {
 
     /// Set the name of the package.
     pub fn set_name(&mut self, name: &str) {
-        self.0.insert("Package", name);
+        self.0.set("Package", name);
     }
 
     /// Get the version of the package.
@@ -501,7 +498,7 @@ impl Package {
 
     /// Set the version of the package.
     pub fn set_version(&mut self, version: debversion::Version) {
-        self.0.insert("Version", &version.to_string());
+        self.0.set("Version", &version.to_string());
     }
 
     /// Get the installed size of the package in bytes.
@@ -511,7 +508,7 @@ impl Package {
 
     /// Set the installed size of the package in bytes.
     pub fn set_installed_size(&mut self, size: usize) {
-        self.0.insert("Installed-Size", &size.to_string());
+        self.0.set("Installed-Size", &size.to_string());
     }
 
     /// Get the maintainer of the package.
@@ -521,7 +518,7 @@ impl Package {
 
     /// Set the maintainer of the package.
     pub fn set_maintainer(&mut self, maintainer: &str) {
-        self.0.insert("Maintainer", maintainer);
+        self.0.set("Maintainer", maintainer);
     }
 
     /// Get the architecture of the package.
@@ -531,7 +528,7 @@ impl Package {
 
     /// Set the architecture of the package.
     pub fn set_architecture(&mut self, arch: &str) {
-        self.0.insert("Architecture", arch);
+        self.0.set("Architecture", arch);
     }
 
     /// Get the packages that this package depends on.
@@ -541,7 +538,7 @@ impl Package {
 
     /// Set the packages that this package depends on.
     pub fn set_depends(&mut self, relations: Relations) {
-        self.0.insert("Depends", &relations.to_string());
+        self.0.set("Depends", &relations.to_string());
     }
 
     /// Get the packages that this package suggests.
@@ -551,7 +548,7 @@ impl Package {
 
     /// Set the packages that this package recommends.
     pub fn set_recommends(&mut self, relations: Relations) {
-        self.0.insert("Recommends", &relations.to_string());
+        self.0.set("Recommends", &relations.to_string());
     }
 
     /// Get the packages that this package suggests.
@@ -561,7 +558,7 @@ impl Package {
 
     /// Set the packages that this package suggests.
     pub fn set_suggests(&mut self, relations: Relations) {
-        self.0.insert("Suggests", &relations.to_string());
+        self.0.set("Suggests", &relations.to_string());
     }
 
     /// Get the packages that this package enhances.
@@ -571,7 +568,7 @@ impl Package {
 
     /// Set the packages that this package enhances.
     pub fn set_enhances(&mut self, relations: Relations) {
-        self.0.insert("Enhances", &relations.to_string());
+        self.0.set("Enhances", &relations.to_string());
     }
 
     /// Get the relations that this package pre-depends on.
@@ -581,7 +578,7 @@ impl Package {
 
     /// Set the relations that this package pre-depends on.
     pub fn set_pre_depends(&mut self, relations: Relations) {
-        self.0.insert("Pre-Depends", &relations.to_string());
+        self.0.set("Pre-Depends", &relations.to_string());
     }
 
     /// Get the relations that this package breaks.
@@ -591,7 +588,7 @@ impl Package {
 
     /// Set the relations that this package breaks.
     pub fn set_breaks(&mut self, relations: Relations) {
-        self.0.insert("Breaks", &relations.to_string());
+        self.0.set("Breaks", &relations.to_string());
     }
 
     /// Get the relations that this package conflicts with.
@@ -601,7 +598,7 @@ impl Package {
 
     /// Set the relations that this package conflicts with.
     pub fn set_conflicts(&mut self, relations: Relations) {
-        self.0.insert("Conflicts", &relations.to_string());
+        self.0.set("Conflicts", &relations.to_string());
     }
 
     /// Get the relations that this package replaces.
@@ -611,7 +608,7 @@ impl Package {
 
     /// Set the relations that this package replaces.
     pub fn set_replaces(&mut self, relations: Relations) {
-        self.0.insert("Replaces", &relations.to_string());
+        self.0.set("Replaces", &relations.to_string());
     }
 
     /// Get the relations that this package provides.
@@ -621,7 +618,7 @@ impl Package {
 
     /// Set the relations that the package provides.
     pub fn set_provides(&mut self, relations: Relations) {
-        self.0.insert("Provides", &relations.to_string());
+        self.0.set("Provides", &relations.to_string());
     }
 
     /// Get the section of the package.
@@ -631,7 +628,7 @@ impl Package {
 
     /// Set the section of the package.
     pub fn set_section(&mut self, section: &str) {
-        self.0.insert("Section", section);
+        self.0.set("Section", section);
     }
 
     /// Get the priority of the package.
@@ -641,7 +638,7 @@ impl Package {
 
     /// Set the priority of the package.
     pub fn set_priority(&mut self, priority: Priority) {
-        self.0.insert("Priority", priority.to_string().as_str());
+        self.0.set("Priority", priority.to_string().as_str());
     }
 
     /// Get the description of the package.
@@ -651,7 +648,7 @@ impl Package {
 
     /// Set the description of the package.
     pub fn set_description(&mut self, description: &str) {
-        self.0.insert("Description", description);
+        self.0.set("Description", description);
     }
 
     /// Get the upstream homepage of the package.
@@ -661,7 +658,7 @@ impl Package {
 
     /// Set the upstream homepage of the package.
     pub fn set_homepage(&mut self, url: &url::Url) {
-        self.0.insert("Homepage", url.as_ref());
+        self.0.set("Homepage", url.as_ref());
     }
 
     /// Get the source of the package.
@@ -671,7 +668,7 @@ impl Package {
 
     /// Set the source of the package.
     pub fn set_source(&mut self, source: &str) {
-        self.0.insert("Source", source);
+        self.0.set("Source", source);
     }
 
     /// Get the MD5 checksum of the description.
@@ -681,7 +678,7 @@ impl Package {
 
     /// Set the MD5 checksum of the description.
     pub fn set_description_md5(&mut self, md5: &str) {
-        self.0.insert("Description-md5", md5);
+        self.0.set("Description-md5", md5);
     }
 
     /// Get the tags of the package.
@@ -693,7 +690,7 @@ impl Package {
 
     /// Set the tags of the package.
     pub fn set_tags(&mut self, tag: &str, tags: Vec<String>) {
-        self.0.insert(tag, &tags.join(", "));
+        self.0.set(tag, &tags.join(", "));
     }
 
     /// Get the filename of the package.
@@ -703,7 +700,7 @@ impl Package {
 
     /// Set the filename of the package.
     pub fn set_filename(&mut self, filename: &str) {
-        self.0.insert("Filename", filename);
+        self.0.set("Filename", filename);
     }
 
     /// Get the size of the package.
@@ -713,7 +710,7 @@ impl Package {
 
     /// Set the size of the package.
     pub fn set_size(&mut self, size: usize) {
-        self.0.insert("Size", &size.to_string());
+        self.0.set("Size", &size.to_string());
     }
 
     /// Get the MD5 checksum.
@@ -723,7 +720,7 @@ impl Package {
 
     /// Set the MD5 checksum.
     pub fn set_md5sum(&mut self, md5sum: &str) {
-        self.0.insert("MD5sum", md5sum);
+        self.0.set("MD5sum", md5sum);
     }
 
     /// Get the SHA256 checksum.
@@ -733,7 +730,7 @@ impl Package {
 
     /// Set the SHA256 checksum.
     pub fn set_sha256(&mut self, sha256: &str) {
-        self.0.insert("SHA256", sha256);
+        self.0.set("SHA256", sha256);
     }
 
     /// Get the multi-arch field.
@@ -743,7 +740,7 @@ impl Package {
 
     /// Set the multi-arch field.
     pub fn set_multi_arch(&mut self, arch: MultiArch) {
-        self.0.insert("Multi-Arch", arch.to_string().as_str());
+        self.0.set("Multi-Arch", arch.to_string().as_str());
     }
 }
 
@@ -792,7 +789,7 @@ impl Release {
 
     /// Set the origin of the release
     pub fn set_origin(&mut self, origin: &str) {
-        self.0.insert("Origin", origin);
+        self.0.set("Origin", origin);
     }
 
     /// Get the label of the release
@@ -802,7 +799,7 @@ impl Release {
 
     /// Set the label of the release
     pub fn set_label(&mut self, label: &str) {
-        self.0.insert("Label", label);
+        self.0.set("Label", label);
     }
 
     /// Get the suite of the release
@@ -812,7 +809,7 @@ impl Release {
 
     /// Set the suite of the release
     pub fn set_suite(&mut self, suite: &str) {
-        self.0.insert("Suite", suite);
+        self.0.set("Suite", suite);
     }
 
     /// Get the codename of the release
@@ -822,7 +819,7 @@ impl Release {
 
     /// Set the codename of the release
     pub fn set_codename(&mut self, codename: &str) {
-        self.0.insert("Codename", codename);
+        self.0.set("Codename", codename);
     }
 
     /// Get the URLs at which the changelogs can be found
@@ -836,7 +833,7 @@ impl Release {
 
     /// Set the URLs at which the changelogs can be found
     pub fn set_changelogs(&mut self, changelogs: Vec<String>) {
-        self.0.insert("Changelogs", &changelogs.join(", "));
+        self.0.set("Changelogs", &changelogs.join(", "));
     }
 
     #[cfg(feature = "chrono")]
@@ -851,7 +848,7 @@ impl Release {
     #[cfg(feature = "chrono")]
     /// Set the date of the release
     pub fn set_date(&mut self, date: chrono::DateTime<chrono::FixedOffset>) {
-        self.0.insert("Date", date.to_rfc2822().as_str());
+        self.0.set("Date", date.to_rfc2822().as_str());
     }
 
     #[cfg(feature = "chrono")]
@@ -866,7 +863,7 @@ impl Release {
     #[cfg(feature = "chrono")]
     /// Set the date until the release is valid
     pub fn set_valid_until(&mut self, date: chrono::DateTime<chrono::FixedOffset>) {
-        self.0.insert("Valid-Until", date.to_rfc2822().as_str());
+        self.0.set("Valid-Until", date.to_rfc2822().as_str());
     }
 
     /// Get whether acquire by hash is enabled
@@ -879,7 +876,7 @@ impl Release {
 
     /// Set whether acquire by hash is enabled
     pub fn set_acquire_by_hash(&mut self, acquire_by_hash: bool) {
-        self.0.insert(
+        self.0.set(
             "Acquire-By-Hash",
             if acquire_by_hash { "yes" } else { "no" },
         );
@@ -895,7 +892,7 @@ impl Release {
 
     /// Set whether the release has no support for architecture all
     pub fn set_no_support_for_architecture_all(&mut self, no_support_for_architecture_all: bool) {
-        self.0.insert(
+        self.0.set(
             "No-Support-For-Architecture-All",
             if no_support_for_architecture_all {
                 "yes"
@@ -916,7 +913,7 @@ impl Release {
 
     /// Set the architectures
     pub fn set_architectures(&mut self, architectures: Vec<String>) {
-        self.0.insert("Architectures", &architectures.join(" "));
+        self.0.set("Architectures", &architectures.join(" "));
     }
 
     /// Get the components
@@ -930,7 +927,7 @@ impl Release {
 
     /// Set the components
     pub fn set_components(&mut self, components: Vec<String>) {
-        self.0.insert("Components", &components.join(" "));
+        self.0.set("Components", &components.join(" "));
     }
 
     /// Get the description
@@ -940,7 +937,7 @@ impl Release {
 
     /// Set the description
     pub fn set_description(&mut self, description: &str) {
-        self.0.insert("Description", description);
+        self.0.set("Description", description);
     }
 
     /// Get the MD5 checksums
@@ -957,7 +954,7 @@ impl Release {
 
     /// Set the MD5 checksums
     pub fn set_checksums_md5(&mut self, files: Vec<Md5Checksum>) {
-        self.0.insert(
+        self.0.set(
             "MD5Sum",
             &files
                 .iter()
@@ -981,7 +978,7 @@ impl Release {
 
     /// Set the SHA1 checksums
     pub fn set_checksums_sha1(&mut self, checksums: Vec<Sha1Checksum>) {
-        self.0.insert(
+        self.0.set(
             "SHA1",
             &checksums
                 .iter()
@@ -1005,7 +1002,7 @@ impl Release {
 
     /// Set the SHA256 checksums
     pub fn set_checksums_sha256(&mut self, checksums: Vec<Sha256Checksum>) {
-        self.0.insert(
+        self.0.set(
             "SHA256",
             &checksums
                 .iter()
@@ -1029,7 +1026,7 @@ impl Release {
 
     /// Set the SHA512 checksums
     pub fn set_checksums_sha512(&mut self, checksums: Vec<Sha512Checksum>) {
-        self.0.insert(
+        self.0.set(
             "SHA512",
             &checksums
                 .iter()

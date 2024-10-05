@@ -77,6 +77,14 @@ impl Default for Header {
     }
 }
 
+impl std::fmt::Display for Header {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let para: deb822_lossless::lossy::Paragraph = self.to_paragraph();
+        write!(f, "{}", para)?;
+        Ok(())
+    }
+}
+
 /// A copyright file.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Copyright {
@@ -145,18 +153,19 @@ pub struct LicenseParagraph {
     comment: Option<String>,
 }
 
+impl std::fmt::Display for LicenseParagraph {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let para: deb822_lossless::lossy::Paragraph = self.to_paragraph();
+        f.write_str(&para.to_string())
+    }
+}
+
 fn deserialize_copyrights(text: &str) -> Result<Vec<String>, String> {
     Ok(text.split('\n').map(ToString::to_string).collect())
 }
 
 fn serialize_copyrights(copyrights: &[String]) -> String {
     copyrights.join("\n")
-}
-
-impl std::fmt::Display for LicenseParagraph {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.to_paragraph().to_string())
-    }
 }
 
 /// A paragraph describing a set of files.
@@ -183,7 +192,9 @@ impl FilesParagraph {
 
 impl std::fmt::Display for FilesParagraph {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.to_paragraph().to_string())
+        let para: deb822_lossless::lossy::Paragraph = self.to_paragraph();
+        f.write_str(&para.to_string())?;
+        Ok(())
     }
 }
 
@@ -238,14 +249,14 @@ impl Copyright {
 
 impl std::fmt::Display for Copyright {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.header.to_paragraph())?;
+        write!(f, "{}", self.header)?;
         for files in &self.files {
             writeln!(f)?;
-            write!(f, "{}", files.to_paragraph())?;
+            write!(f, "{}", files)?;
         }
         for license in &self.licenses {
             writeln!(f)?;
-            write!(f, "{}", license.to_paragraph())?;
+            write!(f, "{}", license)?;
         }
         Ok(())
     }

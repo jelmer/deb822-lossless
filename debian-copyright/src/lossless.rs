@@ -48,7 +48,7 @@ impl Copyright {
     pub fn new() -> Self {
         let mut deb822 = Deb822::new();
         let mut header = deb822.add_paragraph();
-        header.insert("Format", CURRENT_FORMAT);
+        header.set("Format", CURRENT_FORMAT);
         Copyright(deb822)
     }
 
@@ -226,9 +226,19 @@ impl Header {
         self.0.get("Upstream-Name")
     }
 
+    /// Set the upstream name
+    pub fn set_upstream_name(&mut self, name: &str) {
+        self.0.set("Upstream-Name", name);
+    }
+
     /// Upstream contact
     pub fn upstream_contact(&self) -> Option<String> {
         self.0.get("Upstream-Contact")
+    }
+
+    /// Set the upstream contact
+    pub fn set_upstream_contact(&mut self, contact: &str) {
+        self.0.set("Upstream-Contact", contact);
     }
 
     /// Source
@@ -236,11 +246,21 @@ impl Header {
         self.0.get("Source")
     }
 
+    /// Set the source
+    pub fn set_source(&mut self, source: &str) {
+        self.0.set("Source", source);
+    }
+
     /// List of files excluded from the copyright information, as well as the source package
     pub fn files_excluded(&self) -> Option<Vec<String>> {
         self.0
             .get("Files-Excluded")
             .map(|x| x.split('\n').map(|x| x.to_string()).collect::<Vec<_>>())
+    }
+
+    /// Set excluded files
+    pub fn set_files_excluded(&mut self, files: &[&str]) {
+        self.0.set("Files-Excluded", &files.join("\n"));
     }
 
     /// Fix the the header paragraph
@@ -265,7 +285,7 @@ impl Header {
                 format = CURRENT_FORMAT.to_string();
             }
 
-            self.0.insert("Format", format.as_str());
+            self.0.set("Format", format.as_str());
         }
     }
 }
@@ -301,9 +321,19 @@ impl FilesParagraph {
             .collect::<Vec<_>>()
     }
 
+    /// Set the copyright
+    pub fn set_copyright(&mut self, authors: &[&str]) {
+        self.0.set("Copyright", &authors.join("\n"));
+    }
+
     /// Comment associated with the files paragraph
     pub fn comment(&self) -> Option<String> {
         self.0.get("Comment")
+    }
+
+    /// Set the comment associated with the files paragraph
+    pub fn set_comment(&mut self, comment: &str) {
+        self.0.set("Comment", comment);
     }
 
     /// License in the paragraph
@@ -320,6 +350,16 @@ impl FilesParagraph {
                 },
             )
         })
+    }
+
+    /// Set the license associated with the files paragraph
+    pub fn set_license(&mut self, license: &License) {
+        let text = match license {
+            License::Name(name) => name.to_string(),
+            License::Named(name, text) => format!("{}\n{}", name, text),
+            License::Text(text) => text.to_string(),
+        };
+        self.0.set("License", &text);
     }
 }
 
