@@ -380,6 +380,8 @@ name = "r-description"
 version = "0.1.2"
 dependencies = [
  "deb822-lossless",
+ "rowan",
+ "serde",
  "url",
 ]
 
