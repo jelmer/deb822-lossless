@@ -57,6 +57,11 @@ impl Relation {
         }
     }
 
+    /// Build a new relation
+    pub fn build(name: &str) -> RelationBuilder {
+        RelationBuilder::new(name)
+    }
+
     /// Check if this entry is satisfied by the given package versions.
     ///
     /// # Arguments
@@ -88,6 +93,64 @@ impl Relation {
             }
         } else {
             actual.is_some()
+        }
+    }
+}
+
+/// A builder for a relation entry in a relationship field.
+pub struct RelationBuilder {
+    name: String,
+
+    archqual: Option<String>,
+    architectures: Option<Vec<String>>,
+    version: Option<(VersionConstraint, debversion::Version)>,
+    profiles: Vec<Vec<BuildProfile>>,
+}
+
+impl RelationBuilder {
+    /// Create a new relation builder.
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            archqual: None,
+            architectures: None,
+            version: None,
+            profiles: Vec::new(),
+        }
+    }
+
+    /// Set the architecture qualifier.
+    pub fn archqual(mut self, archqual: &str) -> Self {
+        self.archqual = Some(archqual.to_string());
+        self
+    }
+
+    /// Set the architectures that this relation is only valid for.
+    pub fn architectures(mut self, architectures: Vec<&str>) -> Self {
+        self.architectures = Some(architectures.into_iter().map(|s| s.to_string()).collect());
+        self
+    }
+
+    /// Set the version constraint and version.
+    pub fn version(mut self, constraint: VersionConstraint, version: &str) -> Self {
+        self.version = Some((constraint, version.parse().unwrap()));
+        self
+    }
+
+    /// Add a build profile that this relation is only valid for.
+    pub fn profile(mut self, profile: Vec<BuildProfile>) -> Self {
+        self.profiles.push(profile);
+        self
+    }
+
+    /// Build the relation.
+    pub fn build(self) -> Relation {
+        Relation {
+            name: self.name,
+            archqual: self.archqual,
+            architectures: self.architectures,
+            version: self.version,
+            profiles: self.profiles,
         }
     }
 }
@@ -157,12 +220,6 @@ impl std::ops::IndexMut<usize> for Relations {
     }
 }
 
-impl FromIterator<Relation> for Relations {
-    fn from_iter<I: IntoIterator<Item = Relation>>(iter: I) -> Self {
-        Self(vec![iter.into_iter().collect()])
-    }
-}
-
 impl FromIterator<Vec<Relation>> for Relations {
     fn from_iter<I: IntoIterator<Item = Vec<Relation>>>(iter: I) -> Self {
         Self(iter.into_iter().collect())
@@ -206,6 +263,12 @@ impl Relations {
         self.0
             .iter()
             .all(|e| e.iter().any(|r| r.satisfied_by(package_version)))
+    }
+}
+
+impl FromIterator<Relation> for Relations {
+    fn from_iter<I: IntoIterator<Item = Relation>>(iter: I) -> Self {
+        Self(iter.into_iter().map(|r| vec![r]).collect())
     }
 }
 
@@ -629,6 +692,21 @@ mod tests {
                     _ => None,
                 }
             })
+        );
+    }
+
+    #[test]
+    fn test_relations_from_iter() {
+        let relation1 = Relation::build("python3-dulwich")
+            .version(VersionConstraint::GreaterThanEqual, "0.19.0")
+            .build();
+        let relation2 = Relation::build("python3-requests").build();
+
+        let relations: Relations = vec![relation1, relation2].into_iter().collect();
+
+        assert_eq!(
+            relations.to_string(),
+            "python3-dulwich (>= 0.19.0), python3-requests"
         );
     }
 }
