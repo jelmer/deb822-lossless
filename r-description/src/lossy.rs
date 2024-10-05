@@ -57,7 +57,7 @@ pub struct RDescription {
     pub authors: Option<RCode>,
 
     #[deb822(field = "Version")]
-    pub version: String,
+    pub version: Version,
 
     /// If the DESCRIPTION file is not written in pure ASCII, the encoding
     /// field must be used to specify the encoding.
@@ -430,7 +430,7 @@ RoxygenNote: 7.3.2
             desc.title,
             "What the Package Does (One Line, Title Case)".to_string()
         );
-        assert_eq!(desc.version, "0.0.0.9000".to_string());
+        assert_eq!(desc.version, "0.0.0.9000".parse().unwrap());
         assert_eq!(
             desc.authors,
             Some(RCode(
