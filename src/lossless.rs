@@ -1618,7 +1618,10 @@ C: D
 
     #[test]
     fn test_format_error() {
-        assert_eq!(super::Error::ParseError(ParseError(vec!["foo".to_string()])).to_string(), "foo\n");
+        assert_eq!(
+            super::Error::ParseError(ParseError(vec!["foo".to_string()])).to_string(),
+            "foo\n"
+        );
     }
 
     #[test]
