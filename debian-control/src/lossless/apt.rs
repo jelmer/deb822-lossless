@@ -1,42 +1,11 @@
 //! APT package manager files
-use crate::fields::{MultiArch, Priority, Sha1Checksum, Sha256Checksum, Sha512Checksum};
+use crate::fields::{
+    Md5Checksum, MultiArch, Priority, Sha1Checksum, Sha256Checksum, Sha512Checksum,
+};
 use crate::lossless::relations::Relations;
 
 /// A source package in the APT package manager.
 pub struct Source(deb822_lossless::Paragraph);
-
-/// An MD5 checksum of a file
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
-pub struct MD5Checksum {
-    /// The MD5 checksum
-    pub md5sum: String,
-    /// The size of the file
-    pub size: usize,
-    /// The filename
-    pub filename: String,
-}
-
-impl std::fmt::Display for MD5Checksum {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{} {} {}", self.md5sum, self.size, self.filename)
-    }
-}
-
-impl std::str::FromStr for MD5Checksum {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.split_whitespace();
-        let md5sum = parts.next().ok_or(())?;
-        let size = parts.next().ok_or(())?.parse().map_err(|_| ())?;
-        let filename = parts.next().ok_or(())?.to_string();
-        Ok(Self {
-            md5sum: md5sum.to_string(),
-            size,
-            filename,
-        })
-    }
-}
 
 #[cfg(feature = "python-debian")]
 impl pyo3::ToPyObject for Source {
@@ -381,19 +350,19 @@ impl Source {
     }
 
     /// Get the files
-    pub fn files(&self) -> Vec<MD5Checksum> {
+    pub fn files(&self) -> Vec<Md5Checksum> {
         self.0
             .get("Files")
             .map(|s| {
                 s.lines()
                     .map(|line| line.parse().unwrap())
-                    .collect::<Vec<MD5Checksum>>()
+                    .collect::<Vec<Md5Checksum>>()
             })
             .unwrap_or_default()
     }
 
     /// Set the files
-    pub fn set_files(&mut self, files: Vec<MD5Checksum>) {
+    pub fn set_files(&mut self, files: Vec<Md5Checksum>) {
         self.0.insert(
             "Files",
             &files
@@ -975,19 +944,19 @@ impl Release {
     }
 
     /// Get the MD5 checksums
-    pub fn checksums_md5(&self) -> Vec<MD5Checksum> {
+    pub fn checksums_md5(&self) -> Vec<Md5Checksum> {
         self.0
             .get("MD5Sum")
             .map(|s| {
                 s.lines()
                     .map(|line| line.parse().unwrap())
-                    .collect::<Vec<MD5Checksum>>()
+                    .collect::<Vec<Md5Checksum>>()
             })
             .unwrap_or_default()
     }
 
     /// Set the MD5 checksums
-    pub fn set_checksums_md5(&mut self, files: Vec<MD5Checksum>) {
+    pub fn set_checksums_md5(&mut self, files: Vec<Md5Checksum>) {
         self.0.insert(
             "MD5Sum",
             &files
@@ -1110,7 +1079,7 @@ mod tests {
     #[test]
     fn test_files() {
         let s = "md5sum 1234 filename";
-        let f: super::MD5Checksum = s.parse().unwrap();
+        let f: super::Md5Checksum = s.parse().unwrap();
         assert_eq!(f.md5sum, "md5sum");
         assert_eq!(f.size, 1234);
         assert_eq!(f.filename, "filename");
