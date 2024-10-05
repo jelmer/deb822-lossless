@@ -5,8 +5,7 @@
 /// See the ``lossless`` module for a lossless parser that is
 /// forgiving in the face of errors and preserves formatting while editing
 /// at the expense of a more complex API.
-
-use deb822_lossless::{FromDeb822, ToDeb822, FromDeb822Paragraph, ToDeb822Paragraph};
+use deb822_lossless::{FromDeb822, FromDeb822Paragraph, ToDeb822, ToDeb822Paragraph};
 
 use crate::RCode;
 
@@ -37,7 +36,8 @@ pub struct RDescription {
     pub license: Option<String>,
 
     #[deb822(field = "URL")]
-    pub url: Option<url::Url>,
+    // TODO: parse this as a list of URLs, separated by commas
+    pub url: Option<String>,
 
     #[deb822(field = "BugReports")]
     pub bug_reports: Option<String>,
@@ -74,7 +74,9 @@ impl std::str::FromStr for RDescription {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let para: deb822_lossless::Paragraph = s.parse().map_err(|e: deb822_lossless::ParseError| e.to_string())?;
+        let para: deb822_lossless::Paragraph = s
+            .parse()
+            .map_err(|e: deb822_lossless::ParseError| e.to_string())?;
         Ok(Self::from_paragraph(&para)?)
     }
 }
@@ -107,15 +109,35 @@ RoxygenNote: 7.3.2
         let desc: RDescription = s.parse().unwrap();
 
         assert_eq!(desc.name, "mypackage".to_string());
-        assert_eq!(desc.title, "What the Package Does (One Line, Title Case)".to_string());
+        assert_eq!(
+            desc.title,
+            "What the Package Does (One Line, Title Case)".to_string()
+        );
         assert_eq!(desc.version, Some("0.0.0.9000".to_string()));
-        assert_eq!(desc.authors, Some(RCode(r#"person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-comment = c(ORCID = "YOUR-ORCID-ID"))"#.to_string())));
-        assert_eq!(desc.description, "What the package does (one paragraph).".to_string());
-        assert_eq!(desc.license, Some("`use_mit_license()`, `use_gpl3_license()` or friends to pick a\nlicense".to_string()));
+        assert_eq!(
+            desc.authors,
+            Some(RCode(
+                r#"person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
+comment = c(ORCID = "YOUR-ORCID-ID"))"#
+                    .to_string()
+            ))
+        );
+        assert_eq!(
+            desc.description,
+            "What the package does (one paragraph).".to_string()
+        );
+        assert_eq!(
+            desc.license,
+            Some(
+                "`use_mit_license()`, `use_gpl3_license()` or friends to pick a\nlicense"
+                    .to_string()
+            )
+        );
         assert_eq!(desc.encoding, Some("UTF-8".to_string()));
 
-        assert_eq!(desc.to_string(), r###"Package: mypackage
+        assert_eq!(
+            desc.to_string(),
+            r###"Package: mypackage
 Description: What the package does (one paragraph).
 Title: What the Package Does (One Line, Title Case)
 Authors@R: person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
@@ -124,6 +146,15 @@ Version: 0.0.0.9000
 Encoding: UTF-8
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
  license
-"###);
+"###
+        );
+    }
+
+    #[test]
+    fn test_parse_dplyr() {
+        let s = include_str!("../testdata/dplyr.desc");
+        let desc: RDescription = s.parse().unwrap();
+
+        assert_eq!(desc.name, "dplyr".to_string());
     }
 }

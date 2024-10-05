@@ -146,15 +146,15 @@ impl RDescription {
         self.0.insert("Roxygen", roxygen);
     }
 
-    pub fn url(&self) -> Option<url::Url> {
-        self.0
-            .get("URL")
-            .as_ref()
-            .map(|s| url::Url::parse(s.as_str()).unwrap())
+    /// The URL of the package's homepage.
+    pub fn url(&self) -> Option<String> {
+        // TODO: parse list of URLs, separated by commas
+        self.0.get("URL")
     }
 
-    pub fn set_url(&mut self, url: &url::Url) {
-        self.0.insert("URL", url.as_str());
+    pub fn set_url(&mut self, url: &str) {
+        // TODO: parse list of URLs, separated by commas
+        self.0.insert("URL", url);
     }
 
     pub fn bug_reports(&self) -> Option<url::Url> {
@@ -306,5 +306,17 @@ comment = c(ORCID = "YOUR-ORCID-ID"))"#
         assert_eq!(desc.roxygen_note(), Some("7.3.2".to_string()));
 
         assert_eq!(desc.to_string(), s);
+    }
+
+    #[test]
+    fn test_parse_dplyr() {
+        let s = include_str!("../testdata/dplyr.desc");
+
+        let desc: RDescription = s.parse().unwrap();
+        assert_eq!("dplyr", desc.package().unwrap());
+        assert_eq!(
+            "https://dplyr.tidyverse.org, https://github.com/tidyverse/dplyr",
+            desc.url().unwrap().as_str()
+        );
     }
 }
