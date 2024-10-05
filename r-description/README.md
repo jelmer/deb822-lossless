@@ -4,7 +4,12 @@ This crate provides a parser and editor for the `DESCRIPTION` files used in R
 packages.  Since the format is based on Debian control files, the parser
 uses the ``deb822_lossless`` crate for the lower layer parsing.
 
-See https://r-pkgs.org/description.html for more information on the format.
+See <https://r-pkgs.org/description.html> and
+<https://cran.r-project.org/doc/manuals/R-exts.html> for more information on
+the format.
+
+Besides parsing the control files it also supports parsing and comparison
+of version strings according to the R package versioning scheme.
 
 ## Example
 
