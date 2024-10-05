@@ -28,7 +28,7 @@ pub mod lossless;
 /// ```
 pub mod lossy;
 
-mod relations;
+pub mod relations;
 
 pub use lossy::RDescription;
 
