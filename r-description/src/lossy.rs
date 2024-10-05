@@ -1,6 +1,7 @@
 /// A library for parsing and manipulating R DESCRIPTION files.
 ///
-/// See https://r-pkgs.org/description.html for more information.
+/// See https://r-pkgs.org/description.html and https://cran.r-project.org/doc/manuals/R-exts.html
+/// for more information
 ///
 /// See the ``lossless`` module for a lossless parser that is
 /// forgiving in the face of errors and preserves formatting while editing
@@ -23,17 +24,25 @@ pub struct RDescription {
     #[deb822(field = "Maintainer")]
     pub maintainer: Option<String>,
 
+    #[deb822(field = "Author")]
+    /// Who wrote the the package
+    pub author: Option<String>,
+
+    // 'Authors@R' is a special field that can contain R code
+    // that is evaluated to get the authors and maintainers.
     #[deb822(field = "Authors@R")]
     pub authors: Option<RCode>,
 
     #[deb822(field = "Version")]
-    pub version: Option<String>,
+    pub version: String,
 
+    /// If the DESCRIPTION file is not written in pure ASCII, the encoding
+    /// field must be used to specify the encoding.
     #[deb822(field = "Encoding")]
     pub encoding: Option<String>,
 
     #[deb822(field = "License")]
-    pub license: Option<String>,
+    pub license: String,
 
     #[deb822(field = "URL")]
     // TODO: parse this as a list of URLs, separated by commas
@@ -67,7 +76,15 @@ pub struct RDescription {
     pub system_requirements: Option<String>,
 
     #[deb822(field = "Date")]
+    /// The release date of the current version of the package.
+    /// Strongly recommended to use the ISO 8601 format: YYYY-MM-DD
     pub date: Option<String>,
+
+    #[deb822(field = "Language")]
+    /// Indicates the package documentation is not in English.
+    /// This should be a comma-separated list of IETF language
+    /// tags as defined by RFC5646
+    pub language: Option<String>,
 }
 
 impl std::str::FromStr for RDescription {
@@ -77,13 +94,13 @@ impl std::str::FromStr for RDescription {
         let para: deb822_lossless::Paragraph = s
             .parse()
             .map_err(|e: deb822_lossless::ParseError| e.to_string())?;
-        Ok(Self::from_paragraph(&para)?)
+        Self::from_paragraph(&para)
     }
 }
 
-impl ToString for RDescription {
-    fn to_string(&self) -> String {
-        self.to_paragraph().to_string()
+impl std::fmt::Display for RDescription {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.to_paragraph().fmt(f)
     }
 }
 
@@ -113,7 +130,7 @@ RoxygenNote: 7.3.2
             desc.title,
             "What the Package Does (One Line, Title Case)".to_string()
         );
-        assert_eq!(desc.version, Some("0.0.0.9000".to_string()));
+        assert_eq!(desc.version, "0.0.0.9000".to_string());
         assert_eq!(
             desc.authors,
             Some(RCode(
@@ -128,10 +145,7 @@ comment = c(ORCID = "YOUR-ORCID-ID"))"#
         );
         assert_eq!(
             desc.license,
-            Some(
-                "`use_mit_license()`, `use_gpl3_license()` or friends to pick a\nlicense"
-                    .to_string()
-            )
+            "`use_mit_license()`, `use_gpl3_license()` or friends to pick a\nlicense".to_string()
         );
         assert_eq!(desc.encoding, Some("UTF-8".to_string()));
 
