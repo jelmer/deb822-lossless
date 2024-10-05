@@ -4,36 +4,38 @@ use std::cmp::Ordering;
 // Struct to represent a version with major, minor, patch, and an optional pre-release tag
 #[derive(Debug, PartialEq, Eq, std::hash::Hash, Clone)]
 pub struct Version {
-    major: u32,
-    minor: u32,
-    patch: Option<u32>,
+    components: Vec<u32>,
     pre_release: Option<String>, // Pre-release version like "alpha", "beta", etc.
 }
 
 impl std::fmt::Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Format the version string as "major.minor.patch" or "major.minor.patch-pre_release"
-        write!(
-            f,
-            "{}.{}{}{}",
-            self.major,
-            self.minor,
-            self.patch.map(|p| format!(".{}", p)).unwrap_or_default(),
-            self.pre_release
-                .as_ref()
-                .map(|s| format!("-{}", s))
-                .unwrap_or_default()
-        )
+        f.write_str(
+            &self
+                .components
+                .iter()
+                .map(|c| c.to_string())
+                .collect::<Vec<_>>()
+                .join("."),
+        )?;
+        if let Some(pre_release) = &self.pre_release {
+            f.write_str("-")?;
+            f.write_str(pre_release)?;
+        }
+        Ok(())
     }
 }
 
 impl Version {
     /// Create a new version
-    fn new(major: u32, minor: u32, patch: Option<u32>, pre_release: Option<&str>) -> Self {
+    pub fn new(major: u32, minor: u32, patch: Option<u32>, pre_release: Option<&str>) -> Self {
         Self {
-            major,
-            minor,
-            patch,
+            components: if let Some(patch) = patch {
+                vec![major, minor, patch]
+            } else {
+                vec![major, minor]
+            },
             pre_release: pre_release.map(|s| s.to_string()),
         }
     }
@@ -48,45 +50,38 @@ impl std::str::FromStr for Version {
         let version = parts
             .next()
             .ok_or(format!("Invalid version string: {}", s))?;
-        let pre_release = parts.next();
+        let pre_release = parts.next().map(|s| s.to_string());
 
-        let mut parts = version.split('.');
-        let major = parts
-            .next()
-            .ok_or(format!("Invalid version string: {}", s))?
-            .parse()
-            .map_err(|_| format!("Invalid major version: {}", s))?;
-        let minor = parts
-            .next()
-            .ok_or(format!("Invalid version string: {}", s))?
-            .parse()
-            .map_err(|_| format!("Invalid minor version: {}", s))?;
-        let patch = if let Some(patch) = parts.next() {
-            Some(
-                patch
-                    .parse()
-                    .map_err(|_| format!("Invalid patch version: {}", s))?,
-            )
-        } else {
-            None
-        };
+        let components = version
+            .split('.')
+            .map(|part| {
+                part.parse()
+                    .map_err(|_| format!("Invalid version component: {}", s))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(Self::new(major, minor, patch, pre_release))
+        Ok(Self {
+            components,
+            pre_release,
+        })
     }
 }
 
 impl Ord for Version {
     fn cmp(&self, other: &Self) -> Ordering {
-        // Compare major, minor, and patch versions in order
-        match self.major.cmp(&other.major) {
-            Ordering::Equal => match self.minor.cmp(&other.minor) {
-                Ordering::Equal => match self.patch.cmp(&other.patch) {
-                    Ordering::Equal => self.compare_pre_release(other),
-                    other => other,
-                },
-                other => other,
-            },
-            other => other,
+        // Compare components in order, and then compare pre-release tags
+        for (a, b) in self.components.iter().zip(other.components.iter()) {
+            match a.cmp(b) {
+                Ordering::Equal => continue,
+                ordering => return ordering,
+            }
+        }
+        if self.components.len() < other.components.len() {
+            Ordering::Less
+        } else if self.components.len() > other.components.len() {
+            Ordering::Greater
+        } else {
+            self.compare_pre_release(other)
         }
     }
 }
@@ -146,5 +141,11 @@ mod tests {
         let v1 = Version::from_str("1.2.3-alpha").unwrap();
         let v2 = Version::from_str("1.2.3-beta").unwrap();
         assert_eq!(v1.cmp(&v2), Ordering::Less);
+    }
+
+    #[test]
+    fn test_version_invalid() {
+        assert!(Version::from_str("a").is_err());
+        assert!(Version::from_str("a1-b").is_err());
     }
 }
