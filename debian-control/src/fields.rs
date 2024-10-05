@@ -212,6 +212,49 @@ impl std::str::FromStr for Sha512Checksum {
     }
 }
 
+/// An MD5 checksum of a file
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
+pub struct Md5Checksum {
+    /// The MD5 checksum
+    pub md5sum: String,
+    /// The size of the file
+    pub size: usize,
+    /// The filename
+    pub filename: String,
+}
+
+impl std::fmt::Display for Md5Checksum {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.md5sum, self.size, self.filename)
+    }
+}
+
+impl std::str::FromStr for Md5Checksum {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut parts = s.split_whitespace();
+        let md5sum = parts.next().ok_or(())?;
+        let size = parts.next().ok_or(())?.parse().map_err(|_| ())?;
+        let filename = parts.next().ok_or(())?.to_string();
+        Ok(Self {
+            md5sum: md5sum.to_string(),
+            size,
+            filename,
+        })
+    }
+}
+
+impl Checksum for Md5Checksum {
+    fn filename(&self) -> String {
+        self.filename.clone()
+    }
+
+    fn size(&self) -> usize {
+        self.size
+    }
+}
+
 /// A package list entry
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PackageListEntry {
