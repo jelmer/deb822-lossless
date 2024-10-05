@@ -28,7 +28,11 @@ pub mod lossless;
 /// ```
 pub mod lossy;
 
+mod relations;
+
 pub use lossy::RDescription;
+
+pub mod version;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RCode(String);

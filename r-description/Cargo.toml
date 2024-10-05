@@ -11,4 +11,9 @@ categories = ["parser-implementations"]
 
 [dependencies]
 deb822-lossless = { version = ">=0.1.22", path = "..", features = ["derive"] }
+rowan.workspace = true
 url = "2"
+serde = { version = "1", optional = true }
+
+[features]
+serde = ["dep:serde"]
