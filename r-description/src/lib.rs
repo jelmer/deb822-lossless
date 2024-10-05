@@ -7,6 +7,10 @@ pub mod lossless;
 /// forgiving in the face of errors and preserves formatting while editing
 /// at the expense of a more complex API.
 ///
+/// Besides the fields in the DESCRIPTION file, the library also can
+/// parse and evaluate R version strings according to the rules in
+/// https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file
+///
 /// # Example
 ///
 /// ```rust
@@ -24,7 +28,7 @@ pub mod lossless;
 /// "#).unwrap();
 /// assert_eq!(desc.name, "foo");
 /// assert_eq!(desc.title, "A Foo Package");
-/// assert_eq!(desc.version, "0.1.0".to_string());
+/// assert_eq!(desc.version, "0.1.0".parse().unwrap());
 /// ```
 pub mod lossy;
 
