@@ -382,6 +382,7 @@ dependencies = [
  "deb822-lossless",
  "rowan",
  "serde",
+ "serde_json",
  "url",
 ]
 
