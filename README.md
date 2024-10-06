@@ -4,12 +4,13 @@ Parsers and editors for deb822 style files
 This crate contains parsers and editors for RFC822 style file as used in
 Debian.
 
-Three related crates that build on this one are:
+Four related crates that build on this one are:
 
 * ``debian-control``: A parser and editor for Debian control files, apt lists.
 * ``debian-copyright``: A parser and editor for Debian copyright files.
 * ``dep3``: A parser and editor for Debian DEP-3 headers.
-* ``r-description``: A parser and editor for R DESCRIPTION files.
+* [r-description](https://github.com/jelmer/r-description-rs): A parser and
+editor for R DESCRIPTION files.
 
 # Example
 
