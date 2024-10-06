@@ -193,7 +193,22 @@ impl FromIterator<(String, String)> for Paragraph {
 
 /// A deb822 document.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Deb822(pub Vec<Paragraph>);
+pub struct Deb822(Vec<Paragraph>);
+
+impl From<Deb822> for Vec<Paragraph> {
+    fn from(doc: Deb822) -> Self {
+        doc.0
+    }
+}
+
+impl IntoIterator for Deb822 {
+    type Item = Paragraph;
+    type IntoIter = std::vec::IntoIter<Paragraph>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
 
 impl Deb822 {
     /// Number of paragraphs in the document.
