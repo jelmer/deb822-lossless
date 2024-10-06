@@ -81,7 +81,7 @@ checksum = "7704b5fdd17b18ae31c4c1da5a2e0305a2bf17b5249300a9ee9ed7b72114c636"
 
 [[package]]
 name = "deb822-derive"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -90,7 +90,7 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "deb822-derive",
  "pyo3",

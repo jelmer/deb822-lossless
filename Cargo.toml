@@ -6,7 +6,7 @@ license = "Apache-2.0"
 description = "A lossless parser for deb822 files"
 repository = { workspace = true }
 homepage = { workspace = true }
-version = "0.2.0"
+version = "0.2.1"
 keywords = ["debian", "deb822", "control", "rfc822", "edit"]
 categories = ["parser-implementations"]
 
@@ -26,7 +26,7 @@ regex = "1"
 rowan = { workspace = true }
 serde = { version = "1", features = ["derive"], optional = true }
 pyo3 = { workspace = true, optional = true }
-deb822-derive = { path = "deb822-derive", version = "0.1", optional = true }
+deb822-derive = { path = "deb822-derive", version = "^0.2", optional = true }
 
 [features]
 default = ["serde"]
