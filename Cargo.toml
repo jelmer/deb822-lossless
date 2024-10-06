@@ -11,7 +11,7 @@ keywords = ["debian", "deb822", "control", "rfc822", "edit"]
 categories = ["parser-implementations"]
 
 [workspace]
-members = [ "deb822-derive","debian-control", "debian-copyright", "dep3", "r-description"]
+members = [ "deb822-derive","debian-control", "debian-copyright", "dep3"]
 
 [workspace.package]
 repository = "https://github.com/jelmer/deb822-lossless"
