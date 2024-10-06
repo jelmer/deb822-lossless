@@ -13,4 +13,4 @@ categories = ["parser-implementations"]
 [dependencies]
 debversion = ">=0.3"
 regex = ">=1.10"
-deb822-lossless = { version = ">=0.1.10", path = "..", features = ["derive"] }
+deb822-lossless = { version = ">=0.2", path = "..", features = ["derive"] }
