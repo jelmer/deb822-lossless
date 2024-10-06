@@ -56,4 +56,6 @@ let header = copyright.header().unwrap();
 assert_eq!(
     "https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/",
     header.format_string().unwrap());
+assert_eq!("MIT", copyright.find_license_for_file("lintian_brush/systemd.py").unwrap().name());
+assert_eq!("GPL-2+", copyright.find_license_for_file("lintian_brush/__init__.py").unwrap().name());
 ```
