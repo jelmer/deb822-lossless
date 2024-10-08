@@ -94,7 +94,7 @@ impl std::error::Error for Error {}
 /// these two SyntaxKind types, allowing for a nicer SyntaxNode API where
 /// "kinds" are values from our `enum SyntaxKind`, instead of plain u16 values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Lang {}
+pub(crate) enum Lang {}
 impl rowan::Language for Lang {
     type Kind = SyntaxKind;
     fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind {
