@@ -706,7 +706,7 @@ impl Paragraph {
     }
 
     /// Returns an iterator over all values for the given key in the paragraph.
-    pub fn get_all<'a>(&'a self, key: &'a str) -> impl Iterator<Item = String> + '_ {
+    pub fn get_all<'a>(&'a self, key: &'a str) -> impl Iterator<Item = String> + 'a {
         self.items()
             .filter_map(move |(k, v)| if k.as_str() == key { Some(v) } else { None })
     }
