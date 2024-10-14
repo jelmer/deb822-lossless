@@ -354,9 +354,7 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
             self.tokens.last().map(|(kind, _)| *kind)
         }
         fn skip_ws(&mut self) {
-            while self.current() == Some(WHITESPACE)
-                || self.current() == Some(NEWLINE)
-            {
+            while self.current() == Some(WHITESPACE) || self.current() == Some(NEWLINE) {
                 self.bump()
             }
         }

@@ -1,3 +1,4 @@
+use crate::common;
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -56,24 +57,6 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn is_whitespace(c: char) -> bool {
-        // deb822(5) says that continuation lines
-        // start with a space (U+0020) or a tab (U+0009).
-        c == ' ' || c == '\t'
-    }
-
-    fn is_newline(c: char) -> bool {
-        c == '\n' || c == '\r'
-    }
-
-    fn is_valid_key_char(c: char) -> bool {
-        // deb822(5) says valid field characters are US-ASCII
-        // characters excluding control characters, space and colon
-        // (i.e. characters in the ranges U+0021 to U+0039 and U+003B to U+007E).
-        // I.e. printable characters except for space and colon.
-        c.is_ascii_graphic() && c != ':' && c != ' '
-    }
-
     fn read_while<F>(&mut self, predicate: F) -> String
     where
         F: Fn(char) -> bool,
@@ -98,15 +81,15 @@ impl<'a> Lexer<'a> {
                     self.input.next();
                     Some((SyntaxKind::COLON, ":".to_owned()))
                 }
-                _ if Self::is_newline(c) => {
+                _ if common::is_newline(c) => {
                     self.input.next();
                     self.start_of_line = true;
                     self.colon_count = 0;
                     self.indent = 0;
                     Some((SyntaxKind::NEWLINE, c.to_string()))
                 }
-                _ if Self::is_whitespace(c) => {
-                    let whitespace = self.read_while(Self::is_whitespace);
+                _ if common::is_indent(c) => {
+                    let whitespace = self.read_while(common::is_indent);
                     if self.start_of_line {
                         self.indent = whitespace.len();
                         Some((SyntaxKind::INDENT, whitespace))
@@ -116,22 +99,21 @@ impl<'a> Lexer<'a> {
                 }
                 '#' if self.start_of_line => {
                     self.input.next();
-                    let comment = self.read_while(|c| c != '\n' && c != '\r');
+                    let comment = self.read_while(|c| !common::is_newline(c));
                     self.start_of_line = true;
                     self.colon_count = 0;
                     Some((SyntaxKind::COMMENT, format!("#{}", comment)))
                 }
-                _ if Self::is_valid_key_char(c)
-                    && c != '-'
+                _ if common::is_valid_initial_key_char(c)
                     && self.start_of_line
                     && self.indent == 0 =>
                 {
-                    let key = self.read_while(Self::is_valid_key_char);
+                    let key = self.read_while(common::is_valid_key_char);
                     self.start_of_line = false;
                     Some((SyntaxKind::KEY, key))
                 }
                 _ if !self.start_of_line || self.indent > 0 => {
-                    let value = self.read_while(|c| !Self::is_newline(c));
+                    let value = self.read_while(|c| !common::is_newline(c));
                     Some((SyntaxKind::VALUE, value))
                 }
                 _ => {

@@ -4,6 +4,8 @@
 //! in the input.
 use crate::lex::SyntaxKind;
 
+use crate::common;
+
 /// Error type for the parser.
 #[derive(Debug)]
 pub enum Error {
@@ -222,24 +224,91 @@ impl Deb822 {
     }
 }
 
+fn lex(mut input: &str) -> impl Iterator<Item = (SyntaxKind, &str)> {
+    let mut colon_count = 0;
+    let mut start_of_line = true;
+    let mut indent = 0;
+
+    std::iter::from_fn(move || {
+        if let Some(c) = input.chars().next() {
+            match c {
+                ':' if colon_count == 0 => {
+                    colon_count += 1;
+                    input = &input[1..];
+                    Some((SyntaxKind::COLON, ":"))
+                }
+                _ if common::is_newline(c) => {
+                    let (nl, remaining) = input.split_at(1);
+                    input = remaining;
+                    start_of_line = true;
+                    colon_count = 0;
+                    indent = 0;
+                    Some((SyntaxKind::NEWLINE, nl))
+                }
+                _ if common::is_indent(c) => {
+                    let (whitespace, remaining) = input
+                        .split_at(input.find(|c| !common::is_indent(c)).unwrap_or(input.len()));
+                    input = remaining;
+                    if start_of_line {
+                        indent = whitespace.len();
+                        Some((SyntaxKind::INDENT, whitespace))
+                    } else {
+                        Some((SyntaxKind::WHITESPACE, whitespace))
+                    }
+                }
+                '#' if start_of_line => {
+                    let (comment, remaining) = input
+                        .split_at(input.find(|c| common::is_newline(c)).unwrap_or(input.len()));
+                    input = remaining;
+                    start_of_line = true;
+                    colon_count = 0;
+                    Some((SyntaxKind::COMMENT, comment))
+                }
+                _ if common::is_valid_initial_key_char(c) && start_of_line && indent == 0 => {
+                    let (key, remaining) = input.split_at(
+                        input
+                            .find(|c| !common::is_valid_key_char(c))
+                            .unwrap_or(input.len()),
+                    );
+                    input = remaining;
+                    start_of_line = false;
+                    Some((SyntaxKind::KEY, key))
+                }
+                _ if !start_of_line || indent > 0 => {
+                    let (value, remaining) = input
+                        .split_at(input.find(|c| common::is_newline(c)).unwrap_or(input.len()));
+                    input = remaining;
+                    Some((SyntaxKind::VALUE, value))
+                }
+                _ => {
+                    let (text, remaining) = input.split_at(1);
+                    input = remaining;
+                    Some((SyntaxKind::ERROR, text))
+                }
+            }
+        } else {
+            None
+        }
+    })
+}
+
 impl std::str::FromStr for Deb822 {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let lexed = crate::lex::lex(s);
-        let mut tokens = lexed.iter().peekable();
+        let mut tokens = lex(s).peekable();
 
         let mut paragraphs = Vec::new();
         let mut current_paragraph = Vec::new();
 
         while let Some((k, t)) = tokens.next() {
-            match *k {
+            match k {
                 SyntaxKind::EMPTY_LINE
                 | SyntaxKind::PARAGRAPH
                 | SyntaxKind::ROOT
                 | SyntaxKind::ENTRY => unreachable!(),
                 SyntaxKind::INDENT | SyntaxKind::COLON | SyntaxKind::ERROR => {
-                    return Err(Error::UnexpectedToken(*k, t.to_string()));
+                    return Err(Error::UnexpectedToken(k, t.to_string()));
                 }
                 SyntaxKind::WHITESPACE => {
                     // ignore whitespace
@@ -253,14 +322,14 @@ impl std::str::FromStr for Deb822 {
                     match tokens.next() {
                         Some((SyntaxKind::COLON, _)) => {}
                         Some((k, t)) => {
-                            return Err(Error::UnexpectedToken(*k, t.to_string()));
+                            return Err(Error::UnexpectedToken(k, t.to_string()));
                         }
                         None => {
                             return Err(Error::UnexpectedEof);
                         }
                     }
 
-                    while tokens.peek().map(|(k, _)| *k) == Some(SyntaxKind::WHITESPACE) {
+                    while tokens.peek().map(|(k, _)| k) == Some(&SyntaxKind::WHITESPACE) {
                         tokens.next();
                     }
 
@@ -272,14 +341,14 @@ impl std::str::FromStr for Deb822 {
                             SyntaxKind::NEWLINE => {
                                 break;
                             }
-                            _ => return Err(Error::UnexpectedToken(*k, t.to_string())),
+                            _ => return Err(Error::UnexpectedToken(k, t.to_string())),
                         }
                     }
 
                     current_paragraph.last_mut().unwrap().value.push('\n');
 
                     // while the next line starts with INDENT, it's a continuation of the value
-                    while tokens.peek().map(|(k, _)| *k) == Some(SyntaxKind::INDENT) {
+                    while tokens.peek().map(|(k, _)| k) == Some(&SyntaxKind::INDENT) {
                         tokens.next();
                         loop {
                             match tokens.peek() {
@@ -316,11 +385,11 @@ impl std::str::FromStr for Deb822 {
                     );
                 }
                 SyntaxKind::VALUE => {
-                    return Err(Error::UnexpectedToken(*k, t.to_string()));
+                    return Err(Error::UnexpectedToken(k, t.to_string()));
                 }
                 SyntaxKind::COMMENT => {
                     for (k, _) in tokens.by_ref() {
-                        if *k == SyntaxKind::NEWLINE {
+                        if k == SyntaxKind::NEWLINE {
                             break;
                         }
                     }
@@ -436,5 +505,54 @@ Another-Field: value
         let mut newpara = Paragraph { fields: vec![] };
         newpara.insert("Package", "new");
         assert_eq!(newpara.to_string(), "Package: new\n");
+    }
+
+    #[test]
+    fn test_lex() {
+        let input = r#"Package: hello
+Version: 2.10
+
+Package: world
+# Comment
+Version: 1.0
+Description: A program that says world
+ And some more text
+"#;
+        assert_eq!(
+            lex(input).collect::<Vec<_>>(),
+            vec![
+                (SyntaxKind::KEY, "Package"),
+                (SyntaxKind::COLON, ":"),
+                (SyntaxKind::WHITESPACE, " "),
+                (SyntaxKind::VALUE, "hello"),
+                (SyntaxKind::NEWLINE, "\n"),
+                (SyntaxKind::KEY, "Version"),
+                (SyntaxKind::COLON, ":"),
+                (SyntaxKind::WHITESPACE, " "),
+                (SyntaxKind::VALUE, "2.10"),
+                (SyntaxKind::NEWLINE, "\n"),
+                (SyntaxKind::NEWLINE, "\n"),
+                (SyntaxKind::KEY, "Package"),
+                (SyntaxKind::COLON, ":"),
+                (SyntaxKind::WHITESPACE, " "),
+                (SyntaxKind::VALUE, "world"),
+                (SyntaxKind::NEWLINE, "\n"),
+                (SyntaxKind::COMMENT, "# Comment"),
+                (SyntaxKind::NEWLINE, "\n"),
+                (SyntaxKind::KEY, "Version"),
+                (SyntaxKind::COLON, ":"),
+                (SyntaxKind::WHITESPACE, " "),
+                (SyntaxKind::VALUE, "1.0"),
+                (SyntaxKind::NEWLINE, "\n"),
+                (SyntaxKind::KEY, "Description"),
+                (SyntaxKind::COLON, ":"),
+                (SyntaxKind::WHITESPACE, " "),
+                (SyntaxKind::VALUE, "A program that says world"),
+                (SyntaxKind::NEWLINE, "\n"),
+                (SyntaxKind::INDENT, " "),
+                (SyntaxKind::VALUE, "And some more text"),
+                (SyntaxKind::NEWLINE, "\n"),
+            ]
+        );
     }
 }

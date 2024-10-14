@@ -8,7 +8,7 @@ fn parse_deb822_benchmark(c: &mut Criterion) {
 
     c.bench_function("parse_deb822_lossy", |b| {
         b.iter(|| {
-            let deb822: Deb822 = control_data.parse().unwrap();
+            let _deb822: Deb822 = control_data.parse().unwrap();
         });
     });
 }
