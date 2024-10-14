@@ -96,7 +96,6 @@ pub enum SyntaxKind {
     EQUAL,      // =
     WHITESPACE, // whitespace
     NEWLINE,    // newline
-    COMMENT,    // comments
     DOLLAR,     // $
     L_CURLY,
     R_CURLY,
@@ -224,11 +223,6 @@ impl<'a> Lexer<'a> {
                 _ if Self::is_whitespace(c) => {
                     let whitespace = self.read_while(Self::is_whitespace);
                     Some((SyntaxKind::WHITESPACE, whitespace))
-                }
-                '#' => {
-                    self.input.next();
-                    let comment = self.read_while(|c| c != '\n' && c != '\r');
-                    Some((SyntaxKind::COMMENT, format!("#{}", comment)))
                 }
                 // TODO: separate handling for package names and versions?
                 _ if Self::is_valid_ident_char(c) => {

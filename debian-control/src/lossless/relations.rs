@@ -355,7 +355,6 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
         }
         fn skip_ws(&mut self) {
             while self.current() == Some(WHITESPACE)
-                || self.current() == Some(COMMENT)
                 || self.current() == Some(NEWLINE)
             {
                 self.bump()
@@ -367,7 +366,7 @@ fn parse(text: &str, allow_substvar: bool) -> Parse {
             while i > 0 {
                 i -= 1;
                 match self.tokens[i].0 {
-                    WHITESPACE | COMMENT | NEWLINE => {}
+                    WHITESPACE | NEWLINE => {}
                     _ => return Some(self.tokens[i].0),
                 }
             }
@@ -904,7 +903,7 @@ impl Entry {
             .skip(1)
             .any(|n| n.kind() == ENTRY);
         while let Some(n) = self.0.next_sibling_or_token() {
-            if n.kind() == WHITESPACE || n.kind() == COMMENT || n.kind() == NEWLINE {
+            if n.kind() == WHITESPACE || n.kind() == NEWLINE {
                 n.detach();
             } else if n.kind() == COMMA {
                 n.detach();
@@ -1502,7 +1501,7 @@ impl Relation {
             // First item in the list. Remove whitespace up to the pipe, the pipe and anything
             // before the next relation
             while let Some(n) = self.0.next_sibling_or_token() {
-                if n.kind() == WHITESPACE || n.kind() == COMMENT || n.kind() == NEWLINE {
+                if n.kind() == WHITESPACE || n.kind() == NEWLINE {
                     n.detach();
                 } else if n.kind() == PIPE {
                     n.detach();
