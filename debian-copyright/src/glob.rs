@@ -10,7 +10,9 @@ pub fn glob_to_regex(glob: &str) -> regex::Regex {
                 '\\' => {
                     let c = it.next();
                     match c {
-                        Some('?') | Some('*') | Some('\\') => regex::escape(c.unwrap().to_string().as_str()),
+                        Some('?') | Some('*') | Some('\\') => {
+                            regex::escape(c.unwrap().to_string().as_str())
+                        }
                         Some(x) => {
                             panic!("invalid escape sequence: \\{}", x);
                         }
@@ -18,7 +20,7 @@ pub fn glob_to_regex(glob: &str) -> regex::Regex {
                             panic!("invalid escape sequence: \\");
                         }
                     }
-                },
+                }
                 c => regex::escape(c.to_string().as_str()),
             }
             .as_str(),

@@ -34,6 +34,7 @@
 //! assert_eq!(homepage.as_deref(), Some("https://github.com/jelmer/deb822-lossless"));
 //! ```
 
+mod common;
 pub mod convert;
 mod lex;
 pub mod lossless;
