@@ -1,6 +1,4 @@
 use crate::common;
-use std::iter::Peekable;
-use std::str::Chars;
 
 /// Let's start with defining all kinds of tokens and
 /// composite nodes.
@@ -31,118 +29,79 @@ impl From<SyntaxKind> for rowan::SyntaxKind {
     }
 }
 
-pub struct Lexer<'a> {
-    input: Peekable<Chars<'a>>,
-    start_of_line: bool,
-    indent: usize,
-    colon_count: usize,
-}
+fn lex_(mut input: &str, mut start_of_line: bool) -> impl Iterator<Item = (SyntaxKind, &str)> {
+    let mut colon_count = if start_of_line { 0 } else { 1 };
+    let mut indent = 0;
 
-impl<'a> Lexer<'a> {
-    pub fn new(input: &'a str) -> Self {
-        Lexer {
-            input: input.chars().peekable(),
-            start_of_line: true,
-            colon_count: 0,
-            indent: 0,
-        }
-    }
-
-    pub fn new_inline(input: &'a str) -> Self {
-        Lexer {
-            input: input.chars().peekable(),
-            start_of_line: false,
-            colon_count: 1,
-            indent: 0,
-        }
-    }
-
-    fn read_while<F>(&mut self, predicate: F) -> String
-    where
-        F: Fn(char) -> bool,
-    {
-        let mut result = String::new();
-        while let Some(&c) = self.input.peek() {
-            if predicate(c) {
-                result.push(c);
-                self.input.next();
-            } else {
-                break;
-            }
-        }
-        result
-    }
-
-    fn next_token(&mut self) -> Option<(SyntaxKind, String)> {
-        if let Some(&c) = self.input.peek() {
+    std::iter::from_fn(move || {
+        if let Some(c) = input.chars().next() {
             match c {
-                ':' if self.colon_count == 0 => {
-                    self.colon_count += 1;
-                    self.input.next();
-                    Some((SyntaxKind::COLON, ":".to_owned()))
+                ':' if colon_count == 0 => {
+                    colon_count += 1;
+                    input = &input[1..];
+                    Some((SyntaxKind::COLON, ":"))
                 }
                 _ if common::is_newline(c) => {
-                    self.input.next();
-                    self.start_of_line = true;
-                    self.colon_count = 0;
-                    self.indent = 0;
-                    Some((SyntaxKind::NEWLINE, c.to_string()))
+                    let (nl, remaining) = input.split_at(1);
+                    input = remaining;
+                    start_of_line = true;
+                    colon_count = 0;
+                    indent = 0;
+                    Some((SyntaxKind::NEWLINE, nl))
                 }
                 _ if common::is_indent(c) => {
-                    let whitespace = self.read_while(common::is_indent);
-                    if self.start_of_line {
-                        self.indent = whitespace.len();
+                    let (whitespace, remaining) = input
+                        .split_at(input.find(|c| !common::is_indent(c)).unwrap_or(input.len()));
+                    input = remaining;
+                    if start_of_line {
+                        indent = whitespace.len();
                         Some((SyntaxKind::INDENT, whitespace))
                     } else {
                         Some((SyntaxKind::WHITESPACE, whitespace))
                     }
                 }
-                '#' if self.start_of_line => {
-                    self.input.next();
-                    let comment = self.read_while(|c| !common::is_newline(c));
-                    self.start_of_line = true;
-                    self.colon_count = 0;
-                    Some((SyntaxKind::COMMENT, format!("#{}", comment)))
+                '#' if start_of_line => {
+                    let (comment, remaining) =
+                        input.split_at(input.find(common::is_newline).unwrap_or(input.len()));
+                    input = remaining;
+                    start_of_line = true;
+                    colon_count = 0;
+                    Some((SyntaxKind::COMMENT, comment))
                 }
-                _ if common::is_valid_initial_key_char(c)
-                    && self.start_of_line
-                    && self.indent == 0 =>
-                {
-                    let key = self.read_while(common::is_valid_key_char);
-                    self.start_of_line = false;
+                _ if common::is_valid_initial_key_char(c) && start_of_line && indent == 0 => {
+                    let (key, remaining) = input.split_at(
+                        input
+                            .find(|c| !common::is_valid_key_char(c))
+                            .unwrap_or(input.len()),
+                    );
+                    input = remaining;
+                    start_of_line = false;
                     Some((SyntaxKind::KEY, key))
                 }
-                _ if !self.start_of_line || self.indent > 0 => {
-                    let value = self.read_while(|c| !common::is_newline(c));
+                _ if !start_of_line || indent > 0 => {
+                    let (value, remaining) =
+                        input.split_at(input.find(common::is_newline).unwrap_or(input.len()));
+                    input = remaining;
                     Some((SyntaxKind::VALUE, value))
                 }
                 _ => {
-                    self.input.next();
-                    Some((SyntaxKind::ERROR, c.to_string()))
+                    let (text, remaining) = input.split_at(1);
+                    input = remaining;
+                    Some((SyntaxKind::ERROR, text))
                 }
             }
         } else {
             None
         }
-    }
+    })
 }
 
-impl Iterator for Lexer<'_> {
-    type Item = (SyntaxKind, String);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.next_token()
-    }
+pub(crate) fn lex(input: &str) -> impl Iterator<Item = (SyntaxKind, &str)> {
+    lex_(input, true)
 }
 
-pub(crate) fn lex(input: &str) -> Vec<(SyntaxKind, String)> {
-    let mut lexer = Lexer::new(input);
-    lexer.by_ref().collect::<Vec<_>>()
-}
-
-pub(crate) fn lex_inline(input: &str) -> Vec<(SyntaxKind, String)> {
-    let mut lexer = Lexer::new_inline(input);
-    lexer.by_ref().collect::<Vec<_>>()
+pub(crate) fn lex_inline(input: &str) -> impl Iterator<Item = (SyntaxKind, &str)> {
+    lex_(input, false)
 }
 
 #[cfg(test)]
@@ -150,7 +109,7 @@ mod tests {
     use super::SyntaxKind::*;
     #[test]
     fn test_empty() {
-        assert_eq!(super::lex(""), vec![]);
+        assert_eq!(super::lex("").collect::<Vec<_>>(), vec![]);
     }
 
     #[test]
@@ -177,8 +136,6 @@ Description: a package
  description
 "#
             )
-            .iter()
-            .map(|(kind, text)| (*kind, text.as_str()))
             .collect::<Vec<_>>(),
             vec![
                 (KEY, "Source"),
@@ -277,8 +234,6 @@ Section: vcs
         let tokens = super::lex(text);
         assert_eq!(
             tokens
-                .iter()
-                .map(|(kind, text)| (*kind, text.as_str()))
                 .collect::<Vec<_>>(),
             vec![
                 (KEY, "Package"), (COLON, ":"), (WHITESPACE, " "), (VALUE, "cvsd"), (NEWLINE, "\n"),
@@ -307,13 +262,7 @@ Section: vcs
     fn test_lex_inline() {
         let text = r"syncthing-gtk";
         let tokens = super::lex_inline(text);
-        assert_eq!(
-            tokens
-                .iter()
-                .map(|(kind, text)| (*kind, text.as_str()))
-                .collect::<Vec<_>>(),
-            vec![(VALUE, "syncthing-gtk")]
-        );
+        assert_eq!(tokens.collect::<Vec<_>>(), vec![(VALUE, "syncthing-gtk")]);
     }
 
     #[test]
@@ -323,10 +272,7 @@ Section: vcs
         let tokens = super::lex(text);
 
         assert_eq!(
-            tokens
-                .iter()
-                .map(|(kind, text)| (*kind, text.as_str()))
-                .collect::<Vec<_>>(),
+            tokens.collect::<Vec<_>>(),
             vec![
                 (KEY, "foo-bar"),
                 (COLON, ":"),
