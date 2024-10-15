@@ -94,7 +94,7 @@ impl std::error::Error for Error {}
 /// these two SyntaxKind types, allowing for a nicer SyntaxNode API where
 /// "kinds" are values from our `enum SyntaxKind`, instead of plain u16 values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) enum Lang {}
+pub enum Lang {}
 impl rowan::Language for Lang {
     type Kind = SyntaxKind;
     fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind {
@@ -269,7 +269,9 @@ fn parse(text: &str) -> Parse {
         }
     }
 
-    let mut tokens = lex(text);
+    let mut tokens = lex(text)
+        .map(|(k, t)| (k, t.to_string()))
+        .collect::<Vec<_>>();
     tokens.reverse();
     Parser {
         tokens,
@@ -905,6 +907,8 @@ impl Entry {
                     .collect::<String>();
                 let formatted = format_value(self.key().as_ref().unwrap(), &concat);
                 crate::lex::lex_inline(&formatted)
+                    .map(|(k, t)| (k, t.to_string()))
+                    .collect::<Vec<_>>()
             } else {
                 content
                     .into_iter()

@@ -4,8 +4,6 @@
 //! in the input.
 use crate::lex::SyntaxKind;
 
-use crate::common;
-
 /// Error type for the parser.
 #[derive(Debug)]
 pub enum Error {
@@ -239,79 +237,11 @@ impl Deb822 {
     }
 }
 
-fn lex(mut input: &str) -> impl Iterator<Item = (SyntaxKind, &str)> {
-    let mut colon_count = 0;
-    let mut start_of_line = true;
-    let mut indent = 0;
-
-    std::iter::from_fn(move || {
-        if let Some(c) = input.chars().next() {
-            match c {
-                ':' if colon_count == 0 => {
-                    colon_count += 1;
-                    input = &input[1..];
-                    Some((SyntaxKind::COLON, ":"))
-                }
-                _ if common::is_newline(c) => {
-                    let (nl, remaining) = input.split_at(1);
-                    input = remaining;
-                    start_of_line = true;
-                    colon_count = 0;
-                    indent = 0;
-                    Some((SyntaxKind::NEWLINE, nl))
-                }
-                _ if common::is_indent(c) => {
-                    let (whitespace, remaining) = input
-                        .split_at(input.find(|c| !common::is_indent(c)).unwrap_or(input.len()));
-                    input = remaining;
-                    if start_of_line {
-                        indent = whitespace.len();
-                        Some((SyntaxKind::INDENT, whitespace))
-                    } else {
-                        Some((SyntaxKind::WHITESPACE, whitespace))
-                    }
-                }
-                '#' if start_of_line => {
-                    let (comment, remaining) = input
-                        .split_at(input.find(|c| common::is_newline(c)).unwrap_or(input.len()));
-                    input = remaining;
-                    start_of_line = true;
-                    colon_count = 0;
-                    Some((SyntaxKind::COMMENT, comment))
-                }
-                _ if common::is_valid_initial_key_char(c) && start_of_line && indent == 0 => {
-                    let (key, remaining) = input.split_at(
-                        input
-                            .find(|c| !common::is_valid_key_char(c))
-                            .unwrap_or(input.len()),
-                    );
-                    input = remaining;
-                    start_of_line = false;
-                    Some((SyntaxKind::KEY, key))
-                }
-                _ if !start_of_line || indent > 0 => {
-                    let (value, remaining) = input
-                        .split_at(input.find(|c| common::is_newline(c)).unwrap_or(input.len()));
-                    input = remaining;
-                    Some((SyntaxKind::VALUE, value))
-                }
-                _ => {
-                    let (text, remaining) = input.split_at(1);
-                    input = remaining;
-                    Some((SyntaxKind::ERROR, text))
-                }
-            }
-        } else {
-            None
-        }
-    })
-}
-
 impl std::str::FromStr for Deb822 {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut tokens = lex(s).peekable();
+        let mut tokens = crate::lex::lex(s).peekable();
 
         let mut paragraphs = Vec::new();
         let mut current_paragraph = Vec::new();
@@ -431,6 +361,7 @@ impl std::str::FromStr for Deb822 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::lex::lex;
 
     #[test]
     fn test_parse() {
