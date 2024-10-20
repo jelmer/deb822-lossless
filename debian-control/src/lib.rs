@@ -33,13 +33,19 @@
 //! See the ``lossless`` module for a parser that preserves all comments and formatting, and
 //! as well as allowing inline errors.
 pub mod lossy;
+#[cfg(feature = "lossless")]
 pub use lossless::control::{Binary, Control, Source};
 pub mod fields;
 pub use fields::*;
+#[cfg(feature = "lossless")]
 pub mod lossless;
+#[cfg(feature = "lossless")]
 pub use lossless::apt;
+#[cfg(feature = "lossless")]
 pub use lossless::changes;
+#[cfg(feature = "lossless")]
 pub use lossless::control;
+#[cfg(feature = "lossless")]
 pub mod pgp;
 pub mod relations;
 pub mod vcs;

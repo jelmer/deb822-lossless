@@ -38,6 +38,7 @@
 //! allows partial parsing, parsing files with errors and unknown fields and editing while
 //! preserving formatting.
 
+#[cfg(feature = "lossless")]
 pub mod lossless;
 pub mod lossy;
 pub use lossy::Copyright;

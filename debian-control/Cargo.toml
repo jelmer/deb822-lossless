@@ -11,7 +11,7 @@ keywords = ["debian", "deb822", "rfc822", "lossless", "edit"]
 categories = ["parser-implementations"]
 
 [dependencies]
-rowan = ">=0.15"
+rowan = { version = ">=0.15", optional = true }
 debversion = ">=0.3"
 regex = "1"
 deb822-lossless = { version = ">=0.2", path = "..", features = ["derive"] }
@@ -21,13 +21,15 @@ chrono = { version = "0.4", optional = true }
 serde = { version = "1", optional = true }
 
 [features]
-default = ["chrono"]
+default = ["chrono", "lossless"]
 python-debian = ["dep:pyo3", "deb822-lossless/python-debian"]
 chrono = ["dep:chrono"]
 serde = ["dep:serde"]
+lossless = ["dep:rowan"]
 
 [[example]]
 name = "create-file"
+required-features = ["lossless"]
 
 [dev-dependencies]
 serde_json = "1.0.128"

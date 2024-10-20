@@ -15,12 +15,13 @@
 //! "#;
 //!
 //! let patch_header = PatchHeader::from_str(text).unwrap();
-//! assert_eq!(patch_header.description(), Some("[PATCH] fix a bug".to_string()));
-//! assert_eq!(patch_header.vendor_bugs("Debian").collect::<Vec<_>>(), vec!["https://bugs.debian.org/123456".to_string()]);
+//! assert_eq!(patch_header.description, Some("[PATCH] fix a bug".to_string()));
+//! assert_eq!(patch_header.vendor_bugs("Debian"), Some("https://bugs.debian.org/123456"));
 //! ```
 mod fields;
 pub use fields::*;
+#[cfg(feature = "lossless")]
 pub mod lossless;
 pub mod lossy;
 
-pub use lossless::PatchHeader;
+pub use lossy::PatchHeader;

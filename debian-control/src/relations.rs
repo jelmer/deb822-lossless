@@ -114,6 +114,7 @@ pub enum SyntaxKind {
 }
 
 /// Convert our `SyntaxKind` into the rowan `SyntaxKind`.
+#[cfg(feature = "lossless")]
 impl From<SyntaxKind> for rowan::SyntaxKind {
     fn from(kind: SyntaxKind) -> Self {
         Self(kind as u16)

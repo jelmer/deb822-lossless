@@ -13,3 +13,7 @@ categories = ["parser-implementations"]
 chrono = ">=0.4"
 deb822-lossless = { path = "..", version = ">=0.2", features = ["derive"] }
 url = "2"
+
+[features]
+default = ["lossless"]
+lossless = []
