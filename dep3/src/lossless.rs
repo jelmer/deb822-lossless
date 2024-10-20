@@ -17,7 +17,7 @@
 //! assert_eq!(patch_header.description(), Some("[PATCH] fix a bug".to_string()));
 //! assert_eq!(patch_header.vendor_bugs("Debian").collect::<Vec<_>>(), vec!["https://bugs.debian.org/123456".to_string()]);
 //! ```
-use deb822_lossless::Paragraph;
+use deb822_lossless::lossless::Paragraph;
 
 use crate::fields::*;
 
@@ -130,7 +130,7 @@ impl PatchHeader {
     }
 
     /// Get the bugs associated with a specific vendor.
-    pub fn vendor_bugs<'a>(&'a self, vendor: &'a str) -> impl Iterator<Item = String> + '_ {
+    pub fn vendor_bugs<'a>(&'a self, vendor: &'a str) -> impl Iterator<Item = String> + 'a {
         self.bugs().filter_map(|(k, v)| {
             if k == Some(vendor.to_string()) {
                 Some(v)
@@ -234,7 +234,7 @@ impl Default for PatchHeader {
 }
 
 impl std::str::FromStr for PatchHeader {
-    type Err = deb822_lossless::ParseError;
+    type Err = deb822_lossless::lossless::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(PatchHeader(Paragraph::from_str(s)?))
