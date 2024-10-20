@@ -12,31 +12,17 @@ pub trait Deb822LikeParagraph: FromIterator<(String, String)> {
     fn remove(&mut self, key: &str);
 }
 
-impl Deb822LikeParagraph for crate::lossy::Paragraph {
+impl Deb822LikeParagraph for crate::Paragraph {
     fn get(&self, key: &str) -> Option<String> {
-        crate::lossy::Paragraph::get(self, key).map(|v| v.to_string())
+        crate::Paragraph::get(self, key).map(|v| v.to_string())
     }
 
     fn set(&mut self, key: &str, value: &str) {
-        crate::lossy::Paragraph::set(self, key, value);
+        crate::Paragraph::set(self, key, value);
     }
 
     fn remove(&mut self, key: &str) {
-        crate::lossy::Paragraph::remove(self, key);
-    }
-}
-
-impl Deb822LikeParagraph for crate::lossless::Paragraph {
-    fn get(&self, key: &str) -> Option<String> {
-        crate::lossless::Paragraph::get(self, key).map(|v| v.to_string())
-    }
-
-    fn set(&mut self, key: &str, value: &str) {
-        crate::lossless::Paragraph::set(self, key, value);
-    }
-
-    fn remove(&mut self, key: &str) {
-        crate::lossless::Paragraph::remove(self, key);
+        crate::Paragraph::remove(self, key);
     }
 }
 
@@ -65,7 +51,7 @@ mod tests {
     #[cfg(feature = "derive")]
     mod derive {
         use super::*;
-        use crate as deb822_lossless;
+        use crate as deb822_fast;
         use crate::{FromDeb822, ToDeb822};
 
         #[test]
@@ -83,7 +69,7 @@ mod tests {
                 blah: None,
             };
 
-            let paragraph: crate::lossy::Paragraph = foo.to_paragraph();
+            let paragraph: crate::Paragraph = foo.to_paragraph();
             assert_eq!(paragraph.get("bar"), Some("hello"));
             assert_eq!(paragraph.get("baz"), Some("42"));
             assert_eq!(paragraph.get("blah"), None);
@@ -102,7 +88,7 @@ mod tests {
                 baz: None,
             };
 
-            let paragraph: crate::lossy::Paragraph = foo.to_paragraph();
+            let paragraph: crate::Paragraph = foo.to_paragraph();
             assert_eq!(paragraph.get("bar"), Some("hello"));
             assert_eq!(paragraph.get("baz"), None);
 
@@ -110,32 +96,8 @@ mod tests {
         }
 
         #[test]
-        fn test_update_preserve_comments() {
-            let mut para: crate::lossless::Paragraph =
-                "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
-
-            #[derive(FromDeb822, ToDeb822)]
-            struct Foo {
-                bar: String,
-                baz: String,
-            }
-
-            let mut foo: Foo = Foo::from_paragraph(&para).unwrap();
-            assert_eq!(foo.bar, "bar");
-            assert_eq!(foo.baz, "blah");
-
-            foo.bar = "new".to_string();
-
-            foo.update_paragraph(&mut para);
-
-            assert_eq!(para.get("bar"), Some("new".to_string()));
-            assert_eq!(para.get("baz"), Some("blah".to_string()));
-            assert_eq!(para.to_string(), "bar: new\n# comment\nbaz: blah\n");
-        }
-
-        #[test]
         fn test_deserialize_with() {
-            let mut para: crate::lossless::Paragraph =
+            let mut para: crate::Paragraph =
                 "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
 
             fn to_bool(s: &str) -> Result<bool, String> {
@@ -165,14 +127,14 @@ mod tests {
 
             foo.update_paragraph(&mut para);
 
-            assert_eq!(para.get("bar"), Some("new".to_string()));
-            assert_eq!(para.get("baz"), Some("nee".to_string()));
-            assert_eq!(para.to_string(), "bar: new\n# comment\nbaz: nee\n");
+            assert_eq!(para.get("bar"), Some("new"));
+            assert_eq!(para.get("baz"), Some("nee"));
+            assert_eq!(para.to_string(), "bar: new\nbaz: nee\n");
         }
 
         #[test]
         fn test_update_remove() {
-            let mut para: crate::lossy::Paragraph =
+            let mut para: crate::Paragraph =
                 "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
 
             #[derive(FromDeb822, ToDeb822)]
