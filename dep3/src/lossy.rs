@@ -77,6 +77,16 @@ pub struct PatchHeader {
     pub description: Option<String>,
 }
 
+impl PatchHeader {
+    /// Create a new patch header.
+    pub fn vendor_bugs(&self, vendor: &str) -> Option<&str> {
+        match vendor {
+            "Debian" => self.bug_debian.as_ref().map(|u| u.as_str()),
+            _ => None,
+        }
+    }
+}
+
 impl std::fmt::Display for PatchHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let paragraph: deb822_lossless::lossy::Paragraph = self.to_paragraph();
