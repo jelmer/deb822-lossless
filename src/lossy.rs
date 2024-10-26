@@ -189,6 +189,17 @@ impl FromIterator<(String, String)> for Paragraph {
     }
 }
 
+impl IntoIterator for Paragraph {
+    type Item = (String, String);
+    type IntoIter = std::iter::Map<std::vec::IntoIter<Field>, fn(Field) -> (String, String)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.fields
+            .into_iter()
+            .map(|field| (field.name, field.value))
+    }
+}
+
 /// A deb822 document.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Deb822(Vec<Paragraph>);
@@ -500,5 +511,23 @@ Description: A program that says world
                 (SyntaxKind::NEWLINE, "\n"),
             ]
         );
+    }
+
+    #[test]
+    fn test_paragraph_iter() {
+        let input = r#"Package: hello
+Version: 2.10
+"#;
+        let para: Paragraph = input.parse().unwrap();
+        let mut iter = para.into_iter();
+        assert_eq!(
+            iter.next(),
+            Some(("Package".to_string(), "hello".to_string()))
+        );
+        assert_eq!(
+            iter.next(),
+            Some(("Version".to_string(), "2.10".to_string()))
+        );
+        assert_eq!(iter.next(), None);
     }
 }
