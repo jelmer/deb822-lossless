@@ -130,7 +130,7 @@ impl PatchHeader {
     }
 
     /// Get the bugs associated with a specific vendor.
-    pub fn vendor_bugs<'a>(&'a self, vendor: &'a str) -> impl Iterator<Item = String> + '_ {
+    pub fn vendor_bugs<'a>(&'a self, vendor: &'a str) -> impl Iterator<Item = String> + 'a {
         self.bugs().filter_map(|(k, v)| {
             if k == Some(vendor.to_string()) {
                 Some(v)
