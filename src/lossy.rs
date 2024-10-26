@@ -126,7 +126,7 @@ impl std::fmt::Display for Field {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let lines = self.value.lines().collect::<Vec<_>>();
         if lines.len() > 1 {
-            writeln!(f, "{}:", self.name)?;
+            write!(f, "{}:", self.name)?;
             for line in lines {
                 writeln!(f, " {}", line)?;
             }
@@ -140,7 +140,7 @@ impl std::fmt::Display for Field {
 impl std::fmt::Display for Paragraph {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for field in &self.fields {
-            f.write_str(&field.to_string())?;
+            field.fmt(f)?;
         }
         Ok(())
     }
@@ -529,5 +529,20 @@ Version: 2.10
             Some(("Version".to_string(), "2.10".to_string()))
         );
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_format_multiline() {
+        let para = Paragraph {
+            fields: vec![Field {
+                name: "Description".to_string(),
+                value: "A program that says hello\nSome more text".to_string(),
+            }],
+        };
+
+        assert_eq!(
+            para.to_string(),
+            "Description: A program that says hello\n Some more text\n"
+        );
     }
 }
