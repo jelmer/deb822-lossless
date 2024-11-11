@@ -795,7 +795,7 @@ impl Entry {
         let tail_pos = new_root.children_with_tokens().count() - new_tail_len;
         new_root.splice_children(
             tail_pos - new_tail_len..tail_pos,
-            old_tail.into_iter().rev().collect(),
+            old_tail.into_iter().rev(),
         );
         let index = old_root.index();
         self.0
