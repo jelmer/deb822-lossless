@@ -239,7 +239,7 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.38"
+version = "0.1.39"
 dependencies = [
  "chrono",
  "deb822-lossless",
