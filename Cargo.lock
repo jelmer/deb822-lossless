@@ -227,7 +227,7 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "criterion",
  "deb822-derive",
