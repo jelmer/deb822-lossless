@@ -28,7 +28,6 @@ Description: Lossless parser for deb822 style files.
   This parser can be used to parse files in the deb822 format, while preserving
   all whitespace and comments. It is based on the [rowan] library, which is a
   lossless parser library for Rust.
-
 "#;
 
 let deb822 = Deb822::from_str(input).unwrap();
@@ -38,15 +37,17 @@ assert_eq!(deb822.paragraphs().count(), 2);
 A derive-macro is also provided for easily defining more Deb822-derived types:
 
 ```rust
-
+#[cfg(feature = "derive")]
+{
 use deb822_lossless::{FromDeb822, ToDeb822};
 
 #[derive(FromDeb822, ToDeb822, Debug, PartialEq)]
 struct Test {
+    #[deb822(field = "Package")]
     package: String,
     architecture: Option<String>,
 
-    #[deb822(key = "Description")]
+    #[deb822(field = "Description")]
     description: String,
 }
 
@@ -58,8 +59,11 @@ Description: Lossless parser for deb822 style files.
   lossless parser library for Rust.
 "#;
 
+use deb822_lossless::Paragraph;
+use deb822_lossless::convert::FromDeb822Paragraph;
 let parser: Paragraph = input.parse().unwrap();
-let test: Test = parser.into();
+let test: Test = FromDeb822Paragraph::from_paragraph(&parser).unwrap();
 
 assert_eq!(test.package, "deb822-lossless");
+}
 ```
