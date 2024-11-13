@@ -19,7 +19,7 @@ repository = "https://github.com/jelmer/deb822-lossless"
 homepage = "https://github.com/jelmer/deb822-lossless"
 
 [workspace.dependencies]
-rowan = ">=0.15.16"
+rowan = "0.16"
 pyo3 = "0.22"
 
 [dependencies]
