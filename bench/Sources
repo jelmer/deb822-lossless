@@ -1204,7 +1204,7 @@ Binary: binutils-for-host, binutils-for-build, binutils, libctf-nobfd0, libctf-n
  binutils-mipsisa64r6el-linux-gnuabi64-dbg
 Version: 2.43.1-5
 Maintainer: Matthias Klose <doko@debian.org>
-Uploaders: James Troup <binutils@elmo.tasta.io>
+Uploaders: James Troupe <binutils@elmo.tasta.io>
 Build-Depends: autoconf (>= 2.64), dpkg-dev (>= 1.19.0.5), bison, flex, gettext, texinfo, dejagnu, quilt, chrpath, dwz, debugedit (>= 4.16), python3:any, file, xz-utils, lsb-release, zlib1g-dev, procps, help2man, libjansson-dev, pkgconf, libzstd-dev, default-jdk-headless [amd64 arm64 i386 riscv64 x32] <!pkg.binutils.nojava>, g++-aarch64-linux-gnu [amd64 i386 ppc64el s390x x32] <!nocheck>, g++-arm-linux-gnueabi [amd64 arm64 i386 x32] <!nocheck>, g++-arm-linux-gnueabihf [amd64 arm64 i386 ppc64el s390x x32] <!nocheck>, g++-powerpc64le-linux-gnu [amd64 arm64 i386 ppc64 s390x x32] <!nocheck>, g++-s390x-linux-gnu [amd64 arm64 i386 ppc64el x32] <!nocheck>, g++-alpha-linux-gnu [amd64 i386 x32] <!nocheck>, g++-hppa-linux-gnu [amd64 i386 x32] <!nocheck>, g++-m68k-linux-gnu [amd64 i386 x32] <!nocheck>, g++-powerpc-linux-gnu [amd64 i386 ppc64el s390x x32] <!nocheck>, g++-powerpc64-linux-gnu [amd64 i386 s390x x32] <!nocheck>, g++-riscv64-linux-gnu [amd64 arm64 i386 ppc64el s390x x32] <!nocheck>, g++-sh4-linux-gnu [amd64 i386 x32] <!nocheck>, g++-sparc64-linux-gnu [amd64 i386 x32] <!nocheck>, g++-i686-linux-gnu [amd64 arm64 ppc64el s390x x32] <!nocheck>, g++-x86-64-linux-gnu [arm64 i386 ppc64el s390x] <!nocheck>, g++-x86-64-linux-gnux32 [amd64 arm64 i386 ppc64el] <!nocheck>
 Build-Conflicts: libelf-dev
 Architecture: any all
@@ -1324,7 +1324,7 @@ Binary: binutils-for-host, binutils-for-build, binutils, libctf-nobfd0, libctf-n
  binutils-mipsisa64r6el-linux-gnuabi64-dbg
 Version: 2.43.50.20240909-1
 Maintainer: Matthias Klose <doko@debian.org>
-Uploaders: James Troup <binutils@elmo.tasta.io>
+Uploaders: James Troupe <binutils@elmo.tasta.io>
 Build-Depends: autoconf (>= 2.64), dpkg-dev (>= 1.19.0.5), bison, flex, gettext, texinfo, dejagnu, quilt, chrpath, dwz, debugedit (>= 4.16), python3:any, file, xz-utils, lsb-release, zlib1g-dev, procps, help2man, libjansson-dev, pkgconf, libzstd-dev, default-jdk-headless [amd64 arm64 i386 riscv64 x32], g++-aarch64-linux-gnu [amd64 i386 ppc64el s390x x32] <!nocheck>, g++-arm-linux-gnueabi [amd64 arm64 i386 x32] <!nocheck>, g++-arm-linux-gnueabihf [amd64 arm64 i386 ppc64el s390x x32] <!nocheck>, g++-powerpc64le-linux-gnu [amd64 arm64 i386 ppc64 s390x x32] <!nocheck>, g++-s390x-linux-gnu [amd64 arm64 i386 ppc64el x32] <!nocheck>, g++-alpha-linux-gnu [amd64 i386 x32] <!nocheck>, g++-hppa-linux-gnu [amd64 i386 x32] <!nocheck>, g++-m68k-linux-gnu [amd64 i386 x32] <!nocheck>, g++-powerpc-linux-gnu [amd64 i386 ppc64el s390x x32] <!nocheck>, g++-powerpc64-linux-gnu [amd64 i386 s390x x32] <!nocheck>, g++-riscv64-linux-gnu [amd64 arm64 i386 ppc64el s390x x32] <!nocheck>, g++-sh4-linux-gnu [amd64 i386 x32] <!nocheck>, g++-sparc64-linux-gnu [amd64 i386 x32] <!nocheck>, g++-i686-linux-gnu [amd64 arm64 ppc64el s390x x32] <!nocheck>, g++-x86-64-linux-gnu [arm64 i386 ppc64el s390x] <!nocheck>, g++-x86-64-linux-gnux32 [amd64 arm64 i386 ppc64el] <!nocheck>
 Build-Conflicts: libelf-dev
 Architecture: any all
@@ -4126,7 +4126,7 @@ Package: gavl
 Binary: libgavl2, libgavl-dev, libgavl-doc
 Version: 2.0.0~svngit.20240111.a5dd20c-1~exp1
 Maintainer: Debian Multimedia Maintainers <debian-multimedia@lists.debian.org>
-Uploaders: Free Ekanayaka <freee@debian.org>, IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>,
+Uploaders: Free Ekanayaka <free@debian.org>, IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>,
 Build-Depends: debhelper-compat (= 13), libegl-dev, libgnutls28-dev, libpng-dev, libva-dev, libxext-dev, pkg-config
 Build-Depends-Indep: doxygen
 Architecture: any all
@@ -17027,8 +17027,8 @@ Directory: pool/main/g/gosop
 Priority: optional
 Section: misc
 
-Package: gost
-Binary: golang-github-knqyf263-gost-dev, gost
+Package: ghost
+Binary: golang-github-knqyf263-ghost-dev, ghost
 Version: 0.1.0+git20181204.5afeda5e-1
 Maintainer: Debian Go Packaging Team <pkg-go-maintainers@lists.alioth.debian.org>
 Uploaders: Nobuhiro Iwamatsu <iwamatsu@debian.org>
@@ -17040,20 +17040,20 @@ Files:
  26fe26c0a6113a1ed6f594b61412d6e3 2751 gost_0.1.0+git20181204.5afeda5e-1.dsc
  7f390a5b351e18f4485a157d8f864112 1163028 gost_0.1.0+git20181204.5afeda5e.orig.tar.xz
  67a9521e4716a5e3abd8fb0651272693 3440 gost_0.1.0+git20181204.5afeda5e-1.debian.tar.xz
-Vcs-Browser: https://salsa.debian.org/go-team/packages/gost
-Vcs-Git: https://salsa.debian.org/go-team/packages/gost.git
+Vcs-Browser: https://salsa.debian.org/go-team/packages/ghost
+Vcs-Git: https://salsa.debian.org/go-team/packages/ghost.git
 Checksums-Sha256:
  530a2e345e0d5224c70c570ec40422d47676c74ac6f7441566b2ccd166a20ef2 2751 gost_0.1.0+git20181204.5afeda5e-1.dsc
  484d462501262614ba061220ce2c9a262a22c5902d04e3f4b44a42deaa07b381 1163028 gost_0.1.0+git20181204.5afeda5e.orig.tar.xz
  d98a51f92e18bd66700c09d5ba0463a0c2eaa658f9a97ac83c862d169c6c19d2 3440 gost_0.1.0+git20181204.5afeda5e-1.debian.tar.xz
-Homepage: https://github.com/knqyf263/gost
-Go-Import-Path: github.com/knqyf263/gost
+Homepage: https://github.com/knqyf263/ghost
+Go-Import-Path: github.com/knqyf263/ghost
 Package-List: 
  golang-github-knqyf263-gost-dev deb devel optional arch=all
- gost deb devel optional arch=any
+ ghost deb devel optional arch=any
 Testsuite: autopkgtest-pkg-go
 Extra-Source-Only: yes
-Directory: pool/main/g/gost
+Directory: pool/main/g/ghost
 Priority: extra
 Section: misc
 
@@ -20924,7 +20924,7 @@ Priority: optional
 Section: misc
 
 Package: libapache2-mod-tile
-Binary: libapache2-mod-tile, renderd
+Binary: libapache2-mod-tile, rendered
 Version: 0.8.0~beta-1~exp1
 Maintainer: Debian GIS Project <pkg-grass-devel@lists.alioth.debian.org>
 Uploaders: Felix Delattre <debian@xama.nu>
@@ -20945,7 +20945,7 @@ Checksums-Sha256:
 Homepage: https://wiki.openstreetmap.org/wiki/Mod_tile
 Package-List: 
  libapache2-mod-tile deb httpd optional arch=any
- renderd deb utils optional arch=any
+ rendered deb utils optional arch=any
 Directory: pool/main/liba/libapache2-mod-tile
 Priority: extra
 Section: misc
@@ -26663,7 +26663,7 @@ Package: lxqt-policykit
 Binary: lxqt-policykit, lxqt-policykit-l10n
 Version: 2.0.0-1~exp1
 Maintainer: LXQt Packaging Team <team+lxqt@tracker.debian.org>
-Uploaders: Alf Gaida <agaida@siduction.org>, ChangZhuo Chen (陳昌倬) <czchen@debian.org>, Andrew Lee (李健秋) <ajqlee@debian.org>, Yukiharu YABUKI <yyabuki@debian.org>
+Uploaders: Alf Gaida <agaida@seduction.org>, ChangZhuo Chen (陳昌倬) <czchen@debian.org>, Andrew Lee (李健秋) <ajqlee@debian.org>, Yukiharu YABUKI <yyabuki@debian.org>
 Build-Depends: debhelper-compat (= 13), libkf6windowsystem-dev, liblxqt-dev (>= 2.0.0~), libpolkit-agent-1-dev, libpolkit-qt6-1-dev, qt6-svg-dev, libx11-dev, qt6-tools-dev
 Architecture: any all
 Standards-Version: 4.7.0
@@ -26692,7 +26692,7 @@ Package: lxqt-powermanagement
 Binary: lxqt-powermanagement, lxqt-powermanagement-l10n
 Version: 2.0.0-1~exp1
 Maintainer: LXQt Packaging Team <team+lxqt@tracker.debian.org>
-Uploaders: Alf Gaida <agaida@siduction.org>, ChangZhuo Chen (陳昌倬) <czchen@debian.org>, Andrew Lee (李健秋) <ajqlee@debian.org>
+Uploaders: Alf Gaida <agaida@seduction.org>, ChangZhuo Chen (陳昌倬) <czchen@debian.org>, Andrew Lee (李健秋) <ajqlee@debian.org>
 Build-Depends: debhelper-compat (= 13), libkf6idletime-dev, libkf6solid-dev, libkf6windowsystem-dev, liblxqt-dev (>= 2.0.0~), liblxqt-globalkeys-dev (>= 2.0.0~), liblxqt-globalkeys-ui-dev (>= 2.0.0~), libxcb-dpms0-dev, libxcb-screensaver0-dev, qt6-base-private-dev, qt6-tools-dev
 Architecture: any all
 Standards-Version: 4.7.0
@@ -37940,7 +37940,7 @@ Section: admin
 Package: reprepro
 Binary: reprepro
 Version: 5.4.5-1
-Maintainer: Bastian Germann <bage@debian.org>
+Maintainer: Bastian Germann <bag@debian.org>
 Build-Depends: debhelper-compat (= 12), libgpgme-dev, libdb-dev, libz-dev, libbz2-dev, liblzma-dev, libarchive-dev, shunit2, db-util
 Architecture: any
 Standards-Version: 4.3.0
@@ -39309,13 +39309,13 @@ Files:
  d7c4235b2e6bac2b8891004cbd641731 3631 rust-ratatui_0.28.1-5.dsc
  d81d7ae99c750706d119a8877e07b91d 510027 rust-ratatui_0.28.1.orig.tar.gz
  891c9f70ba08814f3464189c2ce626a7 6668 rust-ratatui_0.28.1-5.debian.tar.xz
-Vcs-Browser: https://salsa.debian.org/rust-team/debcargo-conf/tree/master/src/ratatui
-Vcs-Git: https://salsa.debian.org/rust-team/debcargo-conf.git [src/ratatui]
+Vcs-Browser: https://salsa.debian.org/rust-team/debcargo-conf/tree/master/src/ratatouille
+Vcs-Git: https://salsa.debian.org/rust-team/debcargo-conf.git [src/ratatouille]
 Checksums-Sha256:
  60d59106aa9ceb1da23f5f0251cb71db8e2a9f55e417cdeba1f3ac846bdb5fa2 3631 rust-ratatui_0.28.1-5.dsc
  008042b07ae18ad9b048a3bd503cb624c77e2f9c65a7d3c000af3a8671c49aa4 510027 rust-ratatui_0.28.1.orig.tar.gz
  4b33ac2612b96946c2063b7467fb497dad9165fbeab94585cb168aa8856ddb78 6668 rust-ratatui_0.28.1-5.debian.tar.xz
-Homepage: https://ratatui.rs
+Homepage: https://ratatouille.rs
 Package-List: 
  librust-ratatui-dev deb rust optional arch=any
 Testsuite: autopkgtest
@@ -43297,7 +43297,7 @@ Checksums-Sha256:
  e134d1853155968b501d032bd2dc832250f2ad212aa44dc5572b6cd805af0644 2076 whizzytex_1.4.0-1.dsc
  f569144180487749022ba90f9f50a52c49d4fc06cba0ebfcbd2a6e35b31be687 1295301 whizzytex_1.4.0.orig.tar.gz
  aa900d762cda4742d0052874d1867331c96a094f5b9555282805c926ec5bafaf 16384 whizzytex_1.4.0-1.debian.tar.xz
-Homepage: http://cristal.inria.fr/whizzytex/
+Homepage: http://crystal.inria.fr/whizzytex/
 Package-List: 
  whizzytex deb tex optional arch=all
 Testsuite: autopkgtest

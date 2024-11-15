@@ -1294,7 +1294,7 @@ Description: This is a description
         let mut p = ps.next().unwrap();
         p.set("Foo", "Bar");
         p.remove("Section");
-        p.remove("Nonexistant");
+        p.remove("Nonexistent");
         assert_eq!(p.get("Foo").as_deref(), Some("Bar"));
         assert_eq!(
             p.to_string(),
