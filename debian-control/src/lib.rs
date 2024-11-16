@@ -1,4 +1,7 @@
 #![deny(missing_docs)]
+// Until we drop support for PyO3 0.22, allow use of deprecated functions.
+#![allow(deprecated)]
+
 //! Parser for Debian control files.
 //!
 //! This crate provides a parser for Debian control files.

@@ -1,6 +1,8 @@
 #![deny(missing_docs)]
 #![allow(clippy::type_complexity)]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
+// Until we drop support for PyO3 0.22, allow use of deprecated functions.
+#![allow(deprecated)]
 
 mod common;
 pub mod convert;
