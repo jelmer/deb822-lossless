@@ -18,3 +18,6 @@ deb822-lossless = { version = ">=0.2", path = "..", features = ["derive"] }
 [features]
 default = ["lossless"]
 lossless = []
+
+[badges]
+maintenance = { status = "actively-maintained" }
