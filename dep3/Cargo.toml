@@ -17,3 +17,6 @@ url = "2"
 [features]
 default = ["lossless"]
 lossless = []
+
+[badges]
+maintenance = { status = "actively-maintained" }

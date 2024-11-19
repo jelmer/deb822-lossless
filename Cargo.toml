@@ -47,3 +47,6 @@ harness = false
 name = "parse_lossless"
 path = "bench/bench_lossless.rs"
 harness = false
+
+[badges]
+maintenance = { status = "actively-maintained" }
