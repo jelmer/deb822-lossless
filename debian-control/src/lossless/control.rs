@@ -178,9 +178,7 @@ impl Control {
         immediate_empty_line: bool,
         max_line_length_one_liner: Option<usize>,
     ) {
-        let sort_paragraphs = |a: &Paragraph,
-                               b: &Paragraph|
-         -> std::cmp::Ordering {
+        let sort_paragraphs = |a: &Paragraph, b: &Paragraph| -> std::cmp::Ordering {
             // Sort Source before Package
             let a_is_source = a.get("Source").is_some();
             let b_is_source = b.get("Source").is_some();

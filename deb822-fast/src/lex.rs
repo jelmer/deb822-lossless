@@ -62,8 +62,8 @@ pub(crate) fn lex(mut input: &str) -> impl Iterator<Item = (SyntaxKind, &str)> {
                     Some((SyntaxKind::NEWLINE, nl))
                 }
                 _ if is_indent(c) => {
-                    let (whitespace, remaining) = input
-                        .split_at(input.find(|c| !is_indent(c)).unwrap_or(input.len()));
+                    let (whitespace, remaining) =
+                        input.split_at(input.find(|c| !is_indent(c)).unwrap_or(input.len()));
                     input = remaining;
                     if start_of_line {
                         indent = whitespace.len();
@@ -81,11 +81,8 @@ pub(crate) fn lex(mut input: &str) -> impl Iterator<Item = (SyntaxKind, &str)> {
                     Some((SyntaxKind::COMMENT, comment))
                 }
                 _ if is_valid_initial_key_char(c) && start_of_line && indent == 0 => {
-                    let (key, remaining) = input.split_at(
-                        input
-                            .find(|c| !is_valid_key_char(c))
-                            .unwrap_or(input.len()),
-                    );
+                    let (key, remaining) = input
+                        .split_at(input.find(|c| !is_valid_key_char(c)).unwrap_or(input.len()));
                     input = remaining;
                     start_of_line = false;
                     Some((SyntaxKind::KEY, key))

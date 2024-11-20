@@ -238,6 +238,7 @@ dependencies = [
 name = "deb822-fast"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "deb822-derive",
 ]
 

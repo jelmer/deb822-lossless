@@ -97,8 +97,7 @@ mod tests {
 
         #[test]
         fn test_deserialize_with() {
-            let mut para: crate::Paragraph =
-                "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
+            let mut para: crate::Paragraph = "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
 
             fn to_bool(s: &str) -> Result<bool, String> {
                 Ok(s == "ja")
@@ -134,8 +133,7 @@ mod tests {
 
         #[test]
         fn test_update_remove() {
-            let mut para: crate::Paragraph =
-                "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
+            let mut para: crate::Paragraph = "bar: bar\n# comment\nbaz: blah\n".parse().unwrap();
 
             #[derive(FromDeb822, ToDeb822)]
             struct Foo {
