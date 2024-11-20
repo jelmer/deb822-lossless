@@ -1,5 +1,5 @@
 [package]
-name = "apt-source"
+name = "apt-sources"
 authors = ["Michał Fita <4925040+michalfita@users.noreply.github.com>"]
 edition = "2021"
 version = "0.1.40"

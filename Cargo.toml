@@ -12,7 +12,7 @@ categories = ["parser-implementations"]
 include = ["bench/Sources", "src/*.rs", "bench/*.rs", "examples/*.rs"]
 
 [workspace]
-members = [ "deb822-derive","debian-control", "debian-copyright", "dep3", "apt-source"]
+members = [ "deb822-derive","debian-control", "debian-copyright", "dep3", "apt-sources"]
 
 [workspace.package]
 repository = "https://github.com/jelmer/deb822-lossless"
