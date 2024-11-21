@@ -1,4 +1,4 @@
-//! A module for handling errors in `apt-source` sub-crate of `deb822-lossless` project.
+//! A module for handling errors in `apt-sources` crate of `deb822-rs` project.
 //! It intends to address error handling in meaningful manner, less vague than just passing
 //! `String` as error.
 

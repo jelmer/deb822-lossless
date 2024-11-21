@@ -2,11 +2,18 @@
 //! A library for parsing and manipulating APT source files that
 //! use the DEB822 format to hold package repositories specifications.
 //!
+//! /// <div class="warning">
+//!
+//! Currently only lossy _serialization_ is implemented, lossless support
+//! retaining file sequence and comments would come at later date.
+//!
+//! </div>
+//! 
 //! # Examples
 //!
 //! ```rust
 //!
-//! use apt_source::Repositories;
+//! use apt_sources::Repositories;
 //! use std::path::Path;
 //!
 //! let text = r#"Types: deb

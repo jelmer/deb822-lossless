@@ -1,4 +1,4 @@
-use apt_source::Repositories;
+use apt_sources::Repositories;
 use indoc::indoc;
 
 pub const TEXT: &str = indoc! {r#"
@@ -11,7 +11,7 @@ pub const TEXT: &str = indoc! {r#"
 "#};
 
 pub fn main() {
-    let c = TEXT.parse::<Repositories>().unwrap();
-    //let license = c.find_license_for_file(Path::new("debian/foo")).unwrap();
-    //println!("{}", license.name().unwrap());
+    let repos = TEXT.parse::<Repositories>().unwrap();
+    let suites = repos[0].suites();
+    println!("{}", suites.join(" "));
 }
