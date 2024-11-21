@@ -306,7 +306,9 @@ impl Parse {
 
 macro_rules! ast_node {
     ($ast:ident, $kind:ident) => {
-        /// An AST node representing a $ast.
+        #[doc = "An AST node representing a `"]
+        #[doc = stringify!($ast)]
+        #[doc = "`."]
         #[derive(PartialEq, Eq, Hash)]
         #[repr(transparent)]
         pub struct $ast(SyntaxNode);
@@ -457,8 +459,41 @@ impl Deb822 {
         self.0.children().filter_map(Paragraph::cast)
     }
 
-    /// Add a new empty paragraph to the end of the file.
-    pub fn add_paragraph(&mut self) -> Paragraph {
+    /// Converts the perceptual paragraph index to the node index.
+    fn convert_index(&self, index: usize) -> Option<usize> {
+        let mut current_pos = 0usize;
+        if index == 0 {
+            return Some(0);
+        }
+        for (i, node) in self.0.children_with_tokens().enumerate() {
+            if node.kind() == PARAGRAPH {
+                if current_pos == index {
+                    return Some(i);
+                }
+                current_pos += 1;
+            }
+        }
+
+        None
+    }
+
+    /// Delete trailing empty lines after specified node and before any non-empty line nodes.
+    fn delete_trailing_space(&self, start: usize) {
+        for (i, node) in self.0.children_with_tokens().enumerate() {
+            if i < start {
+                continue;
+            }
+            if node.kind() != EMPTY_LINE {
+                return;
+            }
+            // this is not a typo, the index will shift by one after deleting the node
+            // so instead of deleting using `i`, we use `start` as the start index
+            self.0.splice_children(start..start + 1, []);
+        }
+    }
+
+    /// Shared internal function to insert a new paragraph into the file.
+    fn insert_empty_paragraph(&mut self, index: Option<usize>) -> Paragraph {
         let paragraph = Paragraph::new();
         let mut to_insert = vec![];
         if self.0.children().count() > 0 {
@@ -469,11 +504,70 @@ impl Deb822 {
             to_insert.push(SyntaxNode::new_root_mut(builder.finish()).into());
         }
         to_insert.push(paragraph.0.clone().into());
-        self.0.splice_children(
-            self.0.children().count()..self.0.children().count(),
-            to_insert,
-        );
+        let insertion_point = match index {
+            Some(i) => {
+                if to_insert.len() > 1 {
+                    to_insert.swap(0, 1);
+                }
+                i
+            }
+            None => self.0.children().count(),
+        };
+        self.0
+            .splice_children(insertion_point..insertion_point, to_insert);
         paragraph
+    }
+
+    /// Insert a new empty paragraph into the file after specified index.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use deb822_lossless::{Deb822, Paragraph};
+    /// let mut d: Deb822 = vec![
+    ///     vec![("Foo", "Bar"), ("Baz", "Qux")].into_iter().collect(),
+    ///     vec![("A", "B"), ("C", "D")].into_iter().collect(),
+    /// ]
+    /// .into_iter()
+    /// .collect();
+    /// let mut p = d.insert_paragraph(0);
+    /// p.set("Foo", "Baz");
+    /// assert_eq!(d.to_string(), "Foo: Baz\n\nFoo: Bar\nBaz: Qux\n\nA: B\nC: D\n");
+    /// let mut another = d.insert_paragraph(1);
+    /// another.set("Y", "Z");
+    /// assert_eq!(d.to_string(), "Foo: Baz\n\nY: Z\n\nFoo: Bar\nBaz: Qux\n\nA: B\nC: D\n");
+    /// ```
+    pub fn insert_paragraph(&mut self, index: usize) -> Paragraph {
+        self.insert_empty_paragraph(self.convert_index(index))
+    }
+
+    /// Remove the paragraph at the specified index from the file.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use deb822_lossless::Deb822;
+    /// let mut d: Deb822 = vec![
+    ///     vec![("Foo", "Bar"), ("Baz", "Qux")].into_iter().collect(),
+    ///     vec![("A", "B"), ("C", "D")].into_iter().collect(),
+    /// ]
+    /// .into_iter()
+    /// .collect();
+    /// d.remove_paragraph(0);
+    /// assert_eq!(d.to_string(), "A: B\nC: D\n");
+    /// d.remove_paragraph(0);
+    /// assert_eq!(d.to_string(), "");
+    /// ```
+    pub fn remove_paragraph(&mut self, index: usize) {
+        if let Some(index) = self.convert_index(index) {
+            self.0.splice_children(index..index + 1, []);
+            self.delete_trailing_space(index);
+        }
+    }
+
+    /// Add a new empty paragraph to the end of the file.
+    pub fn add_paragraph(&mut self) -> Paragraph {
+        self.insert_empty_paragraph(None)
     }
 
     /// Read a deb822 file from the given path.
@@ -1403,6 +1497,43 @@ Maintainer: Somebody <joe@example.com>
 Foo: Blah
 "#
         );
+    }
+
+    #[test]
+    fn test_crud_paragraph() {
+        let mut d = super::Deb822::new();
+        let mut p = d.insert_paragraph(0);
+        p.set("Foo", "Bar");
+        assert_eq!(p.get("Foo").as_deref(), Some("Bar"));
+        assert_eq!(
+            d.to_string(),
+            r#"Foo: Bar
+"#
+        );
+
+        // test prepend
+        let mut p = d.insert_paragraph(0);
+        p.set("Foo", "Blah");
+        assert_eq!(p.get("Foo").as_deref(), Some("Blah"));
+        assert_eq!(
+            d.to_string(),
+            r#"Foo: Blah
+
+Foo: Bar
+"#
+        );
+
+        // test delete
+        d.remove_paragraph(1);
+        assert_eq!(d.to_string(), "Foo: Blah\n\n");
+
+        // test update again
+        p.set("Foo", "Baz");
+        assert_eq!(d.to_string(), "Foo: Baz\n\n");
+
+        // test delete again
+        d.remove_paragraph(0);
+        assert_eq!(d.to_string(), "");
     }
 
     #[test]
