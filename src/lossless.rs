@@ -1500,6 +1500,43 @@ Foo: Blah
     }
 
     #[test]
+    fn test_crud_paragraph() {
+        let mut d = super::Deb822::new();
+        let mut p = d.insert_paragraph(0);
+        p.set("Foo", "Bar");
+        assert_eq!(p.get("Foo").as_deref(), Some("Bar"));
+        assert_eq!(
+            d.to_string(),
+            r#"Foo: Bar
+"#
+        );
+
+        // test prepend
+        let mut p = d.insert_paragraph(0);
+        p.set("Foo", "Blah");
+        assert_eq!(p.get("Foo").as_deref(), Some("Blah"));
+        assert_eq!(
+            d.to_string(),
+            r#"Foo: Blah
+
+Foo: Bar
+"#
+        );
+
+        // test delete
+        d.remove_paragraph(1);
+        assert_eq!(d.to_string(), "Foo: Blah\n\n");
+
+        // test update again
+        p.set("Foo", "Baz");
+        assert_eq!(d.to_string(), "Foo: Baz\n\n");
+
+        // test delete again
+        d.remove_paragraph(0);
+        assert_eq!(d.to_string(), "");
+    }
+
+    #[test]
     fn test_multiline_entry() {
         use super::SyntaxKind::*;
         use rowan::ast::AstNode;
