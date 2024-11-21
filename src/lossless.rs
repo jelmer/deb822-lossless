@@ -306,7 +306,9 @@ impl Parse {
 
 macro_rules! ast_node {
     ($ast:ident, $kind:ident) => {
-        /// An AST node representing a $ast.
+        #[doc = "An AST node representing a `"]
+        #[doc = stringify!($ast)]
+        #[doc = "`."]
         #[derive(PartialEq, Eq, Hash)]
         #[repr(transparent)]
         pub struct $ast(SyntaxNode);
