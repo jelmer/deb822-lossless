@@ -2,12 +2,12 @@
 name = "apt-sources"
 authors = ["Michał Fita <4925040+michalfita@users.noreply.github.com>"]
 edition = "2021"
-version = "0.1.40"
+version = "0.1.0"
 license = "Apache-2.0"
 description = "A parser for APT source files (package repositories specification)"
 repository = { workspace = true }
 homepage = { workspace = true }
-keywords = ["debian", "deb822", "rfc822", "lossless", "edit"]
+keywords = ["debian", "deb822", "rfc822", "edit", "apt"]
 categories = ["parser-implementations"]
 
 [dependencies]

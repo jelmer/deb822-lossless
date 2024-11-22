@@ -2,7 +2,7 @@
 //! A library for parsing and manipulating APT source files that
 //! use the DEB822 format to hold package repositories specifications.
 //!
-//! /// <div class="warning">
+//! <div class="warning">
 //!
 //! Currently only lossy _serialization_ is implemented, lossless support
 //! retaining file sequence and comments would come at later date.
@@ -38,9 +38,10 @@
 //! assert_eq!(suites[0], "noble");
 //! ```
 //!
-//! See the ``lossless`` module (behind the ``lossless`` feature) for a more forgiving parser that
-//! allows partial parsing, parsing files with errors and unknown fields and editing while
-//! preserving formatting.
+// TODO: Not supported yet:
+// See the ``lossless`` module (behind the ``lossless`` feature) for a more forgiving parser that
+// allows partial parsing, parsing files with errors and unknown fields and editing while
+// preserving formatting.
 
 use deb822_lossless::{FromDeb822, FromDeb822Paragraph, ToDeb822, ToDeb822Paragraph};
 use signature::Signature;

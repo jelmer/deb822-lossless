@@ -11,7 +11,7 @@ Four related crates that build on this one are:
 * ``dep3``: A parser and editor for Debian DEP-3 headers.
 * [r-description](https://github.com/jelmer/r-description-rs): A parser and
 editor for R DESCRIPTION files.
-* ``apt-source``: A parser and editor for APT source files (package repositories specification).
+* ``apt-sources``: A parser and editor for APT source files (package repositories specification).
 
 # Example
 
