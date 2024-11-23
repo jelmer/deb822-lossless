@@ -1,0 +1,24 @@
+[package]
+name = "deb822-fast"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "A fast parser for deb822 style files"
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+deb822-derive = { path = "../deb822-derive", version = "^0.2", optional = true }
+
+[features]
+derive = ["dep:deb822-derive"]
+
+[[bench]]
+name = "parse_lossy"
+path = "bench/bench_lossy.rs"
+harness = false
+
+[dev-dependencies]
+criterion = { version = ">=0.5", features = ["html_reports"] }
+
+

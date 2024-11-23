@@ -1,9 +1,9 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use deb822_lossless::lossy::Deb822;
+use deb822_fast::Deb822;
 
 fn parse_deb822_benchmark(c: &mut Criterion) {
     let control_data =
-        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/bench/Sources"))
+        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../bench/Sources"))
             .expect("Could not read control file");
 
     c.bench_function("parse_deb822_lossy", |b| {

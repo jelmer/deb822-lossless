@@ -4,6 +4,13 @@
 //! in the input.
 use crate::lex::SyntaxKind;
 
+#[cfg(feature = "derive")]
+pub use deb822_derive::{FromDeb822, ToDeb822};
+
+pub mod convert;
+pub use convert::{FromDeb822Paragraph, ToDeb822Paragraph};
+mod lex;
+
 /// Error type for the parser.
 #[derive(Debug)]
 pub enum Error {
@@ -259,10 +266,6 @@ impl std::str::FromStr for Deb822 {
 
         while let Some((k, t)) = tokens.next() {
             match k {
-                SyntaxKind::EMPTY_LINE
-                | SyntaxKind::PARAGRAPH
-                | SyntaxKind::ROOT
-                | SyntaxKind::ENTRY => unreachable!(),
                 SyntaxKind::INDENT | SyntaxKind::COLON | SyntaxKind::ERROR => {
                     return Err(Error::UnexpectedToken(k, t.to_string()));
                 }
