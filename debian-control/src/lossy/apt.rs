@@ -103,7 +103,7 @@ pub struct Source {
 
     #[deb822(field = "Components", deserialize_with = deserialize_components, serialize_with = join_whitespace)]
     /// Components supported by the source
-    pub components: Vec<String>,
+    pub components: Option<Vec<String>>,
 
     #[deb822(field = "Description")]
     /// Description of the source
