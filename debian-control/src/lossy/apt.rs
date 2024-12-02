@@ -1,6 +1,6 @@
 //! APT related structures
 use crate::lossy::Relations;
-use deb822_lossless::{FromDeb822, ToDeb822};
+use deb822_lossless::{FromDeb822, FromDeb822Paragraph, ToDeb822, ToDeb822Paragraph};
 
 fn deserialize_components(value: &str) -> Result<Vec<String>, String> {
     Ok(value.split_whitespace().map(|s| s.to_string()).collect())
@@ -218,6 +218,148 @@ pub struct Source {
     pub package_list: Vec<String>,
 }
 
+impl std::str::FromStr for Source {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let para = s
+            .parse::<deb822_lossless::lossy::Paragraph>()
+            .map_err(|e| e.to_string())?;
+
+        FromDeb822Paragraph::from_paragraph(&para)
+    }
+}
+
+impl std::fmt::Display for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let para: deb822_lossless::lossy::Paragraph = self.to_paragraph();
+        write!(f, "{}", para)
+    }
+}
+
+/// A package
+#[derive(Debug, Clone, PartialEq, Eq, ToDeb822, FromDeb822)]
+pub struct Package {
+    /// The name of the package
+    #[deb822(field = "Package")]
+    pub name: String,
+
+    /// The version of the package
+    #[deb822(field = "Version")]
+    pub version: debversion::Version,
+
+    /// The architecture of the package
+    #[deb822(field = "Architecture")]
+    pub architecture: String,
+
+    /// The maintainer of the package
+    #[deb822(field = "Maintainer")]
+    pub maintainer: Option<String>,
+
+    /// The installed size of the package
+    #[deb822(field = "Installed-Size")]
+    pub installed_size: Option<usize>,
+
+    /// Dependencies
+    #[deb822(field = "Depends")]
+    pub depends: Option<Relations>,
+
+    /// Pre-Depends
+    #[deb822(field = "Pre-Depends")]
+    pub pre_depends: Option<Relations>,
+
+    /// Recommends
+    #[deb822(field = "Recommends")]
+    pub recommends: Option<Relations>,
+
+    /// Suggests
+    #[deb822(field = "Suggests")]
+    pub suggests: Option<Relations>,
+
+    /// Enhances
+    #[deb822(field = "Enhances")]
+    pub enhances: Option<Relations>,
+
+    /// Breaks
+    #[deb822(field = "Breaks")]
+    pub breaks: Option<Relations>,
+
+    /// Conflicts
+    #[deb822(field = "Conflicts")]
+    pub conflicts: Option<Relations>,
+
+    /// Provides
+    #[deb822(field = "Provides")]
+    pub provides: Option<Relations>,
+
+    /// Replaces
+    #[deb822(field = "Replaces")]
+    pub replaces: Option<Relations>,
+
+    /// Built-Using
+    #[deb822(field = "Built-Using")]
+    pub built_using: Option<Relations>,
+
+    /// Description
+    #[deb822(field = "Description")]
+    pub description: Option<String>,
+
+    /// Homepage
+    #[deb822(field = "Homepage")]
+    pub homepage: Option<String>,
+
+    /// Priority
+    #[deb822(field = "Priority")]
+    pub priority: Option<crate::fields::Priority>,
+
+    /// Section
+    #[deb822(field = "Section")]
+    pub section: Option<String>,
+
+    /// Essential
+    #[deb822(field = "Essential")]
+    pub essential: Option<bool>,
+
+    /// Tag
+    #[deb822(field = "Tag")]
+    pub tag: Option<String>,
+
+    /// Size
+    #[deb822(field = "Size")]
+    pub size: Option<usize>,
+
+    /// MD5sum
+    #[deb822(field = "MD5sum")]
+    pub md5sum: Option<String>,
+
+    /// SHA256
+    #[deb822(field = "SHA256")]
+    pub sha256: Option<String>,
+
+    /// Description (MD5)
+    #[deb822(field = "Description-MD5")]
+    pub description_md5: Option<String>,
+}
+
+impl std::str::FromStr for Package {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let para = s
+            .parse::<deb822_lossless::lossy::Paragraph>()
+            .map_err(|e| e.to_string())?;
+
+        FromDeb822Paragraph::from_paragraph(&para)
+    }
+}
+
+impl std::fmt::Display for Package {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let para: deb822_lossless::lossy::Paragraph = self.to_paragraph();
+        write!(f, "{}", para)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -260,5 +402,25 @@ Acquire-By-Hash: true
         let release: deb822_lossless::lossy::Paragraph = release.to_paragraph();
 
         assert_eq!(release, para);
+    }
+
+    #[test]
+    fn test_package() {
+        let package = r#"Package: apt
+Version: 2.1.10
+Architecture: amd64
+Maintainer: APT Development Team <apt@lists.debian.org>
+Installed-Size: 3524
+Depends: libc6 (>= 2.14), libgcc1
+Pre-Depends: dpkg (>= 1.15.6)
+Recommends: gnupg
+Suggests: apt-doc, aptitude | synaptic | wajig
+"#;
+
+        let package: Package = package.parse().unwrap();
+
+        assert_eq!(package.name, "apt");
+        assert_eq!(package.version, "2.1.10".parse().unwrap());
+        assert_eq!(package.architecture, "amd64");
     }
 }
