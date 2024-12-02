@@ -95,11 +95,11 @@ pub struct Source {
 
     #[deb822(field = "Archive")]
     /// The archive of the source
-    pub archive: String,
+    pub archive: Option<String>,
 
     #[deb822(field = "Codename")]
     /// The codename of the source
-    pub codename: String,
+    pub codename: Option<String>,
 
     #[deb822(field = "Components", deserialize_with = deserialize_components, serialize_with = join_whitespace)]
     /// Components supported by the source
@@ -107,15 +107,15 @@ pub struct Source {
 
     #[deb822(field = "Description")]
     /// Description of the source
-    pub description: String,
+    pub description: Option<String>,
 
     #[deb822(field = "Origin")]
     /// Origin of the source
-    pub origin: String,
+    pub origin: Option<String>,
 
     #[deb822(field = "Label")]
     /// Label of the source
-    pub label: String,
+    pub label: Option<String>,
 
     #[deb822(field = "Version")]
     /// Version of the source
@@ -127,11 +127,11 @@ pub struct Source {
 
     #[deb822(field = "Binary", deserialize_with = deserialize_binaries, serialize_with = join_whitespace)]
     /// Binaries of the source
-    pub binaries: Vec<String>,
+    pub binaries: Option<Vec<String>>,
 
     #[deb822(field = "Maintainer")]
     /// Maintainer of the source
-    pub maintainer: String,
+    pub maintainer: Option<String>,
 
     #[deb822(field = "Build-Depends")]
     /// Build dependencies of the source
@@ -159,7 +159,7 @@ pub struct Source {
 
     #[deb822(field = "Autobuild")]
     /// Whether the source should be autobuilt
-    pub autobuild: bool,
+    pub autobuild: Option<bool>,
 
     #[deb822(field = "Testsuite")]
     /// Testsuite of the source
