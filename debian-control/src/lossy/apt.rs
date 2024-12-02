@@ -93,29 +93,9 @@ pub struct Source {
     /// The directory of the source
     pub directory: String,
 
-    #[deb822(field = "Archive")]
-    /// The archive of the source
-    pub archive: Option<String>,
-
-    #[deb822(field = "Codename")]
-    /// The codename of the source
-    pub codename: Option<String>,
-
-    #[deb822(field = "Components", deserialize_with = deserialize_components, serialize_with = join_whitespace)]
-    /// Components supported by the source
-    pub components: Vec<String>,
-
     #[deb822(field = "Description")]
     /// Description of the source
     pub description: Option<String>,
-
-    #[deb822(field = "Origin")]
-    /// Origin of the source
-    pub origin: Option<String>,
-
-    #[deb822(field = "Label")]
-    /// Label of the source
-    pub label: Option<String>,
 
     #[deb822(field = "Version")]
     /// Version of the source
